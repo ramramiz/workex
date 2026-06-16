@@ -419,7 +419,7 @@ class TaskController extends Controller
             return response()->json(['html' => '', 'latest_time' => null, 'has_updates' => false, 'play_sound' => false]);
         }
 
-        $sinceDate = \Carbon\Carbon::parse($since);
+        $sinceDate = \Carbon\Carbon::parse($since)->setTimezone(config('app.timezone'));
 
         $newComments = $task->comments()
             ->with(['user', 'views.user'])
