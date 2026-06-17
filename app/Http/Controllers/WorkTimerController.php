@@ -27,7 +27,13 @@ class WorkTimerController extends Controller
             ->orderBy('started_at', 'desc')
             ->get();
 
-        return view('work-timer.index', compact('session', 'myTasks', 'activeLog', 'todayLogs', 'runningTimers'));
+        $firstLog = TaskTimeLog::where('user_id', $user->id)
+            ->whereDate('created_at', $today)
+            ->orderBy('started_at', 'asc')
+            ->first();
+        $sessionStart = $firstLog ? $firstLog->started_at : ($session ? $session->started_at : null);
+
+        return view('work-timer.index', compact('session', 'myTasks', 'activeLog', 'todayLogs', 'runningTimers', 'sessionStart'));
     }
 
     public function startDay(Request $request)
@@ -165,6 +171,14 @@ class WorkTimerController extends Controller
         }
 
         // Starting task timer (allows multiple active tasks simultaneously)
+        $existingLog = TaskTimeLog::where('task_id', $task->id)
+            ->where('user_id', $user->id)
+            ->where('status', 'running')
+            ->first();
+
+        if ($existingLog) {
+            return back()->with('warning', 'Timer is already running for this task.');
+        }
 
         TaskTimeLog::create([
             'task_id'         => $task->id,
@@ -177,7 +191,7 @@ class WorkTimerController extends Controller
 
         $task->update(['status' => 'in_progress']);
 
-        return back()->with('success', 'Timer started for: ' . $task->title);
+        return redirect()->route('chat.index', ['select_task' => $task->id])->with('success', 'Timer started for: ' . $task->title);
     }
 
     public function pauseTask(Request $request, TaskTimeLog $log)

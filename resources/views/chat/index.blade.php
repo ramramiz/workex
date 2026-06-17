@@ -15,7 +15,7 @@
         background: #ffffff;
         border-radius: 16px;
         overflow: hidden;
-        border: 1px solid var(--border-color);
+        border: 1px solid var(--boarder-color);
     }
     .chat-sidebar {
         width: 350px;
@@ -920,7 +920,13 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        const savedTaskId = localStorage.getItem('active_chat_task_id');
+        let savedTaskId = '{{ session('select_task_id') }}' || new URLSearchParams(window.location.search).get('select_task');
+        if (!savedTaskId) {
+            savedTaskId = localStorage.getItem('active_chat_task_id');
+        } else {
+            localStorage.setItem('active_chat_task_id', savedTaskId);
+        }
+
         if (savedTaskId) {
             const el = document.getElementById(`chat-task-item-${savedTaskId}`);
             if (el) {
@@ -978,7 +984,7 @@
         `;
 
         // Load details via AJAX
-        fetch(`{{ url('chat/tasks') }}/${taskId}`)
+        fetch(`{{ url('chat/tasks') }}/${taskId}?_t=${new Date().getTime()}`)
             .then(response => response.json())
             .then(data => {
                 // Populate headers
@@ -1041,7 +1047,7 @@
                     `;
                 } else {
                     actionsHtml += `
-                        <form method="POST" action="{{ url('work-timer/start-task') }}/${taskId}" class="d-inline me-1">
+                        <form method="POST" action="{{ url('work-timer/start-task') }}/${taskId}" class="d-inline me-1" onsubmit="this.querySelector('button').disabled = true;">
                             @csrf
                             <button type="submit" class="btn btn-success btn-sm" ${data.is_buttons_disabled ? 'disabled' : ''}>
                                 <i class="bi bi-play-fill me-1"></i> Start Work

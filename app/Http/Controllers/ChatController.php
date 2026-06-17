@@ -84,9 +84,14 @@ class ChatController extends Controller
             ])->render();
         }
 
-        $activeLog = $task->timeLogs->where('user_id', $user->id)->where('status', 'running')->first();
+        $activeLog = \App\Models\TaskTimeLog::where('task_id', $task->id)
+            ->where('user_id', $user->id)
+            ->where('status', 'running')
+            ->first();
         $isButtonsDisabled = $task->status === 'completed' || $task->status === 'review';
-        $isWorking = $task->timeLogs->where('status', 'running')->isNotEmpty();
+        $isWorking = \App\Models\TaskTimeLog::where('task_id', $task->id)
+            ->where('status', 'running')
+            ->exists();
 
         return response()->json([
             'html' => $html,

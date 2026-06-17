@@ -85,8 +85,21 @@
                         <span class="status-dot working mb-3"></span>
                         <h4 class="mt-1">Active Work Session</h4>
                         
+                        @php
+                            $sessionStartSecs = $sessionStart ? $sessionStart->timestamp : $session->started_at->timestamp;
+                            $sessionDiff = max(0, now()->timestamp - $sessionStartSecs);
+                        @endphp
+                        <div class="fs-2 fw-bold text-success font-monospace my-3" id="sessionTimer" data-start="{{ $sessionStartSecs }}">
+                            {{ sprintf('%02d:%02d:%02d', ($sessionDiff/3600), ($sessionDiff/60)%60, $sessionDiff%60) }}
+                        </div>
+
                         <div class="text-muted fs-7 mb-4 mt-3">
-                            Started Shift at: <strong>{{ $session->started_at->format('h:i A') }}</strong><br>
+                            @if($sessionStart)
+                                Started Shift at: <strong>{{ $sessionStart->format('h:i A') }}</strong>
+                            @else
+                                Started Shift at: <strong>{{ $session->started_at->format('h:i A') }}</strong>
+                            @endif
+                            <br>
                             IP Recorded: <span class="wt-ip-badge">{{ $session->ip_address }}</span>
                         </div>
 
@@ -97,18 +110,60 @@
                         <!-- End Work Day Modal -->
                         <div class="modal fade" id="endWorkDayModal" tabindex="-1" aria-labelledby="endWorkDayModalLabel" aria-hidden="true">
                             <div class="modal-dialog">
-                                <div class="modal-content text-start">
+                                <div class="modal-content text-start" style="border-radius: 12px;">
                                     <div class="modal-header">
-                                        <h5 class="modal-title" id="endWorkDayModalLabel">End Work Day & Record Progress</h5>
+                                        <h5 class="modal-title fw-bold" id="endWorkDayModalLabel">End Work Day & Record Progress</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
                                     <form method="POST" action="{{ route('work-timer.end-day') }}">
                                         @csrf
                                         <div class="modal-body">
-                                            <p class="text-muted fs-7">Ending your day will also stop any active task timers. Please summarize the tasks/work you completed today:</p>
+                                            <!-- Simple Daily Report Summary -->
+                                            <div class="bg-light p-3 rounded-3 mb-3 border">
+                                                <h6 class="fw-bold mb-3 text-dark d-flex align-items-center gap-2">
+                                                    <i class="bi bi-file-earmark-bar-graph text-primary"></i> Daily Work Report Summary
+                                                </h6>
+                                                <div class="row g-2 mb-3">
+                                                    <div class="col-6">
+                                                        <span class="text-muted fs-8 d-block">Shift Started:</span>
+                                                        <span class="fw-semibold text-dark fs-7">
+                                                            @if($sessionStart)
+                                                                {{ $sessionStart->format('h:i A') }}
+                                                            @else
+                                                                {{ $session->started_at->format('h:i A') }}
+                                                            @endif
+                                                        </span>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <span class="text-muted fs-8 d-block">Shift Ending:</span>
+                                                        <span class="fw-semibold text-dark fs-7">{{ now()->format('h:i A') }}</span>
+                                                    </div>
+                                                </div>
+
+                                                <span class="text-muted fs-8 d-block mb-1">Time Logs Recorded Today:</span>
+                                                <div class="list-group list-group-flush border rounded overflow-hidden" style="max-height: 180px; overflow-y: auto;">
+                                                    @forelse($todayLogs as $log)
+                                                        @php
+                                                            $durationStr = $log->ended_at ? ($log->total_minutes . ' mins') : 'Running';
+                                                        @endphp
+                                                        <div class="list-group-item px-2 py-1.5 fs-8 d-flex justify-content-between align-items-center" style="font-size: 12px;">
+                                                            <div class="text-truncate me-2" style="max-width: 70%;">
+                                                                <strong class="text-dark">{{ $log->task->title }}</strong>
+                                                                @if($log->note)
+                                                                    <div class="text-muted text-truncate fs-9" style="font-size: 10px;">{{ $log->note }}</div>
+                                                                @endif
+                                                            </div>
+                                                            <span class="badge bg-secondary-subtle text-secondary font-monospace">{{ $durationStr }}</span>
+                                                        </div>
+                                                    @empty
+                                                        <div class="text-center py-3 text-muted fs-8">No time logs recorded today.</div>
+                                                    @endforelse
+                                                </div>
+                                            </div>
+
                                             <div class="mb-3">
-                                                <label class="form-label fs-7 fw-semibold">Work Completed Today <span class="text-danger">*</span></label>
-                                                <textarea name="work_done" class="form-control" rows="4" required placeholder="Describe what works you have completed today..." minlength="5" maxlength="2000"></textarea>
+                                                <label class="form-label fs-7 fw-semibold">Submit Daily Work Notes <span class="text-danger">*</span></label>
+                                                <textarea name="work_done" class="form-control" rows="4" required placeholder="Summarize your overall progress or achievements today..." minlength="5" maxlength="2000"></textarea>
                                             </div>
                                         </div>
                                         <div class="modal-footer">
