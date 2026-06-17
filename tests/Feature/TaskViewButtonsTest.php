@@ -62,7 +62,7 @@ class TaskViewButtonsTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertSee('Start Work');
-        $response->assertSee('Task Completed');
+        $response->assertSee('Mark as Complete');
         $response->assertDontSee('End Work');
     }
 
@@ -106,7 +106,7 @@ class TaskViewButtonsTest extends TestCase
         $response->assertStatus(200);
         $response->assertSee('End Work');
         $response->assertDontSee('Start Work');
-        $response->assertDontSee('Task Completed');
+        $response->assertDontSee('data-bs-target="#taskCompletionModal"');
     }
 
     public function test_can_end_work_timer_from_task_view()

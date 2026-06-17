@@ -546,6 +546,11 @@
         color: #991b1b !important;
         border-color: #fecaca !important;
     }
+    .chat-header select.form-select.status-select-rejected {
+        background-color: #fef2f2 !important;
+        color: #991b1b !important;
+        border-color: #fecaca !important;
+    }
     .chat-header select.form-select.status-select-completed {
         background-color: #d1fae5 !important;
         color: #065f46 !important;
@@ -626,6 +631,8 @@
                                         <span class="badge bg-info-subtle text-info border border-info-subtle" style="font-size: 8px; padding: 1px 3px;">Review</span>
                                     @elseif($t->status === 'rework')
                                         <span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size: 8px; padding: 1px 3px;">Rework</span>
+                                    @elseif($t->status === 'rejected')
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size: 8px; padding: 1px 3px;">Rejected</span>
                                     @else
                                         <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle" style="font-size: 8px; padding: 1px 3px;">Pending</span>
                                     @endif
@@ -826,6 +833,7 @@
                             <option value="in_progress">In Progress</option>
                             <option value="review">Review</option>
                             <option value="rework">Rework</option>
+                            <option value="rejected">Rejected</option>
                             <option value="completed">Completed</option>
                             <option value="cancelled">Cancelled</option>
                         </select>

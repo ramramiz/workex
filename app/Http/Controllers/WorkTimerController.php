@@ -213,7 +213,7 @@ class WorkTimerController extends Controller
     {
         $request->validate([
             'note' => 'nullable|string|max:1000',
-            'status' => 'nullable|in:pending,in_progress,review,rework,completed,cancelled',
+            'status' => 'nullable|in:pending,in_progress,review,rework,completed,cancelled,rejected',
         ]);
 
         $mins = $log->started_at->diffInMinutes(now());
@@ -239,6 +239,7 @@ class WorkTimerController extends Controller
                 'rework' => 'Rework',
                 'completed' => 'Completed',
                 'cancelled' => 'Cancelled',
+                'rejected' => 'Rejected',
             ];
             $newLabel = $statusLabels[$newStatus] ?? ucfirst($newStatus);
             $userName = auth()->user()->name;

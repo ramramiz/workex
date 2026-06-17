@@ -69,40 +69,78 @@
                                     </a>
                                 @endif
                                 
-                                <form method="POST" action="{{ route('tasks.approve-completion', $task) }}" class="d-inline" onsubmit="return confirm('Are you sure you want to approve this completion and close this task?');">
-                                    @csrf
-                                    <button type="submit" class="btn btn-success btn-sm" title="Approve and Close Task">
-                                        <i class="bi bi-check-lg me-1"></i> Approve
-                                    </button>
-                                </form>
+                                <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#approvalModal-{{ $task->id }}" onclick="toggleRejectSection({{ $task->id }}, false)" title="Approve Task">
+                                    <i class="bi bi-check-lg me-1"></i> Approve
+                                </button>
 
-                                <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#reworkModal-{{ $task->id }}" title="Reject and Send Back for Rework">
+                                <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#approvalModal-{{ $task->id }}" onclick="toggleRejectSection({{ $task->id }}, true)" title="Reject Task">
                                     <i class="bi bi-arrow-counterclockwise me-1"></i> Reject
                                 </button>
                             </div>
 
-                            <!-- Rejection/Rework Modal -->
-                            <div class="modal fade" id="reworkModal-{{ $task->id }}" data-bs-backdrop="static" tabindex="-1" aria-labelledby="reworkModalLabel-{{ $task->id }}" aria-hidden="true">
+                            <!-- Unified Review & Approval Modal -->
+                            <div class="modal fade" id="approvalModal-{{ $task->id }}" data-bs-backdrop="static" tabindex="-1" aria-labelledby="approvalModalLabel-{{ $task->id }}" aria-hidden="true">
                                 <div class="modal-dialog modal-dialog-centered text-start">
                                     <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
                                         <div class="modal-header border-0 pb-0">
-                                            <h5 class="modal-title fw-bold text-dark" id="reworkModalLabel-{{ $task->id }}">Send Task Back for Rework</h5>
+                                            <h5 class="modal-title fw-bold text-dark" id="approvalModalLabel-{{ $task->id }}">Review Completion: {{ $task->title }}</h5>
                                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                         </div>
-                                        <form method="POST" action="{{ route('tasks.reject-completion', $task) }}">
-                                            @csrf
-                                            <div class="modal-body pt-3">
-                                                <div class="mb-3">
-                                                    <label class="form-label fw-semibold text-dark">Rework Feedback / Reason <span class="text-danger">*</span></label>
-                                                    <textarea name="comment" class="form-control" rows="4" required placeholder="Specify exactly what failed testing or needs changes..."></textarea>
-                                                    <div class="form-text text-muted fs-8">This feedback will be posted directly as a comment in the task discussion history.</div>
-                                                </div>
+                                        
+                                        <div class="modal-body pt-3">
+                                            <div class="mb-3">
+                                                <span class="d-block text-muted fs-8 text-uppercase fw-semibold">Developer</span>
+                                                <span class="text-dark fw-medium fs-7">{{ $task->assignee->name ?? 'Unassigned' }}</span>
                                             </div>
-                                            <div class="modal-footer border-0">
-                                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                                                <button type="submit" class="btn btn-danger btn-sm px-4">Send Back to Rework</button>
+                                            <div class="mb-3">
+                                                <span class="d-block text-muted fs-8 text-uppercase fw-semibold">Project</span>
+                                                <span class="text-dark fw-medium fs-7">{{ $task->project->name ?? '—' }}</span>
                                             </div>
-                                        </form>
+                                            <div class="mb-3">
+                                                <span class="d-block text-muted fs-8 text-uppercase fw-semibold">Description of Work Done</span>
+                                                <div class="p-3 bg-light rounded-3 text-dark fs-7" style="white-space: pre-wrap;">{{ $task->completed_description ?? 'No description provided.' }}</div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <span class="d-block text-muted fs-8 text-uppercase fw-semibold">Completed Page Link</span>
+                                                @if($task->completed_link)
+                                                    <a href="{{ $task->completed_link }}" target="_blank" class="text-decoration-none text-primary fw-semibold fs-7 break-all">
+                                                        <i class="bi bi-link-45deg"></i> {{ $task->completed_link }}
+                                                    </a>
+                                                @else
+                                                    <span class="text-muted fs-7">—</span>
+                                                @endif
+                                            </div>
+
+                                            <!-- Hidden Rejection Form Section -->
+                                            <div id="rejectSection-{{ $task->id }}" class="d-none border-top pt-3 mt-3">
+                                                <form method="POST" action="{{ route('tasks.reject-completion', $task) }}" enctype="multipart/form-data">
+                                                    @csrf
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-semibold text-danger">Rework Feedback / Reason <span class="text-danger">*</span></label>
+                                                        <textarea name="comment" id="rejectComment-{{ $task->id }}" class="form-control" rows="3" placeholder="Specify exactly what needs changes..."></textarea>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-semibold text-dark">Attach Image (optional)</label>
+                                                        <input type="file" name="image" class="form-control" accept="image/*">
+                                                    </div>
+                                                    <div class="d-flex gap-2 justify-content-end">
+                                                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleRejectSection({{ $task->id }}, false)">Back</button>
+                                                        <button type="submit" class="btn btn-danger btn-sm px-4">Submit Rejection</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+
+                                        <!-- Default Footer with Approve / Reject Options -->
+                                        <div class="modal-footer border-0" id="defaultFooter-{{ $task->id }}">
+                                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                                            <button type="button" class="btn btn-danger btn-sm" onclick="toggleRejectSection({{ $task->id }}, true)">Reject</button>
+                                            
+                                            <form method="POST" action="{{ route('tasks.approve-completion', $task) }}" class="d-inline">
+                                                @csrf
+                                                <button type="submit" class="btn btn-success btn-sm px-4">Approve</button>
+                                            </form>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -128,3 +166,23 @@
     @endif
 </div>
 @endsection
+
+@push('scripts')
+<script>
+function toggleRejectSection(taskId, show) {
+    const section = document.getElementById('rejectSection-' + taskId);
+    const footer = document.getElementById('defaultFooter-' + taskId);
+    const textarea = document.getElementById('rejectComment-' + taskId);
+    if (show) {
+        section.classList.remove('d-none');
+        footer.classList.add('d-none');
+        textarea.setAttribute('required', 'required');
+        textarea.focus();
+    } else {
+        section.classList.add('d-none');
+        footer.classList.remove('d-none');
+        textarea.removeAttribute('required');
+    }
+}
+</script>
+@endpush

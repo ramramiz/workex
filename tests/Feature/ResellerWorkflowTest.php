@@ -54,6 +54,22 @@ class ResellerWorkflowTest extends TestCase
         $adminUser = User::where('email', 'admin@acme.com')->first();
         $this->assertNotNull($adminUser->company_id);
         $this->assertTrue($adminUser->isSuperAdmin());
+
+        // Assert departments were seeded for the new company
+        $this->assertDatabaseHas('departments', [
+            'company_id' => $adminUser->company_id,
+            'name' => 'Administration',
+        ]);
+
+        $adminDept = \App\Models\Department::withoutGlobalScopes()
+            ->where('company_id', $adminUser->company_id)
+            ->where('name', 'Administration')
+            ->first();
+        $this->assertNotNull($adminDept);
+        $this->assertDatabaseHas('designations', [
+            'department_id' => $adminDept->id,
+            'name' => 'Admin',
+        ]);
     }
 
     public function test_company_isolation_works(): void

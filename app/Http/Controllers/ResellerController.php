@@ -49,6 +49,9 @@ class ResellerController extends Controller
             'status' => 'active',
         ]);
 
+        // Seed default departments/designations for the new company
+        \Database\Seeders\DepartmentSeeder::seedForCompany($company->id);
+
         $adminRole = Role::where('slug', 'super-admin')->first();
 
         // Create the company admin user

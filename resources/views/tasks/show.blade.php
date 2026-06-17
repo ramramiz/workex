@@ -359,6 +359,11 @@
         color: #842029 !important;
         border-color: #f5c2c7 !important;
     }
+    .status-select-rejected {
+        background-color: #f8d7da !important;
+        color: #842029 !important;
+        border-color: #f5c2c7 !important;
+    }
     .status-select-completed {
         background-color: #d1e7dd !important;
         color: #0f5132 !important;
@@ -454,7 +459,7 @@
                                 <button type="submit" class="btn btn-success btn-sm w-100" {{ $isButtonsDisabled ? 'disabled' : '' }}><i class="bi bi-play-fill me-1"></i> Start Work</button>
                             </form>
                             <button type="button" class="btn btn-primary btn-sm w-100" data-bs-toggle="modal" data-bs-target="#taskCompletionModal" {{ $isButtonsDisabled ? 'disabled' : '' }}>
-                                <i class="bi bi-check2-circle me-1"></i> Task Completed
+                                <i class="bi bi-check2-circle me-1"></i> Mark as Complete
                             </button>
                         @endif
 
@@ -464,6 +469,7 @@
                                 <option value="in_progress" {{ $task->status === 'in_progress' ? 'selected' : '' }}>In Progress</option>
                                 <option value="review" {{ $task->status === 'review' ? 'selected' : '' }}>Review</option>
                                 <option value="rework" {{ $task->status === 'rework' ? 'selected' : '' }}>Rework</option>
+                                <option value="rejected" {{ $task->status === 'rejected' ? 'selected' : '' }}>Rejected</option>
                                 <option value="completed" {{ $task->status === 'completed' ? 'selected' : '' }}>Completed</option>
                                 <option value="cancelled" {{ $task->status === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
                             </select>
@@ -653,6 +659,7 @@
                                 <option value="in_progress" {{ $task->status === 'in_progress' ? 'selected' : '' }}>In Progress</option>
                                 <option value="review" {{ $task->status === 'review' ? 'selected' : '' }}>Review</option>
                                 <option value="rework" {{ $task->status === 'rework' ? 'selected' : '' }}>Rework</option>
+                                <option value="rejected" {{ $task->status === 'rejected' ? 'selected' : '' }}>Rejected</option>
                                 <option value="completed" {{ $task->status === 'completed' ? 'selected' : '' }}>Completed</option>
                                 <option value="cancelled" {{ $task->status === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
                             </select>
@@ -695,7 +702,7 @@
                 </div>
                 <div class="modal-footer border-0">
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary btn-sm px-4">Submit Work</button>
+                    <button type="submit" class="btn btn-primary btn-sm px-4">Mark as Complete</button>
                 </div>
             </form>
         </div>
@@ -793,6 +800,13 @@
         const select = document.getElementById('taskStatusSelect');
         const alertBox = document.getElementById('statusAlert');
         const status = select.value;
+        
+        if (status === 'completed') {
+            select.value = "{{ $task->status }}";
+            const modal = new bootstrap.Modal(document.getElementById('taskCompletionModal'));
+            modal.show();
+            return;
+        }
         
         alertBox.classList.add('d-none');
 

@@ -91,7 +91,7 @@ function startTickers() {
 }
 
 function fetchStatus() {
-    fetch('/live-status/data', { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content } })
+    fetch('/live-status/data?_t=' + Date.now(), { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') } })
         .then(r => r.json())
         .then(data => {
             const grid = document.getElementById('status-grid');

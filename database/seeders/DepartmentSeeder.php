@@ -5,12 +5,19 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\Department;
 use App\Models\Designation;
+use Illuminate\Support\Facades\DB;
 
 class DepartmentSeeder extends Seeder
 {
     public function run(): void
     {
+        self::seedForCompany(1);
+    }
+
+    public static function seedForCompany(int $companyId): void
+    {
         $departments = [
+            ['name' => 'Administration', 'designations' => ['Admin', 'Office Assistant', 'Operations Manager']],
             ['name' => 'Management', 'designations' => ['CEO', 'CTO', 'Project Manager', 'Product Manager']],
             ['name' => 'Development', 'designations' => ['Senior Developer', 'Junior Developer', 'Full Stack Developer', 'Backend Developer', 'Frontend Developer', 'Mobile Developer']],
             ['name' => 'Design', 'designations' => ['UI/UX Designer', 'Graphic Designer', 'Web Designer']],
@@ -22,16 +29,36 @@ class DepartmentSeeder extends Seeder
         ];
 
         foreach ($departments as $deptData) {
-            $dept = Department::updateOrCreate(
-                ['name' => $deptData['name']],
-                ['status' => 'active']
-            );
+            $deptId = DB::table('departments')
+                ->where('company_id', $companyId)
+                ->where('name', $deptData['name'])
+                ->value('id');
+
+            if (!$deptId) {
+                $deptId = DB::table('departments')->insertGetId([
+                    'company_id' => $companyId,
+                    'name' => $deptData['name'],
+                    'status' => 'active',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
 
             foreach ($deptData['designations'] as $desig) {
-                Designation::updateOrCreate(
-                    ['name' => $desig, 'department_id' => $dept->id],
-                    ['status' => 'active']
-                );
+                $exists = DB::table('designations')
+                    ->where('department_id', $deptId)
+                    ->where('name', $desig)
+                    ->exists();
+
+                if (!$exists) {
+                    DB::table('designations')->insert([
+                        'department_id' => $deptId,
+                        'name' => $desig,
+                        'status' => 'active',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
             }
         }
     }

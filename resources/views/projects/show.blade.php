@@ -130,6 +130,9 @@
                         <button class="nav-link active py-3" id="tasks-tab" data-bs-toggle="tab" data-bs-target="#tasks" type="button" role="tab">Tasks</button>
                     </li>
                     <li class="nav-item">
+                        <button class="nav-link py-3" id="completed-tasks-tab" data-bs-toggle="tab" data-bs-target="#completed-tasks" type="button" role="tab">Completed Tasks</button>
+                    </li>
+                    <li class="nav-item">
                         <button class="nav-link py-3" id="team-tab" data-bs-toggle="tab" data-bs-target="#team" type="button" role="tab">Team</button>
                     </li>
                     <li class="nav-item">
@@ -162,7 +165,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @forelse($project->tasks as $task)
+                                    @forelse($project->tasks->where('status', '!=', 'completed') as $task)
                                         <tr>
                                             <td class="fw-semibold">
                                                 <a href="{{ route('tasks.show', $task) }}" class="text-decoration-none">{{ $task->title }}</a>
@@ -195,6 +198,12 @@
                                                     <span class="badge bg-success-subtle text-success border border-success-subtle">Completed</span>
                                                 @elseif($task->status === 'in_progress')
                                                     <span class="badge bg-warning-subtle text-warning border border-warning-subtle">In Progress</span>
+                                                @elseif($task->status === 'review')
+                                                    <span class="badge bg-info-subtle text-info border border-info-subtle">Review</span>
+                                                @elseif($task->status === 'rework')
+                                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Rework</span>
+                                                @elseif($task->status === 'rejected')
+                                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Rejected</span>
                                                 @else
                                                     <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Pending</span>
                                                 @endif
@@ -203,6 +212,65 @@
                                     @empty
                                         <tr>
                                             <td colspan="5" class="text-center py-4 text-muted fs-7">No tasks found.</td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Completed Tasks -->
+                    <div class="tab-pane fade" id="completed-tasks" role="tabpanel">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="mb-0 fw-bold">Completed Tasks</h6>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Task</th>
+                                        <th>Assignee</th>
+                                        <th>Priority</th>
+                                        <th>Deadline</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse($project->tasks->where('status', 'completed') as $task)
+                                        <tr>
+                                            <td class="fw-semibold">
+                                                <a href="{{ route('tasks.show', $task) }}" class="text-decoration-none">{{ $task->title }}</a>
+                                                @if($task->meeting)
+                                                    <div class="mt-1">
+                                                        <span class="badge" style="background: #f3e8ff; color: #7c3aed; border: 1px solid #e9d5ff; font-size: 9px; padding: 2px 4px;">
+                                                            meeting-{{ $task->meeting->meeting_date->format('Y-m-d') }}
+                                                        </span>
+                                                    </div>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                @if($task->assignee)
+                                                    <div class="d-flex align-items-center gap-1">
+                                                        <img src="{{ $task->assignee->avatar_url }}" alt="" class="avatar-circle" style="width:20px; height:20px;">
+                                                        <span class="fs-8">{{ $task->assignee->name }}</span>
+                                                    </div>
+                                                @else
+                                                    <span class="text-muted fs-8">Unassigned</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-{{ $task->priority_badge }}-subtle text-{{ $task->priority_badge }} border border-{{ $task->priority_badge }}-subtle text-capitalize fs-8" style="font-size: 10px;">
+                                                    {{ $task->priority }}
+                                                </span>
+                                            </td>
+                                            <td>{{ $task->deadline ? $task->deadline->format('d M Y') : '—' }}</td>
+                                            <td>
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle">Completed</span>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="5" class="text-center py-4 text-muted fs-7">No completed tasks found.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>

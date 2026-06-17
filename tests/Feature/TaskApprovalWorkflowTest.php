@@ -155,7 +155,7 @@ class TaskApprovalWorkflowTest extends TestCase
         
         $this->assertDatabaseHas('tasks', [
             'id' => $this->task->id,
-            'status' => 'pending',
+            'status' => 'rejected',
         ]);
 
         // Verify rejection comment is added to discussion thread
@@ -215,5 +215,49 @@ class TaskApprovalWorkflowTest extends TestCase
             'user_id' => $this->adminUser->id,
             'comment' => '✅ **Approved completion and closed task**',
         ]);
+    }
+
+    public function test_reject_completion_with_image_and_notification()
+    {
+        $this->task->update([
+            'status' => 'review',
+            'completed_description' => 'Finished task',
+            'completed_link' => 'https://test.com',
+        ]);
+
+        \Illuminate\Support\Facades\Storage::fake('public');
+
+        $file = \Illuminate\Http\UploadedFile::fake()->image('rework_error.png');
+
+        $reworkData = [
+            'comment' => 'Layout issues on mobile devices.',
+            'image' => $file,
+        ];
+
+        $response = $this->actingAs($this->adminUser)
+            ->post(route('tasks.reject-completion', $this->task), $reworkData);
+
+        $response->assertRedirect(route('tasks.completed-approvals'));
+
+        $this->assertDatabaseHas('tasks', [
+            'id' => $this->task->id,
+            'status' => 'rejected',
+        ]);
+
+        // Verify notification was created for assignee
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $this->developerHisham->id,
+            'type' => 'task_rejected',
+        ]);
+
+        // Verify comment with image was created
+        $comment = TaskComment::where('task_id', $this->task->id)
+            ->where('user_id', $this->adminUser->id)
+            ->where('comment', 'like', '%Layout issues on mobile devices%')
+            ->first();
+
+        $this->assertNotNull($comment);
+        $this->assertNotNull($comment->image_path);
+        \Illuminate\Support\Facades\Storage::disk('public')->assertExists($comment->image_path);
     }
 }

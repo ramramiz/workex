@@ -47,6 +47,11 @@ self.addEventListener('fetch', (event) => {
     // Skip API / AJAX / form routes
     if (
         url.pathname.startsWith('/api/') ||
+        url.pathname.startsWith('/live-status/') ||
+        url.pathname.startsWith('/notifications/') ||
+        url.pathname.startsWith('/work-timer/') ||
+        url.pathname.startsWith('/mailbox/') ||
+        url.pathname.startsWith('/chat/') ||
         url.pathname.startsWith('/broadcasting/') ||
         url.pathname.startsWith('/sanctum/')
     ) return;

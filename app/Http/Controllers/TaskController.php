@@ -16,6 +16,7 @@ class TaskController extends Controller
         $user = auth()->user();
 
         $query = Task::with(['project', 'assignee', 'creator', 'meeting'])
+            ->where('status', '!=', 'completed')
             ->when(!$user->isLeaderOrAbove(), fn($q) => $q->where('assigned_to', $user->id))
             ->when($request->project, fn($q) => $q->where('project_id', $request->project))
             ->when($request->status, fn($q) => $q->where('status', $request->status))
@@ -172,6 +173,7 @@ class TaskController extends Controller
                 'rework' => 'Rework',
                 'completed' => 'Completed',
                 'cancelled' => 'Cancelled',
+                'rejected' => 'Rejected',
             ];
             $newLabel = $statusLabels[$newStatus] ?? ucfirst($newStatus);
             $userName = auth()->user()->name;
@@ -209,7 +211,7 @@ class TaskController extends Controller
 
     public function updateStatus(Request $request, Task $task)
     {
-        $request->validate(['status' => 'required|in:pending,in_progress,review,rework,completed,cancelled']);
+        $request->validate(['status' => 'required|in:pending,in_progress,review,rework,completed,cancelled,rejected']);
         
         $oldStatus = $task->status;
         $newStatus = $request->status;
@@ -224,6 +226,7 @@ class TaskController extends Controller
                 'rework' => 'Rework',
                 'completed' => 'Completed',
                 'cancelled' => 'Cancelled',
+                'rejected' => 'Rejected',
             ];
             $newLabel = $statusLabels[$newStatus] ?? ucfirst($newStatus);
             $userName = auth()->user()->name;
@@ -409,17 +412,34 @@ class TaskController extends Controller
 
         $request->validate([
             'comment' => 'required|string|max:1000',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
         ]);
 
         $task->update([
-            'status' => 'pending',
+            'status' => 'rejected',
         ]);
+
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('comments/' . $task->id, 'public');
+        }
 
         TaskComment::create([
             'task_id' => $task->id,
             'user_id' => auth()->id(),
             'comment' => "❌ **Task Rejection Feedback:** " . $request->comment,
+            'image_path' => $imagePath,
         ]);
+
+        if ($task->assigned_to) {
+            \App\Models\AppNotification::create([
+                'user_id' => $task->assigned_to,
+                'type'    => 'task_rejected',
+                'title'   => 'Task Rework Required',
+                'message' => auth()->user()->name . ' rejected your completion for task: "' . $task->title . '"',
+                'url'     => route('tasks.show', $task),
+            ]);
+        }
 
         \App\Models\ActivityLog::log('task_completed_rejected', "Rejected task completion: {$task->title}", $task);
 

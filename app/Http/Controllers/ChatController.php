@@ -12,6 +12,7 @@ class ChatController extends Controller
         $user = auth()->user();
         
         $tasks = Task::with(['project', 'assignee', 'comments', 'comments.views', 'timeLogs' => fn($q) => $q->where('status', 'running')])
+            ->where('status', '!=', 'completed')
             ->when(!$user->isLeaderOrAbove(), fn($q) => $q->where('assigned_to', $user->id))
             ->when($user->isTeamLeader(), function($q) {
                 $q->where(function($sq) {

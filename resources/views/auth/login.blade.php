@@ -20,14 +20,29 @@
         /* Left panel */
         .auth-left {
             flex: 1;
+            height: 100vh;
             background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
             align-items: center;
-            padding: 60px;
+            padding: 40px 60px;
             position: relative;
-            overflow: hidden;
+            overflow-y: auto;
+        }
+
+        .auth-left::-webkit-scrollbar {
+            width: 6px;
+        }
+        .auth-left::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .auth-left::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+        .auth-left::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
         }
 
         .auth-left::before {
@@ -52,7 +67,7 @@
             display: flex;
             align-items: center;
             gap: 14px;
-            margin-bottom: 60px;
+            margin-bottom: 30px;
             position: relative;
             z-index: 1;
         }
@@ -75,19 +90,81 @@
         .auth-hero h1 span { background: linear-gradient(135deg, #6366f1, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
         .auth-hero p { font-size: 16px; color: #94a3b8; line-height: 1.7; }
 
-        .auth-features { display: flex; flex-direction: column; gap: 16px; margin-top: 48px; position: relative; z-index: 1; width: 100%; max-width: 360px; }
-        .auth-feature-item { display: flex; align-items: center; gap: 14px; padding: 14px 18px; background: rgba(255,255,255,0.04); border-radius: 12px; border: 1px solid rgba(255,255,255,0.06); }
-        .auth-feature-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
-        .auth-feature-text { font-size: 14px; color: #cbd5e1; font-weight: 500; }
+        .auth-features { display: flex; flex-direction: column; gap: 12px; margin-top: 30px; position: relative; z-index: 1; width: 100%; max-width: 360px; }
+        .auth-feature-item { display: flex; align-items: center; gap: 14px; padding: 10px 16px; background: rgba(255,255,255,0.04); border-radius: 12px; border: 1px solid rgba(255,255,255,0.06); }
+        .auth-feature-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+        .auth-feature-text { font-size: 13px; color: #cbd5e1; font-weight: 500; }
+
+        /* Left Quick Login Card Styles */
+        .left-quick-login {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 20px;
+            width: 100%;
+            max-width: 440px;
+            margin-top: 30px;
+            position: relative;
+            z-index: 1;
+        }
+        .quick-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #818cf8;
+            margin-bottom: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .quick-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        .btn-glass {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #e2e8f0;
+            font-size: 12.5px;
+            font-weight: 600;
+            padding: 10px 12px;
+            border-radius: 10px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            justify-content: flex-start;
+        }
+        .btn-glass:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            transform: translateY(-1px);
+        }
+        .btn-glass i {
+            font-size: 14px;
+        }
+        .btn-glass.admin-btn:hover { border-color: rgba(239, 68, 68, 0.4); color: #f87171; }
+        .btn-glass.pm-btn:hover { border-color: rgba(139, 92, 246, 0.4); color: #c084fc; }
+        .btn-glass.leader-btn:hover { border-color: rgba(59, 130, 246, 0.4); color: #60a5fa; }
+        .btn-glass.dev-btn:hover { border-color: rgba(16, 185, 129, 0.4); color: #34d399; }
+        .btn-glass.tele-btn:hover { border-color: rgba(6, 182, 212, 0.4); color: #22d3ee; }
+        .btn-glass.reseller-btn:hover { border-color: rgba(245, 158, 11, 0.4); color: #fbbf24; }
 
         /* Right panel */
         .auth-right {
             width: 480px;
+            height: 100vh;
             background: white;
             display: flex;
             flex-direction: column;
             justify-content: center;
             padding: 60px 50px;
+            overflow-y: auto;
         }
 
         .login-header { margin-bottom: 36px; }
@@ -122,26 +199,6 @@
             display: flex; align-items: center; justify-content: center; gap: 8px;
         }
         .btn-login:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(99,102,241,0.4); }
-
-        .divider { display: flex; align-items: center; gap: 12px; margin: 24px 0; }
-        .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #e2e8f0; }
-        .divider span { font-size: 12px; color: #94a3b8; font-weight: 500; }
-
-        .demo-creds { background: #f8fafc; border-radius: 10px; padding: 16px; }
-        .demo-creds .demo-title { font-size: 12px; font-weight: 600; color: #6366f1; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
-        .demo-creds .cred-item { font-size: 13px; color: #64748b; margin-bottom: 4px; }
-        .demo-creds .cred-item span { font-weight: 600; color: #374151; }
-
-        .btn-outline-purple {
-            color: #7c3aed;
-            border-color: #7c3aed;
-            background-color: transparent;
-        }
-        .btn-outline-purple:hover {
-            color: #fff;
-            background-color: #7c3aed;
-            border-color: #7c3aed;
-        }
 
         @media (max-width: 900px) {
             .auth-left { display: none; }
@@ -182,6 +239,36 @@
         <div class="auth-feature-item">
             <div class="auth-feature-icon" style="background:rgba(239,68,68,0.15);color:#ef4444;"><i class="bi bi-receipt"></i></div>
             <div class="auth-feature-text">Invoice & Payment Tracking</div>
+        </div>
+    </div>
+
+    <!-- Glassmorphic Quick Login Card -->
+    <div class="left-quick-login">
+        <div class="quick-title">
+            <i class="bi bi-lightning-charge-fill text-warning" style="color: #fbbf24 !important;"></i> Demo Quick Access
+        </div>
+        <div class="quick-grid">
+            <button type="button" class="btn btn-glass admin-btn" title="admin@workmonitor.com / Admin@123" onclick="quickLogin('admin@workmonitor.com', 'Admin@123')">
+                <i class="bi bi-shield-lock text-danger"></i> Admin
+            </button>
+            <button type="button" class="btn btn-glass pm-btn" title="manager@workmonitor.com / Admin@123" onclick="quickLogin('manager@workmonitor.com', 'Admin@123')">
+                <i class="bi bi-briefcase text-purple" style="color:#c084fc;"></i> PM
+            </button>
+            <button type="button" class="btn btn-glass leader-btn" title="vijil.techsoul@gmail.com / Admin@123" onclick="quickLogin('vijil.techsoul@gmail.com', 'Admin@123')">
+                <i class="bi bi-people text-primary" style="color:#60a5fa;"></i> TL (Vijil)
+            </button>
+            <button type="button" class="btn btn-glass leader-btn" title="souban.techsoul@gmail.com / Admin@123" onclick="quickLogin('souban.techsoul@gmail.com', 'Admin@123')">
+                <i class="bi bi-people text-primary" style="color:#60a5fa;"></i> TL (Souban)
+            </button>
+            <button type="button" class="btn btn-glass dev-btn" title="hisham.techsoul@gmail.com / Admin@123" onclick="quickLogin('hisham.techsoul@gmail.com', 'Admin@123')">
+                <i class="bi bi-terminal text-success" style="color:#34d399;"></i> Dev (Hisham)
+            </button>
+            <button type="button" class="btn btn-glass tele-btn" title="telecaller@workmonitor.com / Admin@123" onclick="quickLogin('telecaller@workmonitor.com', 'Admin@123')">
+                <i class="bi bi-telephone text-info" style="color:#22d3ee;"></i> Telecaller
+            </button>
+            <button type="button" class="btn btn-glass reseller-btn" style="grid-column: span 2;" title="reseller@workmonitor.com / Reseller@123" onclick="quickLogin('reseller@workmonitor.com', 'Reseller@123')">
+                <i class="bi bi-buildings text-warning" style="color:#fbbf24;"></i> Reseller Company
+            </button>
         </div>
     </div>
 </div>
@@ -250,42 +337,6 @@
             <i class="bi bi-box-arrow-in-right"></i> Sign In
         </button>
     </form>
-
-    <div class="divider"><span>Quick Login</span></div>
-    <div class="d-flex gap-2 mb-3 flex-wrap">
-        <button type="button" class="btn btn-outline-danger btn-sm flex-grow-1 py-2" title="admin@workmonitor.com / Admin@123" onclick="quickLogin('admin@workmonitor.com', 'Admin@123')">
-            <i class="bi bi-shield-lock me-1"></i> Admin
-        </button>
-        <button type="button" class="btn btn-outline-purple btn-sm flex-grow-1 py-2" title="manager@workmonitor.com / Admin@123" onclick="quickLogin('manager@workmonitor.com', 'Admin@123')">
-            <i class="bi bi-briefcase me-1"></i> PM
-        </button>
-        <button type="button" class="btn btn-outline-primary btn-sm flex-grow-1 py-2" title="vijil.techsoul@gmail.com / Admin@123" onclick="quickLogin('vijil.techsoul@gmail.com', 'Admin@123')">
-            <i class="bi bi-people me-1"></i> Leader (Vijil)
-        </button>
-        <button type="button" class="btn btn-outline-primary btn-sm flex-grow-1 py-2" title="souban.techsoul@gmail.com / Admin@123" onclick="quickLogin('souban.techsoul@gmail.com', 'Admin@123')">
-            <i class="bi bi-people me-1"></i> Leader (Souban)
-        </button>
-        <button type="button" class="btn btn-outline-success btn-sm flex-grow-1 py-2" title="hisham.techsoul@gmail.com / Admin@123" onclick="quickLogin('hisham.techsoul@gmail.com', 'Admin@123')">
-            <i class="bi bi-terminal me-1"></i> Developer (Hisham)
-        </button>
-        <button type="button" class="btn btn-outline-info btn-sm flex-grow-1 py-2" title="telecaller@workmonitor.com / Admin@123" onclick="quickLogin('telecaller@workmonitor.com', 'Admin@123')">
-            <i class="bi bi-telephone me-1"></i> Telecaller
-        </button>
-        <button type="button" class="btn btn-outline-warning btn-sm flex-grow-1 py-2" title="reseller@workmonitor.com / Reseller@123" onclick="quickLogin('reseller@workmonitor.com', 'Reseller@123')">
-            <i class="bi bi-buildings me-1"></i> Reseller
-        </button>
-    </div>
-
-    <div class="demo-creds">
-        <div class="demo-title"><i class="bi bi-info-circle me-1"></i>Test Accounts</div>
-        <div class="cred-item">Super Admin: <span>admin@workmonitor.com</span> / <span>Admin@123</span></div>
-        <div class="cred-item">Project Manager: <span>manager@workmonitor.com</span> / <span>Admin@123</span></div>
-        <div class="cred-item">Team Leader (Vijil): <span>vijil.techsoul@gmail.com</span> / <span>Admin@123</span></div>
-        <div class="cred-item">Team Leader (Souban): <span>souban.techsoul@gmail.com</span> / <span>Admin@123</span></div>
-        <div class="cred-item">Developer (Hisham): <span>hisham.techsoul@gmail.com</span> / <span>Admin@123</span></div>
-        <div class="cred-item">Telecaller: <span>telecaller@workmonitor.com</span> / <span>Admin@123</span></div>
-        <div class="cred-item">Reseller: <span>reseller@workmonitor.com</span> / <span>Reseller@123</span></div>
-    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

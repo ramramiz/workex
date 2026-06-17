@@ -42,6 +42,7 @@
                     <option value="in_progress" {{ request('status') === 'in_progress' ? 'selected' : '' }}>In Progress</option>
                     <option value="review" {{ request('status') === 'review' ? 'selected' : '' }}>Review</option>
                     <option value="rework" {{ request('status') === 'rework' ? 'selected' : '' }}>Rework</option>
+                    <option value="rejected" {{ request('status') === 'rejected' ? 'selected' : '' }}>Rejected</option>
                     <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>Completed</option>
                 </select>
             </div>
@@ -128,6 +129,8 @@
                                 <span class="badge bg-info-subtle text-info border border-info-subtle">Review</span>
                             @elseif($task->status === 'rework')
                                 <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Rework</span>
+                            @elseif($task->status === 'rejected')
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Rejected</span>
                             @else
                                 <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Pending</span>
                             @endif
