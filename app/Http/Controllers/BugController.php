@@ -16,6 +16,7 @@ class BugController extends Controller
         $bugs = Bug::with(['project', 'reportedBy', 'assignedTo'])
             ->when($request->project, fn($q) => $q->where('project_id', $request->project))
             ->when($request->priority, fn($q) => $q->where('priority', $request->priority))
+            ->when($request->filter === 'solved', fn($q) => $q->whereIn('status', ['approved', 'cleared']))
             ->when($request->status, fn($q) => $q->where('status', $request->status))
             ->latest()->paginate(20);
         $projects = Project::whereNotIn('status', ['completed','cancelled'])->get();
@@ -180,7 +181,7 @@ class BugController extends Controller
     }
     public function updateStatus(Request $request, Bug $bug)
     {
-        $request->validate(['status' => 'required|in:open,assigned,in_progress,resolved,closed,rejected']);
+        $request->validate(['status' => 'required|in:open,assigned,in_progress,resolved,closed,rejected,completed,approved,cleared']);
         $bug->update(['status' => $request->status]);
         return response()->json(['success' => true]);
     }

@@ -19,7 +19,17 @@ class LeadRoomController extends Controller
     {
         $this->checkAccess();
 
-        $rooms = LeadRoom::with(['creator', 'users'])->withCount('leads')->latest()->get();
+        $rooms = LeadRoom::with(['creator', 'users'])->withCount([
+            'leads',
+            'leads as contacted_leads_count' => function ($query) {
+                $query->whereHas('calls', function ($q) {
+                    $q->where('status', 'Connected');
+                });
+            },
+            'leads as interested_leads_count' => function ($query) {
+                $query->where('status', 'interested');
+            }
+        ])->latest()->get();
         $telecallers = User::whereHas('role', fn($q) => $q->where('slug', 'telecaller'))
             ->where('status', 'active')
             ->get();

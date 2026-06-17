@@ -745,153 +745,199 @@
                 <i class="bi bi-plus-circle nav-icon"></i><span class="nav-text">Create Company</span>
             </a>
         @else
-            <div class="sidebar-section-label">Main</div>
+            <!-- Administration Department -->
+            <div class="sidebar-section-label">Administration</div>
             <a href="{{ route('dashboard') }}" class="sidebar-item {{ request()->routeIs('dashboard') ? 'active' : '' }}" data-title="Dashboard">
                 <i class="bi bi-grid-1x2-fill nav-icon"></i><span class="nav-text">Dashboard</span>
             </a>
             @if(auth()->user()->isSuperAdmin())
-        <a href="{{ route('live-status') }}" class="sidebar-item {{ request()->routeIs('live-status') ? 'active' : '' }}" data-title="Live Status">
-            <i class="bi bi-broadcast nav-icon"></i><span class="nav-text">Live Status Board</span>
-        </a>
-        @endif
-        <a href="{{ route('chat.index') }}" class="sidebar-item {{ request()->routeIs('chat*') ? 'active' : '' }}" data-title="Chat">
-            <i class="bi bi-chat-fill nav-icon"></i><span class="nav-text">Chat Workspace</span>
-        </a>
-        <a href="{{ route('mailbox.index') }}" class="sidebar-item {{ request()->routeIs('mailbox*') ? 'active' : '' }}" data-title="Mailbox">
-            <i class="bi bi-envelope-fill nav-icon"></i>
-            <span class="nav-text">Mailbox</span>
-            @php
-                $sidebarMailsCount = \App\Models\MailboxMessage::where('receiver_id', auth()->id())
-                    ->where('is_read', false)
-                    ->whereNull('receiver_deleted_at')
-                    ->count();
-            @endphp
-            <span class="badge-count {{ $sidebarMailsCount > 0 ? '' : 'd-none' }}" id="sidebar-mailbox-badge">
-                {{ $sidebarMailsCount }}
-            </span>
-        </a>
+            <a href="{{ route('live-status') }}" class="sidebar-item {{ request()->routeIs('live-status') ? 'active' : '' }}" data-title="Live Status">
+                <i class="bi bi-broadcast nav-icon"></i><span class="nav-text">Live Status Board</span>
+            </a>
+            @endif
+            <a href="{{ route('chat.index') }}" class="sidebar-item {{ request()->routeIs('chat*') ? 'active' : '' }}" data-title="Chat">
+                <i class="bi bi-chat-fill nav-icon"></i><span class="nav-text">Chat Workspace</span>
+            </a>
+            <a href="{{ route('mailbox.index') }}" class="sidebar-item {{ request()->routeIs('mailbox*') ? 'active' : '' }}" data-title="Mailbox">
+                <i class="bi bi-envelope-fill nav-icon"></i>
+                <span class="nav-text">Mailbox</span>
+                @php
+                    $sidebarMailsCount = \App\Models\MailboxMessage::where('receiver_id', auth()->id())
+                        ->where('is_read', false)
+                        ->whereNull('receiver_deleted_at')
+                        ->count();
+                @endphp
+                <span class="badge-count {{ $sidebarMailsCount > 0 ? '' : 'd-none' }}" id="sidebar-mailbox-badge">
+                    {{ $sidebarMailsCount }}
+                </span>
+            </a>
+            @if(!auth()->user()->isTelecaller())
+            <a href="{{ route('support.index') }}" class="sidebar-item {{ request()->routeIs('support*') ? 'active' : '' }}" data-title="Support">
+                <i class="bi bi-headset nav-icon"></i><span class="nav-text">Support / AMC</span>
+            </a>
+            @endif
+            @if(auth()->user()->isSuperAdmin())
+            <a href="{{ route('activity-logs.index') }}" class="sidebar-item {{ request()->routeIs('activity-logs*') ? 'active' : '' }}" data-title="Activity Logs">
+                <i class="bi bi-clock-history nav-icon"></i><span class="nav-text">Activity Logs</span>
+            </a>
+            <a href="{{ route('settings.index') }}" class="sidebar-item {{ request()->routeIs('settings*') ? 'active' : '' }}" data-title="Settings">
+                <i class="bi bi-gear-fill nav-icon"></i><span class="nav-text">Settings</span>
+            </a>
+            @endif
 
-        @if(!auth()->user()->isTelecaller())
-        <div class="sidebar-section-label">Work</div>
-        @if(auth()->user()->isEmployee() || auth()->user()->isTeamLeader())
-        <a href="{{ route('work-timer.index') }}" class="sidebar-item {{ request()->routeIs('work-timer*') ? 'active' : '' }}" data-title="Work Timer">
-            <i class="bi bi-stopwatch-fill nav-icon"></i><span class="nav-text">Work Timer</span>
-        </a>
-        @endif
-        <a href="{{ route('tasks.index') }}" class="sidebar-item {{ request()->routeIs('tasks*') && !request()->routeIs('tasks.completed-approvals*') ? 'active' : '' }}" data-title="Tasks">
-            <i class="bi bi-check2-square nav-icon"></i><span class="nav-text">Tasks</span>
-        </a>
-        <a href="{{ route('daily-reports.index') }}" class="sidebar-item {{ request()->routeIs('daily-reports*') ? 'active' : '' }}" data-title="Daily Reports">
-            <i class="bi bi-journal-text nav-icon"></i><span class="nav-text">Daily Reports</span>
-        </a>
-        <a href="{{ route('meetings.index') }}" class="sidebar-item {{ request()->routeIs('meetings*') ? 'active' : '' }}" data-title="Meetings">
-            <i class="bi bi-chat-left-quote nav-icon"></i><span class="nav-text">Meetings & Discussions</span>
-        </a>
-        @if(auth()->user()->isAdminOrAbove() || auth()->user()->email === 'souban.techsoul@gmail.com')
-        <a href="{{ route('tasks.completed-approvals') }}" class="sidebar-item {{ request()->routeIs('tasks.completed-approvals*') ? 'active' : '' }}" data-title="Approvals">
-            <i class="bi bi-patch-check-fill nav-icon"></i><span class="nav-text">Approve Completed Work</span>
-        </a>
-        @endif
-        @if(auth()->user()->isSuperAdmin())
-        <a href="{{ route('admin.telecaller-sessions.index') }}" class="sidebar-item {{ request()->routeIs('admin.telecaller-sessions*') ? 'active' : '' }}" data-title="Room Approvals">
-            <i class="bi bi-clipboard-check nav-icon"></i><span class="nav-text">Room Work Approvals</span>
-        </a>
-        @endif
+            <!-- Management Department -->
+            @if(!auth()->user()->isTelecaller())
+            <div class="sidebar-section-label">Management</div>
+            <a href="{{ route('projects.index') }}" class="sidebar-item {{ request()->routeIs('projects*') ? 'active' : '' }}" data-title="Projects">
+                <i class="bi bi-kanban-fill nav-icon"></i><span class="nav-text">Projects</span>
+            </a>
+            @if(auth()->user()->isAdminOrAbove())
+            <a href="{{ route('clients.index') }}" class="sidebar-item {{ request()->routeIs('clients*') ? 'active' : '' }}" data-title="Clients">
+                <i class="bi bi-building nav-icon"></i><span class="nav-text">Clients</span>
+            </a>
+            @endif
+            @if(auth()->user()->isSuperAdmin())
+            <a href="{{ route('admin.telecaller-sessions.index') }}" class="sidebar-item {{ request()->routeIs('admin.telecaller-sessions*') ? 'active' : '' }}" data-title="Room Approvals">
+                <i class="bi bi-clipboard-check nav-icon"></i><span class="nav-text">Room Work Approvals</span>
+                @php
+                    $pendingRoomApprovalsCount = \App\Models\LeadRoomWorkSession::where('status', 'pending')->count();
+                @endphp
+                <span class="badge-count {{ $pendingRoomApprovalsCount > 0 ? '' : 'd-none' }}">
+                    {{ $pendingRoomApprovalsCount }}
+                </span>
+            </a>
+            @endif
+            <a href="{{ route('meetings.index') }}" class="sidebar-item {{ request()->routeIs('meetings*') ? 'active' : '' }}" data-title="Meetings">
+                <i class="bi bi-chat-left-quote nav-icon"></i><span class="nav-text">Meetings & Discussions</span>
+            </a>
+            @endif
 
-        <div class="sidebar-section-label">Projects</div>
-        <a href="{{ route('projects.index') }}" class="sidebar-item {{ request()->routeIs('projects*') ? 'active' : '' }}" data-title="Projects">
-            <i class="bi bi-kanban-fill nav-icon"></i><span class="nav-text">Projects</span>
-        </a>
-        @if(auth()->user()->isAdminOrAbove())
-        <a href="{{ route('clients.index') }}" class="sidebar-item {{ request()->routeIs('clients*') ? 'active' : '' }}" data-title="Clients">
-            <i class="bi bi-building nav-icon"></i><span class="nav-text">Clients</span>
-        </a>
-        @endif
-        @endif
+            <!-- Development & Design Department -->
+            @if(!auth()->user()->isTelecaller())
+            <div class="sidebar-section-label">Development & Design</div>
+            @if(auth()->user()->isEmployee() || auth()->user()->isTeamLeader())
+            <a href="{{ route('work-timer.index') }}" class="sidebar-item {{ request()->routeIs('work-timer*') ? 'active' : '' }}" data-title="Work Timer">
+                <i class="bi bi-stopwatch-fill nav-icon"></i><span class="nav-text">Work Timer</span>
+            </a>
+            @endif
+            <a href="{{ route('tasks.index') }}" class="sidebar-item {{ request()->routeIs('tasks*') && !request()->routeIs('tasks.completed-approvals*') && !request()->routeIs('tasks.approved*') ? 'active' : '' }}" data-title="Tasks">
+                <i class="bi bi-check2-square nav-icon"></i><span class="nav-text">Tasks</span>
+                @php
+                    $pendingTasksCount = \App\Models\Task::where('status', 'pending')
+                        ->when(!auth()->user()->isLeaderOrAbove(), fn($q) => $q->where('assigned_to', auth()->id()))
+                        ->count();
+                @endphp
+                <span class="badge-count {{ $pendingTasksCount > 0 ? '' : 'd-none' }}">
+                    {{ $pendingTasksCount }}
+                </span>
+            </a>
+            <a href="{{ route('tasks.approved') }}" class="sidebar-item {{ request()->routeIs('tasks.approved*') ? 'active' : '' }}" data-title="Approved Tasks">
+                <i class="bi bi-check-circle nav-icon"></i><span class="nav-text">Approved Tasks</span>
+            </a>
+            <a href="{{ route('daily-reports.index') }}" class="sidebar-item {{ request()->routeIs('daily-reports*') ? 'active' : '' }}" data-title="Daily Reports">
+                <i class="bi bi-journal-text nav-icon"></i><span class="nav-text">Daily Reports</span>
+                @php
+                    $pendingReportsCount = auth()->user()->isAdminOrAbove() ? \App\Models\DailyReport::where('status', 'pending')->count() : 0;
+                @endphp
+                <span class="badge-count {{ $pendingReportsCount > 0 ? '' : 'd-none' }}">
+                    {{ $pendingReportsCount }}
+                </span>
+            </a>
+            <a href="{{ route('bugs.index') }}" class="sidebar-item {{ request()->routeIs('bugs*') ? 'active' : '' }}" data-title="Bug Tracker">
+                <i class="bi bi-bug-fill nav-icon"></i><span class="nav-text">Bug Tracker</span>
+            </a>
+            @if(auth()->user()->isAdminOrAbove() || auth()->user()->email === 'souban.techsoul@gmail.com')
+            <a href="{{ route('tasks.completed-approvals') }}" class="sidebar-item {{ request()->routeIs('tasks.completed-approvals*') ? 'active' : '' }}" data-title="Approvals">
+                <i class="bi bi-patch-check-fill nav-icon"></i><span class="nav-text">Approve Completed Work</span>
+                @php
+                    $pendingApprovalsCount = \App\Models\Task::where('status', 'review')->count();
+                @endphp
+                <span class="badge-count {{ $pendingApprovalsCount > 0 ? '' : 'd-none' }}">
+                    {{ $pendingApprovalsCount }}
+                </span>
+            </a>
+            @endif
+            @endif
 
-        @if(auth()->user()->isAdminOrAbove())
-        <div class="sidebar-section-label">Leads</div>
-        <a href="{{ route('leads.index') }}" class="sidebar-item {{ request()->routeIs('leads*') && !request()->routeIs('leads.start-work*') ? 'active' : '' }}" data-title="Leads">
-            <i class="bi bi-funnel-fill nav-icon"></i><span class="nav-text">Leads & Enquiries</span>
-        </a>
-        @endif
+            <!-- Sales & Marketing Department -->
+            @if(auth()->user()->isAdminOrAbove() || auth()->user()->isTelecaller() || auth()->user()->isHR() || auth()->user()->isTeamLeader())
+            <div class="sidebar-section-label">Sales & Marketing</div>
+            @if(auth()->user()->isAdminOrAbove())
+            <a href="{{ route('leads.index') }}" class="sidebar-item {{ request()->routeIs('leads*') && !request()->routeIs('leads.start-work*') ? 'active' : '' }}" data-title="Leads">
+                <i class="bi bi-funnel-fill nav-icon"></i><span class="nav-text">Leads & Enquiries</span>
+            </a>
+            @endif
+            @if(auth()->user()->isTelecaller())
+            <a href="{{ route('leads.start-work.index') }}" class="sidebar-item {{ request()->routeIs('leads.start-work*') ? 'active' : '' }}" data-title="Start Today Work">
+                <i class="bi bi-play-circle-fill nav-icon"></i><span class="nav-text">Start Today Work</span>
+            </a>
+            @endif
+            @if(!auth()->user()->isTelecaller() && auth()->user()->isAdminOrAbove())
+            <a href="{{ route('quotations.index') }}" class="sidebar-item {{ request()->routeIs('quotations*') ? 'active' : '' }}" data-title="Quotations">
+                <i class="bi bi-file-earmark-text-fill nav-icon"></i><span class="nav-text">Quotations</span>
+            </a>
+            @endif
+            <a href="{{ route('reports.telecaller-performance') }}" class="sidebar-item {{ request()->routeIs('reports.telecaller-performance*') ? 'active' : '' }}" data-title="Performance">
+                <i class="bi bi-graph-up-arrow nav-icon"></i><span class="nav-text">Telecaller Performance</span>
+            </a>
+            @endif
 
-        @if(auth()->user()->isTelecaller())
-        <div class="sidebar-section-label">Leads</div>
-        <a href="{{ route('leads.start-work.index') }}" class="sidebar-item {{ request()->routeIs('leads.start-work*') ? 'active' : '' }}" data-title="Start Today Work">
-            <i class="bi bi-play-circle-fill nav-icon"></i><span class="nav-text">Start Today Work</span>
-        </a>
-        @endif
+            <!-- Human Resources Department -->
+            @if(!auth()->user()->isClient())
+            <div class="sidebar-section-label">Human Resources</div>
+            @if(auth()->user()->isAdminOrAbove() || auth()->user()->isHR())
+            <a href="{{ route('employees.index') }}" class="sidebar-item {{ request()->routeIs('employees*') ? 'active' : '' }}" data-title="Employees">
+                <i class="bi bi-people-fill nav-icon"></i><span class="nav-text">Employees</span>
+            </a>
+            @endif
+            @if(!auth()->user()->isTelecaller())
+            <a href="{{ route('attendance.index') }}" class="sidebar-item {{ request()->routeIs('attendance*') ? 'active' : '' }}" data-title="Attendance">
+                <i class="bi bi-calendar2-check-fill nav-icon"></i><span class="nav-text">Attendance</span>
+            </a>
+            @endif
+            <a href="{{ route('leaves.index') }}" class="sidebar-item {{ request()->routeIs('leaves*') ? 'active' : '' }}" data-title="Leaves">
+                <i class="bi bi-calendar-x-fill nav-icon"></i><span class="nav-text">Leave Management</span>
+                @php
+                    $pendingLeavesCount = 0;
+                    if (auth()->user()->isLeaderOrAbove() || auth()->user()->isHR()) {
+                        $pendingLeavesCount = \App\Models\Leave::where(function($q) {
+                            $user = auth()->user();
+                            if ($user->isHR() || $user->isAdminOrAbove()) {
+                                $q->whereIn('status', ['pending', 'team_leader_approved']);
+                            } else if ($user->isTeamLeader()) {
+                                $q->where('status', 'pending');
+                            }
+                        })->count();
+                    }
+                @endphp
+                <span class="badge-count {{ $pendingLeavesCount > 0 ? '' : 'd-none' }}">
+                    {{ $pendingLeavesCount }}
+                </span>
+            </a>
+            @endif
 
-        @if(!auth()->user()->isTelecaller())
-        @if(auth()->user()->isAdminOrAbove())
-        <a href="{{ route('quotations.index') }}" class="sidebar-item {{ request()->routeIs('quotations*') ? 'active' : '' }}" data-title="Quotations">
-            <i class="bi bi-file-earmark-text-fill nav-icon"></i><span class="nav-text">Quotations</span>
-        </a>
-        @endif
-        <a href="{{ route('bugs.index') }}" class="sidebar-item {{ request()->routeIs('bugs*') ? 'active' : '' }}" data-title="Bug Tracker">
-            <i class="bi bi-bug-fill nav-icon"></i><span class="nav-text">Bug Tracker</span>
-        </a>
-        @endif
-
-        @if(!auth()->user()->isClient())
-        <div class="sidebar-section-label">People</div>
-        @if(auth()->user()->isAdminOrAbove() || auth()->user()->isHR())
-        <a href="{{ route('employees.index') }}" class="sidebar-item {{ request()->routeIs('employees*') ? 'active' : '' }}" data-title="Employees">
-            <i class="bi bi-people-fill nav-icon"></i><span class="nav-text">Employees</span>
-        </a>
-        @endif
-        @if(!auth()->user()->isTelecaller())
-        <a href="{{ route('attendance.index') }}" class="sidebar-item {{ request()->routeIs('attendance*') ? 'active' : '' }}" data-title="Attendance">
-            <i class="bi bi-calendar2-check-fill nav-icon"></i><span class="nav-text">Attendance</span>
-        </a>
-        @endif
-        <a href="{{ route('leaves.index') }}" class="sidebar-item {{ request()->routeIs('leaves*') ? 'active' : '' }}" data-title="Leaves">
-            <i class="bi bi-calendar-x-fill nav-icon"></i><span class="nav-text">Leave Management</span>
-        </a>
-        @endif
-
-        @if(auth()->user()->isAdminOrAbove() || auth()->user()->isAccounts())
-        <div class="sidebar-section-label">Finance</div>
-        <a href="{{ route('invoices.index') }}" class="sidebar-item {{ request()->routeIs('invoices*') ? 'active' : '' }}" data-title="Invoices">
-            <i class="bi bi-receipt nav-icon"></i><span class="nav-text">Invoices</span>
-        </a>
-        <a href="{{ route('payments.index') }}" class="sidebar-item {{ request()->routeIs('payments*') ? 'active' : '' }}" data-title="Payments">
-            <i class="bi bi-credit-card-fill nav-icon"></i><span class="nav-text">Payments</span>
-        </a>
-        <a href="{{ route('expenses.index') }}" class="sidebar-item {{ request()->routeIs('expenses*') ? 'active' : '' }}" data-title="Expenses">
-            <i class="bi bi-cash-stack nav-icon"></i><span class="nav-text">Expenses</span>
-        </a>
-        @endif
-
-        <div class="sidebar-section-label">More</div>
-        @if(!auth()->user()->isTelecaller())
-        <a href="{{ route('support.index') }}" class="sidebar-item {{ request()->routeIs('support*') ? 'active' : '' }}" data-title="Support">
-            <i class="bi bi-headset nav-icon"></i><span class="nav-text">Support / AMC</span>
-        </a>
-        @endif
-
-        @if(auth()->user()->isTelecaller() || auth()->user()->isAdminOrAbove() || auth()->user()->isHR() || auth()->user()->isTeamLeader())
-        <a href="{{ route('reports.telecaller-performance') }}" class="sidebar-item {{ request()->routeIs('reports.telecaller-performance*') ? 'active' : '' }}" data-title="Performance">
-            <i class="bi bi-graph-up-arrow nav-icon"></i><span class="nav-text">Telecaller Performance</span>
-        </a>
-        @endif
-
-        @if(!auth()->user()->isTelecaller())
-        @if(auth()->user()->isAdminOrAbove() || auth()->user()->isHR() || auth()->user()->isAccounts())
-        <a href="{{ route('reports.index') }}" class="sidebar-item {{ request()->routeIs('reports*') && !request()->routeIs('reports.telecaller-performance*') ? 'active' : '' }}" data-title="Reports">
-            <i class="bi bi-bar-chart-fill nav-icon"></i><span class="nav-text">Reports</span>
-        </a>
-        @endif
-        @if(auth()->user()->isSuperAdmin())
-        <a href="{{ route('activity-logs.index') }}" class="sidebar-item {{ request()->routeIs('activity-logs*') ? 'active' : '' }}" data-title="Activity Logs">
-            <i class="bi bi-clock-history nav-icon"></i><span class="nav-text">Activity Logs</span>
-        </a>
-        <a href="{{ route('settings.index') }}" class="sidebar-item {{ request()->routeIs('settings*') ? 'active' : '' }}" data-title="Settings">
-            <i class="bi bi-gear-fill nav-icon"></i><span class="nav-text">Settings</span>
-        </a>
-        @endif
-        @endif
+            <!-- Accounts Department -->
+            @if(auth()->user()->isAdminOrAbove() || auth()->user()->isAccounts() || (auth()->user()->isHR() && !auth()->user()->isTelecaller()))
+            <div class="sidebar-section-label">Accounts</div>
+            @if(auth()->user()->isAdminOrAbove() || auth()->user()->isAccounts())
+            <a href="{{ route('invoices.index') }}" class="sidebar-item {{ request()->routeIs('invoices*') ? 'active' : '' }}" data-title="Invoices">
+                <i class="bi bi-receipt nav-icon"></i><span class="nav-text">Invoices</span>
+            </a>
+            <a href="{{ route('payments.index') }}" class="sidebar-item {{ request()->routeIs('payments*') ? 'active' : '' }}" data-title="Payments">
+                <i class="bi bi-credit-card-fill nav-icon"></i><span class="nav-text">Payments</span>
+            </a>
+            <a href="{{ route('expenses.index') }}" class="sidebar-item {{ request()->routeIs('expenses*') ? 'active' : '' }}" data-title="Expenses">
+                <i class="bi bi-cash-stack nav-icon"></i><span class="nav-text">Expenses</span>
+            </a>
+            @endif
+            @if(!auth()->user()->isTelecaller())
+            @if(auth()->user()->isAdminOrAbove() || auth()->user()->isHR() || auth()->user()->isAccounts())
+            <a href="{{ route('reports.index') }}" class="sidebar-item {{ request()->routeIs('reports*') && !request()->routeIs('reports.telecaller-performance*') ? 'active' : '' }}" data-title="Reports">
+                <i class="bi bi-bar-chart-fill nav-icon"></i><span class="nav-text">Reports</span>
+            </a>
+            @endif
+            @endif
+            @endif
         @endif
     </nav>
 
@@ -1091,6 +1137,18 @@
             sidebar.classList.add('collapsed');
             topnav.classList.add('sidebar-collapsed');
             mainContent.classList.add('sidebar-collapsed');
+        }
+        
+        // Restore sidebar scroll position
+        const sidebarNav = document.querySelector('.sidebar-nav');
+        if (sidebarNav) {
+            const savedScroll = localStorage.getItem('sidebar-scroll-position');
+            if (savedScroll) {
+                sidebarNav.scrollTop = parseInt(savedScroll, 10);
+            }
+            sidebarNav.addEventListener('scroll', () => {
+                localStorage.setItem('sidebar-scroll-position', sidebarNav.scrollTop);
+            });
         }
         
         // Theme initialization

@@ -9,6 +9,10 @@
     <li class="breadcrumb-item active">{{ $bug->title }}</li>
 @endsection
 
+@section('topnav-middle')
+    @include('bugs.status_nav')
+@endsection
+
 @section('content')
 <div class="row g-4">
     <!-- Left Column: Bug Details & Comments -->
@@ -120,6 +124,9 @@
                         <option value="assigned" {{ $bug->status === 'assigned' ? 'selected' : '' }}>Assigned</option>
                         <option value="in_progress" {{ $bug->status === 'in_progress' ? 'selected' : '' }}>In Progress</option>
                         <option value="resolved" {{ $bug->status === 'resolved' ? 'selected' : '' }}>Resolved</option>
+                        <option value="completed" {{ $bug->status === 'completed' ? 'selected' : '' }}>Completed</option>
+                        <option value="approved" {{ $bug->status === 'approved' ? 'selected' : '' }}>Approved</option>
+                        <option value="cleared" {{ $bug->status === 'cleared' ? 'selected' : '' }}>Cleared</option>
                         <option value="closed" {{ $bug->status === 'closed' ? 'selected' : '' }}>Closed</option>
                         <option value="rejected" {{ $bug->status === 'rejected' ? 'selected' : '' }}>Rejected</option>
                     </select>

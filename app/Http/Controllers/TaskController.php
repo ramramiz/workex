@@ -352,6 +352,23 @@ class TaskController extends Controller
         return view('tasks.completed_approvals', compact('tasks'));
     }
 
+    public function approvedTasks(Request $request)
+    {
+        $user = auth()->user();
+
+        $query = Task::with(['project', 'assignee', 'creator', 'meeting'])
+            ->where('status', '=', 'completed')
+            ->when(!$user->isLeaderOrAbove(), fn($q) => $q->where('assigned_to', $user->id))
+            ->when($request->project, fn($q) => $q->where('project_id', $request->project))
+            ->when($request->priority, fn($q) => $q->where('priority', $request->priority))
+            ->when($request->search, fn($q) => $q->where('title', 'like', "%{$request->search}%"));
+
+        $tasks = $query->orderBy('completed_date', 'desc')->paginate(20);
+        $projects = Project::when(!$user->isAdminOrAbove(), fn($q) => $q->where('team_leader_id', $user->id))->get();
+
+        return view('tasks.approved', compact('tasks', 'projects'));
+    }
+
     public function submitCompletion(Request $request, Task $task)
     {
         $request->validate([

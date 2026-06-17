@@ -103,6 +103,7 @@ Route::middleware(['auth'])->group(function () {
 
 
     // Task Completion & Approvals (Static routes first)
+    Route::get('/tasks/approved', [TaskController::class, 'approvedTasks'])->name('tasks.approved');
     Route::get('/tasks/completed-approvals', [TaskController::class, 'completedApprovals'])->name('tasks.completed-approvals');
 
     // Tasks

@@ -9,6 +9,10 @@
     <li class="breadcrumb-item active">Edit</li>
 @endsection
 
+@section('topnav-middle')
+    @include('bugs.status_nav')
+@endsection
+
 @section('content')
 <div class="row">
     <div class="col-12 col-lg-8 mx-auto">

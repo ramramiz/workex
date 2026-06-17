@@ -70,9 +70,26 @@
                             @endif
                         </td>
                         <td class="text-center">
-                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill font-monospace px-2.5">
-                                {{ $room->leads_count }}
-                            </span>
+                            <div class="d-inline-flex flex-column align-items-start gap-1 py-1 text-start">
+                                <div class="d-flex align-items-center gap-2" title="Total Leads">
+                                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill font-monospace px-2" style="font-size: 11px; min-width: 35px; display: inline-block; text-align: center;">
+                                        {{ $room->leads_count }}
+                                    </span>
+                                    <span class="text-secondary fs-8 fw-medium">Total Leads</span>
+                                </div>
+                                <div class="d-flex align-items-center gap-2" title="Contacted Leads">
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill font-monospace px-2" style="font-size: 11px; min-width: 35px; display: inline-block; text-align: center;">
+                                        {{ $room->contacted_leads_count }}
+                                    </span>
+                                    <span class="text-secondary fs-8 fw-medium">Contacted</span>
+                                </div>
+                                <div class="d-flex align-items-center gap-2" title="Interested Leads">
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill font-monospace px-2" style="font-size: 11px; min-width: 35px; display: inline-block; text-align: center;">
+                                        {{ $room->interested_leads_count }}
+                                    </span>
+                                    <span class="text-secondary fs-8 fw-medium">Interested</span>
+                                </div>
+                            </div>
                         </td>
                         <td class="text-end">
                             <div class="d-inline-flex gap-2">

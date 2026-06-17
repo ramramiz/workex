@@ -257,4 +257,76 @@ class LeadRoomImportTest extends TestCase
         // Check that the temp file has been cleaned up/deleted
         $this->assertFalse(file_exists($tempStoredPath));
     }
+
+    public function test_admin_can_view_lead_rooms_counts(): void
+    {
+        $room = LeadRoom::create(['name' => 'Metrics Room', 'created_by' => $this->admin->id]);
+
+        // Lead 1: Uncalled
+        Lead::create([
+            'client_name' => 'Uncalled Lead',
+            'client_phone' => '1111111111',
+            'lead_room_id' => $room->id,
+            'requirement' => 'CRM app',
+            'source' => 'direct',
+            'status' => 'new'
+        ]);
+
+        // Lead 2: Contacted but not interested
+        $lead2 = Lead::create([
+            'client_name' => 'Contacted Lead',
+            'client_phone' => '2222222222',
+            'lead_room_id' => $room->id,
+            'requirement' => 'CRM app',
+            'source' => 'direct',
+            'status' => 'following_up'
+        ]);
+
+        \App\Models\LeadCall::create([
+            'lead_id' => $lead2->id,
+            'telecaller_id' => $this->telecaller1->id,
+            'call_date_time' => now(),
+            'status' => 'Connected',
+            'customer_response' => 'Discussing requirements',
+            'remarks' => 'Connected call'
+        ]);
+
+        // Lead 3: Contacted and interested
+        $lead3 = Lead::create([
+            'client_name' => 'Interested Lead',
+            'client_phone' => '3333333333',
+            'lead_room_id' => $room->id,
+            'requirement' => 'CRM app',
+            'source' => 'direct',
+            'status' => 'interested'
+        ]);
+
+        \App\Models\LeadCall::create([
+            'lead_id' => $lead3->id,
+            'telecaller_id' => $this->telecaller1->id,
+            'call_date_time' => now(),
+            'status' => 'Connected',
+            'customer_response' => 'Wants product demo',
+            'remarks' => 'Interested client'
+        ]);
+
+        // Hit the room list index
+        $response = $this->actingAs($this->admin)->get(route('lead-rooms.index'));
+
+        $response->assertStatus(200);
+
+        // Check view data
+        $response->assertViewHas('rooms', function ($rooms) use ($room) {
+            $matchedRoom = $rooms->firstWhere('id', $room->id);
+            return $matchedRoom &&
+                $matchedRoom->leads_count === 3 &&
+                $matchedRoom->contacted_leads_count === 2 &&
+                $matchedRoom->interested_leads_count === 1;
+        });
+
+        // Assert that counts are visible in HTML output
+        $response->assertSee('3'); // Total Leads
+        $response->assertSee('2'); // Contacted
+        $response->assertSee('1'); // Interested
+    }
 }
