@@ -11,7 +11,7 @@ class Bug extends Model
     use SoftDeletes, BelongsToCompany;
 
     protected $fillable = [
-        'project_id', 'task_id', 'title', 'description', 'reported_by', 'assigned_to',
+        'project_id', 'task_id', 'title', 'description', 'link', 'reported_by', 'assigned_to',
         'priority', 'screenshots', 'browser_info', 'os_info', 'steps_to_reproduce', 'status', 'company_id',
     ];
 

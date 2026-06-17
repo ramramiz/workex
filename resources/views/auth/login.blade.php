@@ -251,7 +251,7 @@
         </button>
     </form>
 
-    <div class="divider"><span>Quick Login</span></div>
+    <!-- <div class="divider"><span>Quick Login</span></div>
     <div class="d-flex gap-2 mb-3 flex-wrap">
         <button type="button" class="btn btn-outline-danger btn-sm flex-grow-1 py-2" title="admin@workmonitor.com / Admin@123" onclick="quickLogin('admin@workmonitor.com', 'Admin@123')">
             <i class="bi bi-shield-lock me-1"></i> Admin
@@ -285,7 +285,7 @@
         <div class="cred-item">Developer (Hisham): <span>hisham.techsoul@gmail.com</span> / <span>Admin@123</span></div>
         <div class="cred-item">Telecaller: <span>telecaller@workmonitor.com</span> / <span>Admin@123</span></div>
         <div class="cred-item">Reseller: <span>reseller@workmonitor.com</span> / <span>Reseller@123</span></div>
-    </div>
+    </div> -->
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

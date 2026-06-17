@@ -202,5 +202,63 @@ class LiveStatusTelecallerTest extends TestCase
         $response3 = $this->actingAs($this->adminUser)->get(route('admin.telecaller-sessions.index'));
         $response3->assertStatus(200);
     }
+
+    public function test_employee_shows_active_working_tasks_list_on_live_status_board()
+    {
+        $employeeRole = Role::where('slug', 'employee')->first();
+        $employeeUser = User::factory()->create([
+            'role_id' => $employeeRole->id,
+        ]);
+
+        $task1 = \App\Models\Task::create([
+            'title' => 'Task One',
+            'assigned_to' => $employeeUser->id,
+            'priority' => 'medium',
+            'status' => 'in_progress',
+            'created_by' => $this->adminUser->id,
+        ]);
+
+        $task2 = \App\Models\Task::create([
+            'title' => 'Task Two',
+            'assigned_to' => $employeeUser->id,
+            'priority' => 'high',
+            'status' => 'in_progress',
+            'created_by' => $this->adminUser->id,
+        ]);
+
+        $session = \App\Models\WorkSession::create([
+            'user_id' => $employeeUser->id,
+            'date' => today(),
+            'started_at' => now(),
+            'status' => 'active',
+        ]);
+
+        // Start working on both tasks
+        $log1 = $session->timeLogs()->create([
+            'task_id' => $task1->id,
+            'user_id' => $employeeUser->id,
+            'started_at' => now(),
+            'status' => 'running',
+        ]);
+
+        $log2 = $session->timeLogs()->create([
+            'task_id' => $task2->id,
+            'user_id' => $employeeUser->id,
+            'started_at' => now(),
+            'status' => 'running',
+        ]);
+
+        $response = $this->actingAs($this->adminUser)->get(route('live-status.data'));
+        $response->assertStatus(200);
+
+        $employees = $response->json('employees');
+        $employeeData = collect($employees)->firstWhere('id', $employeeUser->id);
+
+        $this->assertNotNull($employeeData);
+        $this->assertEquals('working', $employeeData['status']);
+        $this->assertCount(2, $employeeData['working_tasks']);
+        $this->assertEquals('Task One', $employeeData['working_tasks'][0]['task_title']);
+        $this->assertEquals('Task Two', $employeeData['working_tasks'][1]['task_title']);
+    }
 }
 

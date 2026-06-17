@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
 <head>
+    <script>
+        (function() {
+            const storedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-bs-theme', storedTheme);
+        })();
+    </script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -129,12 +135,13 @@
             position: fixed; top: 0;
             left: var(--sidebar-width); right: 0;
             height: var(--topnav-height);
-            background: white; border-bottom: 1px solid var(--border-color);
+            background: var(--card-bg); border-bottom: 1px solid var(--border-color);
             display: flex; align-items: center; justify-content: space-between;
             padding: 0 24px; z-index: 999;
             transition: left 0.3s ease; gap: 12px;
         }
         #topnav.sidebar-collapsed { left: var(--sidebar-collapsed-width); }
+        #topnav.no-sidebar { left: 0 !important; }
         .topnav-status-container {
             display: flex;
             align-items: center;
@@ -149,8 +156,8 @@
             display: flex;
             align-items: center;
             gap: 4px;
-            background: #f1f5f9;
-            border: 1px solid #e2e8f0;
+            background: var(--body-bg);
+            border: 1px solid var(--border-color);
             padding: 4px;
             border-radius: 30px;
             overflow-x: auto;
@@ -167,7 +174,7 @@
             font-weight: 600;
             padding: 6px 14px;
             border-radius: 20px;
-            color: #475569;
+            color: var(--text-secondary);
             text-decoration: none;
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             display: inline-flex;
@@ -177,8 +184,8 @@
             background: transparent;
         }
         .topnav-status-pill:hover {
-            color: #1e293b;
-            background: rgba(0, 0, 0, 0.04);
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.04);
         }
         .topnav-status-pill.active {
             background: #4f46e5;
@@ -188,8 +195,8 @@
         .topnav-status-pill .count {
             font-size: 11px;
             font-weight: 700;
-            background: #cbd5e1;
-            color: #475569;
+            background: var(--border-color);
+            color: var(--text-secondary);
             padding: 1px 6px;
             border-radius: 10px;
             transition: all 0.2s;
@@ -228,7 +235,7 @@
         .topnav-icon-btn {
             position: relative; width: 40px; height: 40px;
             border-radius: 10px; border: 1px solid var(--border-color);
-            background: white; display: flex; align-items: center; justify-content: center;
+            background: var(--card-bg); display: flex; align-items: center; justify-content: center;
             color: var(--text-secondary); cursor: pointer; font-size: 18px; transition: all 0.2s;
         }
         .topnav-icon-btn:hover { background: var(--body-bg); color: var(--text-primary); }
@@ -243,7 +250,7 @@
         .user-avatar-btn {
             display: flex; align-items: center; gap: 8px;
             padding: 4px 12px 4px 4px; border-radius: 40px;
-            border: 1px solid var(--border-color); background: white;
+            border: 1px solid var(--border-color); background: var(--card-bg);
             cursor: pointer; transition: all 0.2s;
         }
         .user-avatar-btn:hover { background: var(--body-bg); }
@@ -265,14 +272,14 @@
 
         /* ===== CARDS ===== */
         .stat-card {
-            background: white; border-radius: 16px; padding: 24px;
+            background: var(--card-bg); border-radius: 16px; padding: 24px;
             border: 1px solid var(--border-color);
             transition: transform 0.2s, box-shadow 0.2s;
         }
         .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
         .card { border: 1px solid var(--border-color); border-radius: 16px; box-shadow: none; }
         .card-header {
-            background: white; border-bottom: 1px solid var(--border-color);
+            background: var(--card-bg); border-bottom: 1px solid var(--border-color);
             padding: 18px 24px; font-weight: 600;
             border-radius: 16px 16px 0 0 !important;
         }
@@ -284,7 +291,7 @@
             border-bottom: 2px solid var(--border-color); padding: 12px 16px;
         }
         .table td { padding: 14px 16px; vertical-align: middle; font-size: 14px; }
-        .table tbody tr:hover { background: #f8fafc; }
+        .table tbody tr:hover { background: rgba(255, 255, 255, 0.02); }
 
         /* ===== FORMS ===== */
         .form-control, .form-select {
@@ -341,6 +348,356 @@
         .global-color-btn.active {
             outline: 2px solid #000000;
             outline-offset: 2px;
+        }
+
+        /* ===== DARK THEME OVERRIDES ===== */
+        [data-bs-theme="dark"] {
+            --body-bg: #0b0f17;
+            --card-bg: #111c2a;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border-color: #1e293b;
+        }
+
+        /* Global cards background overrides for inline white styles */
+        [data-bs-theme="dark"] .card,
+        [data-bs-theme="dark"] .card.border-0,
+        [data-bs-theme="dark"] div.card[style*="background: #ffffff"],
+        [data-bs-theme="dark"] div.card[style*="background: rgb(255, 255, 255)"],
+        [data-bs-theme="dark"] div.card[style*="background-color: #ffffff"],
+        [data-bs-theme="dark"] div.card[style*="background-color: rgb(255, 255, 255)"],
+        [data-bs-theme="dark"] div.card[style*="background:white"],
+        [data-bs-theme="dark"] div.card[style*="background-color:white"] {
+            background: var(--card-bg) !important;
+            color: var(--text-primary) !important;
+            border-color: var(--border-color) !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -2px rgba(0, 0, 0, 0.2) !important;
+        }
+
+        /* Bootstrap inputs overrides in dark theme */
+        [data-bs-theme="dark"] .form-control,
+        [data-bs-theme="dark"] .form-select,
+        [data-bs-theme="dark"] .input-group-text {
+            background-color: #162235;
+            border-color: #1e293b;
+            color: #f8fafc;
+        }
+        [data-bs-theme="dark"] .form-control:focus,
+        [data-bs-theme="dark"] .form-select:focus {
+            background-color: #162235;
+            color: #f8fafc;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+        }
+
+        /* Dropdowns overrides in dark theme */
+        [data-bs-theme="dark"] .dropdown-menu {
+            background-color: #111c2a;
+            border-color: #1e293b;
+            color: #f8fafc;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+        }
+        [data-bs-theme="dark"] .dropdown-item {
+            color: #e2e8f0;
+        }
+        [data-bs-theme="dark"] .dropdown-item:hover,
+        [data-bs-theme="dark"] .dropdown-item:focus {
+            background-color: rgba(99, 102, 241, 0.1);
+            color: #ffffff;
+        }
+        [data-bs-theme="dark"] .dropdown-divider {
+            border-color: #1e293b;
+        }
+
+        /* Modal overrides in dark theme */
+        [data-bs-theme="dark"] .modal-content {
+            background-color: #111c2a;
+            border-color: #1e293b;
+            color: #f8fafc;
+        }
+        [data-bs-theme="dark"] .modal-header,
+        [data-bs-theme="dark"] .modal-footer {
+            border-color: #1e293b;
+        }
+        [data-bs-theme="dark"] .btn-close {
+            filter: invert(1) grayscale(1) brightness(2);
+        }
+
+        /* Tables overrides in dark theme */
+        [data-bs-theme="dark"] .table {
+            color: #f8fafc;
+            border-color: #1e293b;
+        }
+        [data-bs-theme="dark"] .table th {
+            background-color: #162235 !important;
+            color: var(--text-secondary);
+        }
+        [data-bs-theme="dark"] .table > :not(caption) > * > * {
+            background-color: transparent;
+            color: inherit;
+            border-bottom-color: #1e293b;
+        }
+        [data-bs-theme="dark"] .table tbody tr:hover {
+            background-color: rgba(99, 102, 241, 0.04) !important;
+        }
+
+        /* Scrollbar in dark theme */
+        [data-bs-theme="dark"] ::-webkit-scrollbar-thumb {
+            background: #334155;
+        }
+
+        /* Alerts in dark theme */
+        [data-bs-theme="dark"] .alert-success {
+            background-color: #064e3b;
+            color: #34d399;
+        }
+        [data-bs-theme="dark"] .alert-danger {
+            background-color: #7f1d1d;
+            color: #f87171;
+        }
+
+        /* Badge or user details elements and list items style */
+        [data-bs-theme="dark"] .list-group-item {
+            background-color: #111c2a;
+            border-color: #1e293b;
+            color: #f8fafc;
+        }
+        [data-bs-theme="dark"] .list-group-item:hover {
+            background-color: #162235;
+        }
+
+        /* ===== CHAT WORKSPACE & TASK CHAT DARK THEME OVERRIDES ===== */
+        [data-bs-theme="dark"] .chat-layout {
+            background: var(--card-bg);
+            border-color: var(--border-color);
+        }
+        [data-bs-theme="dark"] .chat-sidebar {
+            background: var(--card-bg);
+            border-right-color: var(--border-color);
+        }
+        [data-bs-theme="dark"] .chat-sidebar-search {
+            background: var(--card-bg);
+            border-bottom-color: var(--border-color);
+        }
+        [data-bs-theme="dark"] .chat-sidebar-search .input-group {
+            background-color: var(--body-bg);
+            border-color: var(--border-color);
+        }
+        [data-bs-theme="dark"] .chat-sidebar-search .form-control {
+            color: var(--text-primary);
+        }
+        [data-bs-theme="dark"] .chat-sidebar-search .input-group-text {
+            color: var(--text-secondary);
+        }
+        [data-bs-theme="dark"] .chat-task-item {
+            border-bottom-color: var(--border-color);
+        }
+        [data-bs-theme="dark"] .chat-task-item:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+        [data-bs-theme="dark"] .chat-task-item.active {
+            background: rgba(99, 102, 241, 0.15);
+        }
+        [data-bs-theme="dark"] .chat-task-item .task-title {
+            color: var(--text-primary);
+        }
+        [data-bs-theme="dark"] .chat-task-item .task-project {
+            color: var(--text-secondary);
+        }
+        [data-bs-theme="dark"] .chat-main {
+            background: #0e1622;
+        }
+        [data-bs-theme="dark"] .chat-main-placeholder {
+            background: var(--body-bg);
+            color: var(--text-secondary);
+        }
+        [data-bs-theme="dark"] .chat-header {
+            background: var(--card-bg);
+            border-bottom-color: var(--border-color);
+        }
+        [data-bs-theme="dark"] .chat-header-title {
+            color: var(--text-primary);
+        }
+        [data-bs-theme="dark"] .chat-header-subtitle {
+            color: var(--text-secondary);
+        }
+        [data-bs-theme="dark"] .chat-body.chat-container {
+            background-color: #0e1622;
+            background-image: radial-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+        }
+        [data-bs-theme="dark"] .chat-row.sent .chat-bubble {
+            background: linear-gradient(135deg, #4f46e5, #6366f1);
+            color: #ffffff;
+            border-color: #4f46e5;
+        }
+        [data-bs-theme="dark"] .chat-row.received .chat-bubble {
+            background-color: #1e293b;
+            color: #f1f5f9;
+            border-color: #334155;
+        }
+        [data-bs-theme="dark"] .chat-row.sent .chat-sender {
+            color: #a5b4fc;
+        }
+        [data-bs-theme="dark"] .chat-row.received .chat-sender {
+            color: #38bdf8;
+        }
+        [data-bs-theme="dark"] .chat-meta {
+            color: #94a3b8;
+        }
+        [data-bs-theme="dark"] .chat-row.sent .time-log-box {
+            background-color: rgba(0, 0, 0, 0.25);
+            border-left-color: #818cf8;
+        }
+        [data-bs-theme="dark"] .chat-row.received .time-log-box {
+            background-color: rgba(0, 0, 0, 0.25);
+            border-left-color: #6366f1;
+        }
+        [data-bs-theme="dark"] .time-log-value {
+            color: #f1f5f9;
+        }
+        [data-bs-theme="dark"] .time-log-note-content {
+            color: #cbd5e1;
+        }
+        [data-bs-theme="dark"] .whatsapp-input-bar {
+            background-color: #111c2a;
+            border-top-color: var(--border-color);
+        }
+        [data-bs-theme="dark"] .whatsapp-input-container {
+            background-color: #1e293b;
+        }
+        [data-bs-theme="dark"] .whatsapp-input {
+            color: #f1f5f9;
+        }
+        [data-bs-theme="dark"] .whatsapp-input::placeholder {
+            color: #94a3b8;
+        }
+        [data-bs-theme="dark"] .mention-dropdown {
+            background-color: var(--card-bg);
+            border-color: var(--border-color);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+        [data-bs-theme="dark"] .mention-item {
+            border-bottom-color: var(--border-color);
+        }
+        [data-bs-theme="dark"] .mention-item:hover, [data-bs-theme="dark"] .mention-item.active {
+            background-color: var(--body-bg);
+        }
+        [data-bs-theme="dark"] .mention-name {
+            color: var(--text-primary);
+        }
+        [data-bs-theme="dark"] .mention-email {
+            color: var(--text-secondary);
+        }
+
+        /* Ensure font colors in dark mode are not black or dark gray */
+        [data-bs-theme="dark"] .text-dark,
+        [data-bs-theme="dark"] .chat-text,
+        [data-bs-theme="dark"] .chat-bubble {
+            color: var(--text-primary) !important;
+        }
+        [data-bs-theme="dark"] .time-log-label,
+        [data-bs-theme="dark"] .time-log-note-title {
+            color: var(--text-secondary) !important;
+        }
+
+        /* ===== GLOBAL BG-LIGHT & HARDCODED COLOR OVERRIDES IN DARK MODE ===== */
+        [data-bs-theme="dark"] .bg-light {
+            background-color: #162235 !important;
+            color: var(--text-primary) !important;
+        }
+        [data-bs-theme="dark"] .card.bg-light {
+            background-color: #162235 !important;
+            border-color: var(--border-color) !important;
+        }
+        [data-bs-theme="dark"] .card-body.bg-light,
+        [data-bs-theme="dark"] .card-body.bg-light.border-bottom {
+            background-color: #162235 !important;
+        }
+        [data-bs-theme="dark"] .badge.bg-light {
+            background-color: #1e293b !important;
+            color: var(--text-primary) !important;
+            border-color: #334155 !important;
+        }
+        /* Fix hardcoded text-dark and inline dark color attributes */
+        [data-bs-theme="dark"] [style*="color:#0f172a"],
+        [data-bs-theme="dark"] [style*="color: #0f172a"],
+        [data-bs-theme="dark"] [style*="color:#1e293b"],
+        [data-bs-theme="dark"] [style*="color: #1e293b"] {
+            color: var(--text-primary) !important;
+        }
+        /* Fix hardcoded muted colors - keep readable */
+        [data-bs-theme="dark"] [style*="color:#64748b"],
+        [data-bs-theme="dark"] [style*="color: #64748b"],
+        [data-bs-theme="dark"] [style*="color:#94a3b8"],
+        [data-bs-theme="dark"] [style*="color: #94a3b8"] {
+            color: #94a3b8 !important;
+        }
+        /* Live status board & employee card specific dark overrides */
+        [data-bs-theme="dark"] .live-status-task-row {
+            background-color: #1e293b !important;
+            border-left-color: #22c55e !important;
+        }
+        [data-bs-theme="dark"] .live-status-task-row .text-dark {
+            color: var(--text-primary) !important;
+        }
+        [data-bs-theme="dark"] .p-3.bg-success-subtle {
+            background-color: rgba(16, 185, 129, 0.12) !important;
+        }
+        [data-bs-theme="dark"] .p-3.bg-warning-subtle {
+            background-color: rgba(245, 158, 11, 0.12) !important;
+        }
+        [data-bs-theme="dark"] .p-3.bg-primary-subtle {
+            background-color: rgba(99, 102, 241, 0.12) !important;
+        }
+        [data-bs-theme="dark"] .p-3.bg-light {
+            background-color: #1e293b !important;
+        }
+        [data-bs-theme="dark"] .border-light-subtle {
+            border-color: var(--border-color) !important;
+        }
+        [data-bs-theme="dark"] .shadow-xs {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+        }
+        /* stat-card icon backgrounds */
+        [data-bs-theme="dark"] [style*="background:#ede9fe"],
+        [data-bs-theme="dark"] [style*="background: #ede9fe"] {
+            background: rgba(99, 102, 241, 0.18) !important;
+        }
+        [data-bs-theme="dark"] [style*="background:#dbeafe"],
+        [data-bs-theme="dark"] [style*="background: #dbeafe"] {
+            background: rgba(37, 99, 235, 0.18) !important;
+        }
+        [data-bs-theme="dark"] [style*="background:#dcfce7"],
+        [data-bs-theme="dark"] [style*="background: #dcfce7"] {
+            background: rgba(22, 163, 74, 0.18) !important;
+        }
+        [data-bs-theme="dark"] [style*="background:#fef9c3"],
+        [data-bs-theme="dark"] [style*="background: #fef9c3"] {
+            background: rgba(202, 138, 4, 0.18) !important;
+        }
+        [data-bs-theme="dark"] [style*="background:#fee2e2"],
+        [data-bs-theme="dark"] [style*="background: #fee2e2"] {
+            background: rgba(239, 68, 68, 0.18) !important;
+        }
+        [data-bs-theme="dark"] [style*="background:#fef3c7"],
+        [data-bs-theme="dark"] [style*="background: #fef3c7"] {
+            background: rgba(245, 158, 11, 0.18) !important;
+        }
+        /* Nav tabs dark overrides */
+        [data-bs-theme="dark"] .nav-tabs {
+            border-bottom-color: var(--border-color);
+        }
+        [data-bs-theme="dark"] .nav-tabs .nav-link {
+            color: var(--text-secondary);
+        }
+        [data-bs-theme="dark"] .nav-tabs .nav-link.active {
+            background-color: var(--card-bg);
+            border-color: var(--border-color) var(--border-color) var(--card-bg);
+            color: var(--text-primary);
+        }
+        [data-bs-theme="dark"] .nav-tabs .nav-link:hover {
+            color: var(--text-primary);
+            border-color: transparent;
         }
     </style>
 
@@ -536,16 +893,22 @@
 
 @if(!isset($noHeader) || !$noHeader)
 <!-- TOP NAV -->
-<header id="topnav">
+<header id="topnav" class="{{ (isset($noSidebar) && $noSidebar) ? 'no-sidebar' : '' }}">
     <div class="topnav-left">
-        <button class="btn-sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Home</a></li>
-                @yield('breadcrumb')
-                <li class="breadcrumb-item active">@yield('page-title', 'Dashboard')</li>
-            </ol>
-        </nav>
+        @if(isset($noSidebar) && $noSidebar)
+            <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary btn-sm px-3 d-inline-flex align-items-center gap-2" style="height: 36px; border-radius: 8px; font-weight: 600;">
+                <i class="bi bi-arrow-left"></i> Back to Dashboard
+            </a>
+        @else
+            <button class="btn-sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Home</a></li>
+                    @yield('breadcrumb')
+                    <li class="breadcrumb-item active">@yield('page-title', 'Dashboard')</li>
+                </ol>
+            </nav>
+        @endif
     </div>
 
     @yield('topnav-middle')    <div class="topnav-right">
@@ -570,10 +933,15 @@
                     <span class="badge text-white ms-1" id="nav-timer-counter" style="background: #4f46e5; font-size: 11px;">00:00:00</span>
                 </a>
             @else
-                <a href="{{ auth()->user()->isTelecaller() ? route('leads.start-work.index') : route('tasks.index') }}" class="work-timer-badge text-decoration-none d-none d-md-flex align-items-center gap-2" style="background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1;">
-                    <i class="bi bi-play-fill text-secondary"></i> Start Task
+                <a href="{{ route('chat.index') }}" class="work-timer-badge text-decoration-none d-none d-md-flex align-items-center gap-2" style="background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1;">
+                    <i class="bi bi-play-fill text-secondary"></i> Start Work
                 </a>
             @endif
+
+            <!-- Theme Toggle -->
+            <button type="button" class="topnav-icon-btn" id="theme-toggle-btn" onclick="toggleTheme()" aria-label="Toggle theme">
+                <i class="bi bi-moon" id="theme-toggle-icon"></i>
+            </button>
 
             <!-- Notifications -->
             <div class="dropdown">
@@ -668,6 +1036,26 @@
     const overlay = document.getElementById('sidebarOverlay');
     let isMobile = window.innerWidth <= 768;
 
+    function updateThemeUI(theme) {
+        const toggleIcon = document.getElementById('theme-toggle-icon');
+        if (toggleIcon) {
+            if (theme === 'dark') {
+                toggleIcon.className = 'bi bi-sun';
+            } else {
+                toggleIcon.className = 'bi bi-moon';
+            }
+        }
+    }
+
+    function toggleTheme() {
+        const currentTheme = document.documentElement.getAttribute('data-bs-theme') || 'light';
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        
+        document.documentElement.setAttribute('data-bs-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+        updateThemeUI(newTheme);
+    }
+
     function toggleSidebar() {
         if (isMobile) {
             sidebar.classList.toggle('mobile-open');
@@ -687,6 +1075,10 @@
             topnav.classList.add('sidebar-collapsed');
             mainContent.classList.add('sidebar-collapsed');
         }
+        
+        // Theme initialization
+        const currentTheme = document.documentElement.getAttribute('data-bs-theme') || 'light';
+        updateThemeUI(currentTheme);
     });
 
     window.addEventListener('resize', () => { isMobile = window.innerWidth <= 768; });

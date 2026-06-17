@@ -19,7 +19,7 @@
     </div>
     
     <!-- Filters -->
-    <div class="card-body bg-light border-bottom py-3">
+    <div class="card-body border-bottom py-3" style="background: var(--body-bg);">
         <form method="GET" action="{{ route('employees.index') }}" class="row g-3">
             <div class="col-12 col-md-4">
                 <div class="input-group input-group-sm">
@@ -142,7 +142,7 @@
 
     <!-- Pagination -->
     @if($employees->hasPages())
-        <div class="card-footer bg-white border-top">
+        <div class="card-footer border-top" style="background: var(--card-bg);">
             {{ $employees->withQueryString()->links() }}
         </div>
     @endif

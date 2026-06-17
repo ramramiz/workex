@@ -11,7 +11,7 @@ class ChatController extends Controller
     {
         $user = auth()->user();
         
-        $tasks = Task::with(['project', 'assignee', 'comments', 'comments.views'])
+        $tasks = Task::with(['project', 'assignee', 'comments', 'comments.views', 'timeLogs' => fn($q) => $q->where('status', 'running')])
             ->when(!$user->isLeaderOrAbove(), fn($q) => $q->where('assigned_to', $user->id))
             ->when($user->isTeamLeader(), function($q) {
                 $q->where(function($sq) {
@@ -21,10 +21,19 @@ class ChatController extends Controller
                        });
                 });
             })
+            ->orderByRaw("CASE WHEN title LIKE 'Bug:%' THEN 0 ELSE 1 END")
+            ->orderByRaw("CASE priority 
+                WHEN 'critical' THEN 1 
+                WHEN 'high' THEN 2 
+                WHEN 'medium' THEN 3 
+                WHEN 'low' THEN 4 
+                ELSE 5 
+             END")
             ->orderBy('updated_at', 'desc')
             ->get();
             
-        return view('chat.index', compact('tasks'));
+        $noSidebar = true;
+        return view('chat.index', compact('tasks', 'noSidebar'));
     }
 
     public function show(Task $task)
@@ -75,6 +84,10 @@ class ChatController extends Controller
             ])->render();
         }
 
+        $activeLog = $task->timeLogs->where('user_id', $user->id)->where('status', 'running')->first();
+        $isButtonsDisabled = $task->status === 'completed' || $task->status === 'review';
+        $isWorking = $task->timeLogs->where('status', 'running')->isNotEmpty();
+
         return response()->json([
             'html' => $html,
             'latest_time' => $feed->count() > 0 ? $feed->last()->created_at->toISOString() : now()->toISOString(),
@@ -84,7 +97,11 @@ class ChatController extends Controller
             'assignee_avatar' => $task->assignee ? $task->assignee->avatar_url : 'https://ui-avatars.com/api/?name=Unassigned',
             'task_url' => route('tasks.show', $task),
             'task_id' => $task->id,
-            'store_url' => route('tasks.comments.store', $task)
+            'store_url' => route('tasks.comments.store', $task),
+            'active_log_id' => $activeLog?->id,
+            'status' => $task->status,
+            'is_buttons_disabled' => $isButtonsDisabled,
+            'is_working' => $isWorking,
         ]);
     }
 }

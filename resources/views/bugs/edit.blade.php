@@ -69,8 +69,14 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Detailed Description</label>
-                        <textarea name="description" class="form-control @error('description') is-invalid @enderror" rows="3">{{ old('description', $bug->description) }}</textarea>
+                        <label class="form-label">Related Link / URL</label>
+                        <input type="text" name="link" class="form-control @error('link') is-invalid @enderror" value="{{ old('link', $bug->link) }}" placeholder="e.g. http://127.0.0.1:8000/some-page or relevant repository url">
+                        @error('link')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Detailed Description <span class="text-danger">*</span></label>
+                        <textarea name="description" class="form-control @error('description') is-invalid @enderror" rows="3" required>{{ old('description', $bug->description) }}</textarea>
                         @error('description')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 

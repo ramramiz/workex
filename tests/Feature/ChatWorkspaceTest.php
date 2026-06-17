@@ -189,4 +189,71 @@ class ChatWorkspaceTest extends TestCase
         $response2 = $this->actingAs($this->superAdmin)->get(route('chat.show', $telecallerTask));
         $response2->assertStatus(200);
     }
+
+    public function test_super_admin_sees_bugs_prioritized_in_chat_list()
+    {
+        // Create a regular task first (so it has an older updated_at)
+        $regularTask = Task::create([
+            'title'       => 'Normal Task 1',
+            'assigned_to' => $this->employee->id,
+            'priority'    => 'medium',
+            'status'      => 'pending',
+            'created_by'  => $this->superAdmin->id,
+            'updated_at'  => now()->subMinutes(10),
+        ]);
+
+        // Create a bug task
+        $bugTask = Task::create([
+            'title'       => 'Bug: Critical Login Issue',
+            'assigned_to' => $this->employee->id,
+            'priority'    => 'high',
+            'status'      => 'pending',
+            'created_by'  => $this->superAdmin->id,
+            'updated_at'  => now()->subMinutes(5),
+        ]);
+
+        // Create another regular task that is updated last
+        $latestRegularTask = Task::create([
+            'title'       => 'Normal Task 2',
+            'assigned_to' => $this->employee->id,
+            'priority'    => 'low',
+            'status'      => 'pending',
+            'created_by'  => $this->superAdmin->id,
+            'updated_at'  => now(),
+        ]);
+
+        // Fetch index as super admin
+        $response = $this->actingAs($this->superAdmin)->get(route('chat.index'));
+        $response->assertStatus(200);
+
+        // Verify ordering: bugTask should be first in the tasks variable
+        $tasks = $response->viewData('tasks');
+        $this->assertNotEmpty($tasks);
+        
+        // The first task must be the bug task
+        $this->assertEquals($bugTask->id, $tasks->first()->id);
+    }
+
+    public function test_chat_show_returns_working_status()
+    {
+        // Assert is_working is false initially
+        $response = $this->actingAs($this->superAdmin)
+            ->get(route('chat.show', $this->assignedTask));
+        $response->assertStatus(200);
+        $this->assertFalse($response->json('is_working'));
+
+        // Start working on the task
+        $this->assignedTask->timeLogs()->create([
+            'user_id' => $this->employee->id,
+            'status' => 'running',
+            'started_at' => now(),
+        ]);
+
+        // Assert is_working is true
+        $response = $this->actingAs($this->superAdmin)
+            ->get(route('chat.show', $this->assignedTask));
+        $response->assertStatus(200);
+        $this->assertTrue($response->json('is_working'));
+    }
 }
+

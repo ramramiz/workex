@@ -105,7 +105,7 @@
                     <i class="bi bi-exclamation-triangle-fill" style="font-size:20px;color:#ef4444;"></i>
                 </div>
                 <div>
-                    <div style="font-size:20px;font-weight:700;color:#0f172a;">{{ $stats['delayed_projects'] }}</div>
+                    <div style="font-size:20px;font-weight:700;" class="text-body">{{ $stats['delayed_projects'] }}</div>
                     <div style="font-size:13px;color:#ef4444;font-weight:500;">Delayed Projects</div>
                 </div>
             </div>
@@ -120,7 +120,7 @@
                     <i class="bi bi-calendar-x-fill" style="font-size:20px;color:#f59e0b;"></i>
                 </div>
                 <div>
-                    <div style="font-size:20px;font-weight:700;color:#0f172a;">{{ $stats['pending_leaves'] }}</div>
+                    <div style="font-size:20px;font-weight:700;" class="text-body">{{ $stats['pending_leaves'] }}</div>
                     <div style="font-size:13px;color:#f59e0b;font-weight:500;">Pending Leave Requests</div>
                 </div>
             </div>
@@ -135,7 +135,7 @@
                     <i class="bi bi-journal-text" style="font-size:20px;color:#6366f1;"></i>
                 </div>
                 <div>
-                    <div style="font-size:20px;font-weight:700;color:#0f172a;">{{ $stats['pending_reports'] }}</div>
+                    <div style="font-size:20px;font-weight:700;" class="text-body">{{ $stats['pending_reports'] }}</div>
                     <div style="font-size:13px;color:#6366f1;font-weight:500;">Pending Daily Reports</div>
                 </div>
             </div>
@@ -277,7 +277,7 @@
                         <i class="bi bi-broadcast text-success fs-5"></i>
                     </div>
                     <div>
-                        <h5 class="modal-title fw-bold text-dark" id="currentWorksUpdateModalLabel">Current Works Update</h5>
+                        <h5 class="modal-title fw-bold" id="currentWorksUpdateModalLabel">Current Works Update</h5>
                         <p class="text-muted fs-8 mb-0">Live tracking status of all team members</p>
                     </div>
                 </div>
@@ -337,7 +337,7 @@
                                                 <span class="position-absolute bottom-0 end-0 status-dot {{ $config['dot'] }}" style="width: 12px; height: 12px; border: 2px solid white; transform: translate(2px, 2px);"></span>
                                             </div>
                                             <div>
-                                                <h6 class="mb-0 text-dark fw-bold">{{ $emp->name }}</h6>
+                                                <h6 class="mb-0 fw-bold">{{ $emp->name }}</h6>
                                                 <small class="text-muted fs-8">{{ $emp->role?->name ?? 'Employee' }} • {{ $emp->employee?->department?->name ?? 'No Dept' }}</small>
                                             </div>
                                         </div>
@@ -347,7 +347,7 @@
                                                 {{ $config['label'] }}
                                             </span>
                                             @if($session)
-                                                <span class="badge bg-light text-dark border border-light-subtle px-2 py-1 fs-8 fw-semibold rounded-pill">
+                                                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-2 py-1 fs-8 fw-semibold rounded-pill">
                                                     {{ $session->total_hours }} worked
                                                 </span>
                                             @endif
@@ -367,7 +367,7 @@
                                                             <span class="fw-bold text-success fs-7 text-truncate d-inline-block" style="max-width: 100%;">{{ $activeLog->task->title }}</span>
                                                         </div>
                                                         <div class="text-muted fs-8">
-                                                            Project: <strong class="text-dark">{{ $activeLog->task->project->name ?? 'No Project' }}</strong>
+                                                            Project: <strong class="fw-semibold">{{ $activeLog->task->project->name ?? 'No Project' }}</strong>
                                                         </div>
                                                     </div>
                                                     
@@ -394,7 +394,7 @@
                                                 </div>
                                             </div>
                                         @else
-                                            <div class="p-3 bg-light border border-light-subtle rounded-3 text-center">
+                                            <div class="p-3 rounded-3 text-center" style="background: var(--body-bg); border: 1px solid var(--border-color);">
                                                 <div class="d-flex align-items-center justify-content-center gap-2 text-muted fs-7">
                                                     <i class="bi bi-moon-fill text-secondary"></i>
                                                     <span>Not working yet today</span>

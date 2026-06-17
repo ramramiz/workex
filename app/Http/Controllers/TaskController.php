@@ -280,6 +280,16 @@ class TaskController extends Controller
             'image_path' => $imagePath,
         ]);
 
+        // Sync comment back to associated Bug if it exists
+        $bug = \App\Models\Bug::where('task_id', $task->id)->first();
+        if ($bug) {
+            \App\Models\BugComment::create([
+                'bug_id' => $bug->id,
+                'user_id' => auth()->id(),
+                'comment' => $commentText . ($imagePath ? "\n\n[Attached Image]" : ""),
+            ]);
+        }
+
         // Find mentioned users in the comment
         $activeUsers = User::where('status', 'active')->get();
         foreach ($activeUsers as $u) {
@@ -359,6 +369,10 @@ class TaskController extends Controller
         ]);
 
         \App\Models\ActivityLog::log('task_completed_submitted', "Submitted task for completion review: {$task->title}", $task);
+
+        if (str_contains(url()->previous(), '/chat')) {
+            return redirect()->route('chat.index')->with('success', 'Task submitted for completion review!');
+        }
 
         return redirect()->route('tasks.show', $task)->with('success', 'Task submitted for completion review!');
     }

@@ -23,7 +23,8 @@ class LiveStatusController extends Controller
             ->with([
                 'role',
                 'employee.department',
-                'todayWorkSession.timeLogs' => fn($q) => $q->where('status', 'running')->with('task.project'),
+                'todayWorkSession',
+                'timeLogs' => fn($q) => $q->where('status', 'running')->with('task.project'),
             ])
             ->get()
             ->map(function ($user) {
@@ -103,13 +104,25 @@ class LiveStatusController extends Controller
                         'current_task_start' => $currentTaskStart,
                         'current_project' => $currentProject,
                         'calls_count'   => $callsCount,
+                        'working_tasks' => [],
                     ];
                 }
 
                 // Standard employee flow
                 $session = $user->todayWorkSession;
-                $activeLog = $session?->activeTaskLog;
-                $status = $this->getStatus($session);
+                $activeLogs = $user->timeLogs; // Direct running task logs of the employee
+                $firstActiveLog = $activeLogs->first();
+                $status = $this->getStatus($session, $activeLogs);
+
+                $workingTasks = [];
+                foreach ($activeLogs as $log) {
+                    $workingTasks[] = [
+                        'task_title' => $log->task->title ?? 'Unknown Task',
+                        'project_name' => $log->task->project->name ?? 'No Project',
+                        'task_time' => sprintf('%02d:%02d', intdiv($log->started_at->diffInMinutes(now()), 60), $log->started_at->diffInMinutes(now()) % 60),
+                        'task_start' => $log->started_at->timestamp,
+                    ];
+                }
 
                 return [
                     'id'            => $user->id,
@@ -118,34 +131,41 @@ class LiveStatusController extends Controller
                     'role'          => $user->role?->name,
                     'department'    => $user->employee?->department?->name,
                     'status'        => $status,
-                    'status_label'  => $this->getStatusLabel($session),
+                    'status_label'  => $this->getStatusLabel($session, $activeLogs),
                     'started_at'    => $session?->started_at?->format('h:i A'),
                     'total_hours'   => $session?->total_hours ?? '00:00',
-                    'current_task'  => $activeLog?->task?->title,
-                    'current_task_time' => $activeLog ? sprintf('%02d:%02d', intdiv($activeLog->started_at->diffInMinutes(now()), 60), $activeLog->started_at->diffInMinutes(now()) % 60) : null,
-                    'current_task_start' => $activeLog ? $activeLog->started_at->timestamp : null,
-                    'current_project' => $activeLog?->task?->project?->name,
+                    'current_task'  => $firstActiveLog?->task?->title,
+                    'current_task_time' => $firstActiveLog ? sprintf('%02d:%02d', intdiv($firstActiveLog->started_at->diffInMinutes(now()), 60), $firstActiveLog->started_at->diffInMinutes(now()) % 60) : null,
+                    'current_task_start' => $firstActiveLog ? $firstActiveLog->started_at->timestamp : null,
+                    'current_project' => $firstActiveLog?->task?->project?->name,
                     'calls_count'   => null,
+                    'working_tasks' => $workingTasks,
                 ];
             });
 
         return response()->json(['employees' => $employees, 'updated_at' => now()->format('h:i:s A')]);
     }
 
-    private function getStatus($session): string
+    private function getStatus($session, $activeLogs = null): string
     {
         if (!$session) return 'not_started';
         if ($session->status === 'ended') return 'completed';
-        $activeLog = $session->activeTaskLog;
-        if ($activeLog) return 'working';
+        
+        $hasActiveTask = $activeLogs !== null
+            ? $activeLogs->isNotEmpty()
+            : ($session->relationLoaded('timeLogs')
+                ? $session->timeLogs->where('status', 'running')->isNotEmpty()
+                : $session->activeTaskLog !== null);
+
+        if ($hasActiveTask) return 'working';
         // check if started but idle (no active task)
         if ($session->started_at && $session->started_at->diffInMinutes(now()) > 15) return 'idle';
         return 'working';
     }
 
-    private function getStatusLabel($session): string
+    private function getStatusLabel($session, $activeLogs = null): string
     {
-        return match($this->getStatus($session)) {
+        return match($this->getStatus($session, $activeLogs)) {
             'working'     => 'Working',
             'idle'        => 'Idle',
             'completed'   => 'Completed',

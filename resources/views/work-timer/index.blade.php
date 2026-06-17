@@ -7,13 +7,65 @@
     <li class="breadcrumb-item active">Work Timer</li>
 @endsection
 
+@push('styles')
+<style>
+    /* Work Timer page specific dark overrides */
+    .wt-card-header {
+        background: var(--card-bg);
+        border-bottom: 1px solid var(--border-color);
+        padding: 16px 20px;
+        border-radius: 16px 16px 0 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .wt-card-header h5 {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+    .wt-task-info-box {
+        background: var(--body-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 10px 12px;
+        margin-top: 8px;
+    }
+    .wt-empty-icon-circle {
+        width: 60px; height: 60px;
+        background: var(--body-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 12px;
+    }
+    .wt-ip-badge {
+        background: var(--body-bg);
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 12px;
+    }
+    .wt-border-card {
+        border: 1px solid var(--border-color) !important;
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="row g-4">
     <!-- Left Column: Work Session Controls -->
     <div class="col-12 col-md-5">
         <!-- Work Session Card -->
-        <div class="card mb-4 border border-light">
-            <div class="card-header bg-white"><h5 class="mb-0">Daily Shift Session</h5></div>
+        <div class="card mb-4 wt-border-card">
+            <div class="wt-card-header">
+                <h5>Daily Shift Session</h5>
+            </div>
             <div class="card-body text-center">
                 @if(!$session || $session->status !== 'active')
                     <div class="py-4">
@@ -35,7 +87,7 @@
                         
                         <div class="text-muted fs-7 mb-4 mt-3">
                             Started Shift at: <strong>{{ $session->started_at->format('h:i A') }}</strong><br>
-                            IP Recorded: <code class="bg-light px-1 rounded">{{ $session->ip_address }}</code>
+                            IP Recorded: <span class="wt-ip-badge">{{ $session->ip_address }}</span>
                         </div>
 
                         <button type="button" class="btn btn-danger d-inline-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#endWorkDayModal">
@@ -74,13 +126,15 @@
 
         <!-- Active Task Time Log -->
         @if($session && $session->status === 'active')
-            <div class="card border border-light">
-                <div class="card-header bg-white"><h5 class="mb-0">Active Task Timer</h5></div>
+            <div class="card wt-border-card">
+                <div class="wt-card-header">
+                    <h5>Active Task Timer</h5>
+                </div>
                 <div class="card-body">
                     @if($activeLog)
-                        <div class="p-3 bg-primary-subtle border border-primary-subtle rounded-3 text-center mb-3">
+                        <div class="p-3 rounded-3 text-center mb-3" style="background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.25);">
                             <span class="badge bg-primary text-white text-uppercase fs-8 font-monospace">Currently Tracking</span>
-                            <h4 class="mt-2 mb-1 fw-bold text-dark">{{ $activeLog->task->title }}</h4>
+                            <h4 class="mt-2 mb-1 fw-bold" style="color: var(--text-primary);">{{ $activeLog->task->title }}</h4>
                             <p class="text-muted fs-7 mb-2">Project: {{ $activeLog->task->project->name ?? 'None' }}</p>
                             
                             <!-- Task Ticker -->
@@ -144,9 +198,9 @@
     <!-- Right Column: Running Timers, My Tasks List & Today's History -->
     <div class="col-12 col-md-7">
         <!-- Running Timers Card -->
-        <div class="card mb-4 border border-light">
-            <div class="card-header bg-white d-flex align-items-center justify-content-between">
-                <h5 class="mb-0 d-flex align-items-center gap-2">
+        <div class="card mb-4 wt-border-card">
+            <div class="wt-card-header">
+                <h5 class="d-flex align-items-center gap-2">
                     <i class="bi bi-stopwatch text-primary"></i> Running Timers
                 </h5>
                 <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill font-monospace">
@@ -167,7 +221,7 @@
                                 <div class="flex-grow-1 min-w-0">
                                     <div class="d-flex align-items-center justify-content-between gap-2">
                                         <div>
-                                            <h6 class="mb-0 text-dark fw-bold text-truncate">{{ $log->user->name }}</h6>
+                                            <h6 class="mb-0 fw-bold text-truncate" style="color: var(--text-primary);">{{ $log->user->name }}</h6>
                                             <small class="text-muted fs-8">{{ $log->user->role?->name ?? 'Employee' }}</small>
                                         </div>
                                         <!-- Dynamic Ticking Counter Badge -->
@@ -179,7 +233,7 @@
                                         </span>
                                     </div>
                                     
-                                    <div class="mt-2 p-2 bg-light rounded-2 border border-light-subtle">
+                                    <div class="wt-task-info-box">
                                         <div class="d-flex align-items-center gap-2 mb-1">
                                             <i class="bi bi-clock-history text-primary fs-7"></i>
                                             <span class="fw-semibold text-primary fs-7 text-truncate d-inline-block" style="max-width: 100%;">{{ $log->task->title }}</span>
@@ -194,11 +248,11 @@
                         </div>
                     @empty
                         <div class="text-center py-5 px-3 text-muted">
-                            <div class="bg-light d-inline-flex align-items-center justify-content-center rounded-circle mb-3" style="width: 60px; height: 60px;">
+                            <div class="wt-empty-icon-circle">
                                 <i class="bi bi-clock text-secondary" style="font-size: 24px;"></i>
                             </div>
-                            <h6 class="text-dark fw-semibold mb-1">No Active Timers</h6>
-                            <p class="text-muted fs-7 mb-0 max-w-xs mx-auto">There are currently no active task timers running in the team.</p>
+                            <h6 class="fw-semibold mb-1" style="color: var(--text-primary);">No Active Timers</h6>
+                            <p class="text-muted fs-7 mb-0">There are currently no active task timers running in the team.</p>
                         </div>
                     @endforelse
                 </div>
@@ -207,8 +261,10 @@
 
         @if($session && $session->status === 'active')
             <!-- My Assigned Tasks -->
-            <div class="card mb-4">
-                <div class="card-header bg-white"><h5 class="mb-0">My Active Tasks</h5></div>
+            <div class="card mb-4 wt-border-card">
+                <div class="wt-card-header">
+                    <h5>My Active Tasks</h5>
+                </div>
                 <div class="card-body p-0">
                     <div class="list-group list-group-flush">
                         @forelse($myTasks as $task)
@@ -243,8 +299,10 @@
             </div>
 
             <!-- Today's Log History -->
-            <div class="card">
-                <div class="card-header bg-white"><h5 class="mb-0">Today's Time Logs</h5></div>
+            <div class="card wt-border-card">
+                <div class="wt-card-header">
+                    <h5>Today's Time Logs</h5>
+                </div>
                 <div class="table-responsive">
                     <table class="table align-middle table-sm mb-0 fs-7">
                         <thead>

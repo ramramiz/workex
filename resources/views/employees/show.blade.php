@@ -77,25 +77,25 @@
         <!-- Stats Widgets -->
         <div class="row g-3 mb-4">
             <div class="col-6 col-md-3">
-                <div class="card bg-light border text-center py-3">
+                <div class="stat-card text-center py-3">
                     <div class="fs-4 fw-bold text-primary">{{ number_format($employee->user->workSessions->sum('total_minutes') / 60, 1) }}</div>
                     <div class="text-muted fs-7">Total Hours</div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="card bg-light border text-center py-3">
+                <div class="stat-card text-center py-3">
                     <div class="fs-4 fw-bold text-success">{{ $employee->user->workSessions->count() }}</div>
                     <div class="text-muted fs-7">Work Sessions</div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="card bg-light border text-center py-3">
+                <div class="stat-card text-center py-3">
                     <div class="fs-4 fw-bold text-warning">{{ $employee->user->leaves->where('status', 'approved')->count() }}</div>
                     <div class="text-muted fs-7">Leaves Taken</div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="card bg-light border text-center py-3">
+                <div class="stat-card text-center py-3">
                     <div class="fs-4 fw-bold text-info">{{ $employee->user->dailyReports->count() }}</div>
                     <div class="text-muted fs-7">Daily Reports</div>
                 </div>

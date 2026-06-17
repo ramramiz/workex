@@ -28,6 +28,15 @@
                 <h6 class="text-uppercase text-muted fs-8 font-monospace mb-2">Detailed Description</h6>
                 <div class="bg-light p-3 rounded mb-4 text-muted fs-7" style="white-space: pre-wrap;">{{ $bug->description ?? 'No description provided.' }}</div>
 
+                @if($bug->link)
+                    <h6 class="text-uppercase text-muted fs-8 font-monospace mb-2">Related Link / URL</h6>
+                    <div class="bg-light p-3 rounded mb-4 fs-7">
+                        <a href="{{ str_starts_with($bug->link, 'http') ? $bug->link : 'http://' . $bug->link }}" target="_blank" class="text-primary fw-semibold text-decoration-none">
+                            <i class="bi bi-link-45deg me-1"></i>{{ $bug->link }}
+                        </a>
+                    </div>
+                @endif
+
                 @if($bug->screenshots && count($bug->screenshots) > 0)
                     <h6 class="text-uppercase text-muted fs-8 font-monospace mb-2">Screenshots / Reference Images</h6>
                     <div class="row g-3 mb-4">

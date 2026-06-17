@@ -28,25 +28,30 @@
     .chat-sidebar-search {
         padding: 12px 16px;
         background: #ffffff;
-        border-bottom: 1px solid rgba(0,0,0,0.06);
+        border-bottom: 1px solid rgba(0,0,0,0.05);
     }
     .chat-sidebar-search .input-group {
-        background-color: #f0f2f5;
+        background-color: #f8fafc;
+        border: 1px solid #e2e8f0;
         border-radius: 8px;
-        border: none;
         overflow: hidden;
+        transition: all 0.2s ease;
+    }
+    .chat-sidebar-search .input-group:focus-within {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
     }
     .chat-sidebar-search .form-control {
-        background-color: #f0f2f5;
+        background-color: transparent;
         border: none;
         box-shadow: none;
         font-size: 13.5px;
         padding: 8px 12px;
     }
     .chat-sidebar-search .input-group-text {
-        background-color: #f0f2f5;
+        background-color: transparent;
         border: none;
-        color: #667781;
+        color: #64748b;
         padding-left: 12px;
     }
     .chat-task-list {
@@ -61,15 +66,17 @@
         padding: 12px 16px;
         cursor: pointer;
         transition: all 0.15s ease;
-        border-bottom: 1px solid #f0f2f5;
+        border-bottom: 1px solid #f8fafc;
+        border-left: 4px solid transparent;
         text-decoration: none !important;
         color: inherit !important;
     }
     .chat-task-item:hover {
-        background: #f0f2f5;
+        background: #f8fafc;
     }
     .chat-task-item.active {
-        background: #eae6df;
+        background: #f0f7ff;
+        border-left: 4px solid var(--primary);
     }
     .chat-task-item .avatar-circle {
         width: 48px;
@@ -116,13 +123,13 @@
         color: #64748b;
     }
     .chat-header {
-        height: 59px;
-        border-bottom: 1px solid var(--border-color);
+        min-height: 72px;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 10px 16px;
-        background: #f0f2f5;
+        padding: 12px 20px;
+        background: #ffffff;
         flex-shrink: 0;
     }
     .chat-header-info {
@@ -307,6 +314,14 @@
         display: inline-block;
         animation: pulse-active 1.5s infinite;
     }
+    .pulse-dot-green {
+        width: 8px;
+        height: 8px;
+        background-color: #22c55e;
+        border-radius: 50%;
+        display: inline-block;
+        animation: pulse-active-green 1.5s infinite;
+    }
 
     /* WhatsApp Bottom Input Bar Styles */
     .whatsapp-input-bar {
@@ -373,6 +388,11 @@
         70% { transform: scale(1); box-shadow: 0 0 0 5px rgba(239, 68, 68, 0); }
         100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
     }
+    @keyframes pulse-active-green {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 5px rgba(34, 197, 94, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+    }
 
     /* Mention Dropdown Styles */
     .mention-dropdown {
@@ -429,6 +449,117 @@
         outline: 2px solid #000000;
         outline-offset: 2px;
     }
+
+    /* Premium Button & Dropdown Styles for Chat Header */
+    .chat-header .btn {
+        height: 36px;
+        padding: 0 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        transition: all 0.2s ease;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        border: 1px solid transparent;
+    }
+    .chat-header .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    }
+    .chat-header .btn:active {
+        transform: translateY(0);
+    }
+    .chat-header .btn-success {
+        background-color: #ecfdf5;
+        border-color: #a7f3d0;
+        color: #065f46;
+    }
+    .chat-header .btn-success:hover {
+        background-color: #d1fae5;
+        border-color: #6ee7b7;
+        color: #047857;
+    }
+    .chat-header .btn-danger {
+        background-color: #fef2f2;
+        border-color: #fecaca;
+        color: #991b1b;
+    }
+    .chat-header .btn-danger:hover {
+        background-color: #fee2e2;
+        border-color: #fca5a5;
+        color: #b91c1c;
+    }
+    .chat-header .btn-primary {
+        background-color: #eff6ff;
+        border-color: #bfdbfe;
+        color: #1e40af;
+    }
+    .chat-header .btn-primary:hover {
+        background-color: #dbeafe;
+        border-color: #93c5fd;
+        color: #1d4ed8;
+    }
+    .chat-header .btn-outline-secondary {
+        background-color: #f8fafc;
+        border-color: #e2e8f0;
+        color: #475569;
+    }
+    .chat-header .btn-outline-secondary:hover {
+        background-color: #f1f5f9;
+        border-color: #cbd5e1;
+        color: #334155;
+    }
+
+    /* Status Dropdown Colors */
+    .chat-header select.form-select {
+        height: 36px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        padding: 0 32px 0 12px;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        background-position: right 10px center;
+    }
+    .chat-header select.form-select.status-select-pending {
+        background-color: #f1f5f9 !important;
+        color: #475569 !important;
+        border-color: #cbd5e1 !important;
+    }
+    .chat-header select.form-select.status-select-in_progress {
+        background-color: #fef3c7 !important;
+        color: #92400e !important;
+        border-color: #fde68a !important;
+    }
+    .chat-header select.form-select.status-select-review {
+        background-color: #e0f2fe !important;
+        color: #075985 !important;
+        border-color: #bae6fd !important;
+    }
+    .chat-header select.form-select.status-select-rework {
+        background-color: #fef2f2 !important;
+        color: #991b1b !important;
+        border-color: #fecaca !important;
+    }
+    .chat-header select.form-select.status-select-completed {
+        background-color: #d1fae5 !important;
+        color: #065f46 !important;
+        border-color: #a7f3d0 !important;
+    }
+    .chat-header select.form-select.status-select-cancelled {
+        background-color: #f3f4f6 !important;
+        color: #374151 !important;
+        border-color: #d1d5db !important;
+    }
+    #chatTaskStatusSelect option {
+        background-color: #ffffff !important;
+        color: #212529 !important;
+    }
 </style>
 @endpush
 
@@ -453,16 +584,32 @@
                        data-title="{{ strtolower($t->title) }}" 
                        data-project="{{ strtolower($t->project->name ?? '') }}"
                        onclick="selectTask({{ $t->id }})">
-                        <div class="position-relative">
+                        <div class="position-relative" style="margin-left: 5px;">
                             @if($t->assignee)
                                 <img src="{{ $t->assignee->avatar_url }}" alt="" class="avatar-circle">
                             @else
                                 <img src="https://ui-avatars.com/api/?name=Unassigned&background=cbd5e1&color=64748b" alt="" class="avatar-circle">
                             @endif
+                            @php
+                                $badgeClass = $t->priority_badge;
+                            @endphp
+                            <span class="position-absolute top-0 start-0 badge bg-{{ $badgeClass }} {{ $badgeClass === 'warning' ? 'text-dark' : 'text-white' }} rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 18px; height: 18px; border: 2px solid var(--card-bg); font-size: 8px; font-weight: 800; transform: translate(-30%, -30%); z-index: 10;" title="Priority: {{ ucfirst($t->priority) }}">
+                                {{ strtoupper(substr($t->priority, 0, 1)) }}
+                            </span>
+                            @if(str_starts_with(strtolower($t->title), 'bug:'))
+                                <span class="position-absolute bottom-0 end-0 bg-danger text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 18px; height: 18px; border: 2px solid var(--card-bg); font-size: 10px;" title="Bug">
+                                    <i class="bi bi-bug-fill"></i>
+                                </span>
+                            @endif
                         </div>
                         <div class="task-info">
                             <div class="d-flex justify-content-between align-items-baseline">
-                                <div class="task-title" title="{{ $t->title }}">{{ $t->title }}</div>
+                                <div class="task-title" title="{{ $t->title }}">
+                                    @if(str_starts_with(strtolower($t->title), 'bug:'))
+                                        <i class="bi bi-bug-fill text-danger me-1"></i>
+                                    @endif
+                                    {{ $t->title }}
+                                </div>
                                 <span class="text-muted flex-shrink-0 ms-2" style="font-size: 10px;">{{ $t->updated_at->diffForHumans(null, true) }}</span>
                             </div>
                             <div class="d-flex align-items-center justify-content-between mt-1">
@@ -481,6 +628,14 @@
                                         <span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size: 8px; padding: 1px 3px;">Rework</span>
                                     @else
                                         <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle" style="font-size: 8px; padding: 1px 3px;">Pending</span>
+                                    @endif
+
+                                    @if(auth()->user()->isSuperAdmin() || auth()->user()->isTeamLeader())
+                                        @if($t->timeLogs->isNotEmpty())
+                                            <span class="badge bg-success text-white border border-success d-inline-flex align-items-center gap-1 sidebar-working-badge" data-task-id="{{ $t->id }}" style="font-size: 8px; padding: 1px 3px; font-weight: 600;">
+                                                <span class="pulse-dot-green"></span> working
+                                            </span>
+                                        @endif
                                     @endif
                                 </div>
                                 @php
@@ -531,7 +686,10 @@
                             <span id="chat-active-assignee" class="fw-semibold text-dark fs-8">Assignee Name</span>
                         </div>
                     </div>
-                    <div>
+                    <div class="d-flex align-items-center gap-2">
+                        <!-- Dynamic task action buttons container -->
+                        <div id="chat-header-actions" class="d-flex align-items-center gap-1"></div>
+
                         <a href="#" id="chat-active-details-link" class="btn btn-outline-secondary btn-sm" target="_blank" title="View Task Details">
                             <i class="bi bi-box-arrow-up-right me-1"></i> Details
                         </a>
@@ -649,6 +807,72 @@
         </div>
     </div>
 </div>
+
+<!-- End Task Modal -->
+<div class="modal fade" id="endTaskModal" tabindex="-1" aria-labelledby="endTaskModalLabel" aria-hidden="true">
+    <div class="modal-dialog text-start">
+        <div class="modal-content" style="border-radius: 12px;">
+            <div class="modal-header">
+                <h5 class="modal-title" id="endTaskModalLabel">End Work - Record Progress</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" id="endTaskModalForm" action="">
+                @csrf
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fs-7 fw-semibold">Task Status <span class="text-danger">*</span></label>
+                        <select name="status" class="form-select form-select-sm fw-semibold" required id="endTaskStatusSelect">
+                            <option value="pending">Pending</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="review">Review</option>
+                            <option value="rework">Rework</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fs-7 fw-semibold">Work Done Description <span class="text-danger">*</span></label>
+                        <textarea name="note" class="form-control" rows="3" required placeholder="Describe what progress you made during this log..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Complete Time Log</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Task Completion Modal -->
+<div class="modal fade" id="taskCompletionModal" data-bs-backdrop="static" tabindex="-1" aria-labelledby="taskCompletionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark" id="taskCompletionModalLabel">Submit Task Completion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" id="taskCompletionModalForm" action="">
+                @csrf
+                <div class="modal-body text-start pt-3">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-dark">Description of Work Done <span class="text-danger">*</span></label>
+                        <textarea name="completed_description" class="form-control" rows="4" required placeholder="Describe what you completed, any details of the changes made, etc."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-dark">Page Link / Test URL <span class="text-danger">*</span></label>
+                        <input type="url" name="completed_link" class="form-control" required placeholder="https://example.com/test-page">
+                        <div class="form-text text-muted fs-8">Provide the exact link where this change/feature can be verified.</div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm px-4">Submit Work</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -657,6 +881,55 @@
     let latestFeedTime = null;
     let pollInterval = null;
     let activeStoreUrl = '';
+    const isLeaderOrAbove = {{ (auth()->user()->isSuperAdmin() || auth()->user()->isTeamLeader()) ? 'true' : 'false' }};
+
+    function openEndTaskModalChat(logId, currentStatus) {
+        document.getElementById('endTaskModalForm').action = `{{ url('work-timer/end-task') }}/${logId}`;
+        const statusSelect = document.querySelector('#endTaskModal #endTaskStatusSelect');
+        if (statusSelect) {
+            statusSelect.value = currentStatus;
+        }
+        const modal = new bootstrap.Modal(document.getElementById('endTaskModal'));
+        modal.show();
+    }
+
+    function openTaskCompletionModalChat(taskId) {
+        document.getElementById('taskCompletionModalForm').action = `{{ url('tasks') }}/${taskId}/submit-completion`;
+        const modal = new bootstrap.Modal(document.getElementById('taskCompletionModal'));
+        modal.show();
+    }
+
+    function updateTaskStatusChat(taskId, status) {
+        fetch(`{{ url('tasks') }}/${taskId}/update-status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({ status: status })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const savedTaskId = localStorage.getItem('active_chat_task_id');
+        if (savedTaskId) {
+            const el = document.getElementById(`chat-task-item-${savedTaskId}`);
+            if (el) {
+                setTimeout(() => {
+                    selectTask(parseInt(savedTaskId));
+                }, 100);
+            }
+        }
+    });
 
     // Search filter
     document.getElementById('task-search-input').addEventListener('input', function() {
@@ -709,7 +982,42 @@
             .then(response => response.json())
             .then(data => {
                 // Populate headers
-                document.getElementById('chat-active-title').textContent = data.task_title;
+                let titleHtml = '';
+                if (data.task_title.toLowerCase().startsWith('bug:')) {
+                    titleHtml = `<i class="bi bi-bug-fill text-danger me-1"></i>${data.task_title}`;
+                } else {
+                    titleHtml = data.task_title;
+                }
+
+                if (isLeaderOrAbove && data.is_working) {
+                    titleHtml += ` <span class="badge bg-success text-white border border-success ms-2 d-inline-flex align-items-center gap-1" style="font-size: 11px; padding: 2px 6px; font-weight: 600;"><span class="pulse-dot-green"></span> working</span>`;
+                }
+                document.getElementById('chat-active-title').innerHTML = titleHtml;
+
+                // Sync sidebar working badge state
+                const sidebarItem = document.getElementById(`chat-task-item-${taskId}`);
+                if (sidebarItem && isLeaderOrAbove) {
+                    const badgeContainer = sidebarItem.querySelector('.text-truncate');
+                    if (badgeContainer) {
+                        let existingBadge = badgeContainer.querySelector('.sidebar-working-badge');
+                        if (data.is_working) {
+                            if (!existingBadge) {
+                                const badgeSpan = document.createElement('span');
+                                badgeSpan.className = 'badge bg-success text-white border border-success d-inline-flex align-items-center gap-1 sidebar-working-badge';
+                                badgeSpan.dataset.taskId = taskId;
+                                badgeSpan.style.fontSize = '8px';
+                                badgeSpan.style.padding = '1px 3px';
+                                badgeSpan.style.fontWeight = '600';
+                                badgeSpan.innerHTML = '<span class="pulse-dot-green"></span> working';
+                                badgeContainer.appendChild(badgeSpan);
+                            }
+                        } else {
+                            if (existingBadge) {
+                                existingBadge.remove();
+                            }
+                        }
+                    }
+                }
                 document.getElementById('chat-active-project').textContent = data.project_name;
                 document.getElementById('chat-active-assignee').textContent = data.assignee_name;
                 document.getElementById('chat-active-avatar').src = data.assignee_avatar;
@@ -718,6 +1026,34 @@
                 // Form action
                 document.getElementById('chat-form').action = data.store_url;
                 activeStoreUrl = data.store_url;
+
+                // Save selected taskId to localStorage
+                localStorage.setItem('active_chat_task_id', taskId);
+
+                // Build header actions
+                let actionsHtml = '';
+
+                if (data.active_log_id) {
+                    actionsHtml += `
+                        <button type="button" class="btn btn-danger btn-sm me-1" onclick="openEndTaskModalChat(${data.active_log_id}, '${data.status}')" ${data.is_buttons_disabled ? 'disabled' : ''}>
+                            <i class="bi bi-stop-fill me-1"></i> End Work
+                        </button>
+                    `;
+                } else {
+                    actionsHtml += `
+                        <form method="POST" action="{{ url('work-timer/start-task') }}/${taskId}" class="d-inline me-1">
+                            @csrf
+                            <button type="submit" class="btn btn-success btn-sm" ${data.is_buttons_disabled ? 'disabled' : ''}>
+                                <i class="bi bi-play-fill me-1"></i> Start Work
+                            </button>
+                        </form>
+                        <button type="button" class="btn btn-primary btn-sm me-1" onclick="openTaskCompletionModalChat(${taskId})" ${data.is_buttons_disabled ? 'disabled' : ''}>
+                            <i class="bi bi-check2-circle me-1"></i> Complete
+                        </button>
+                    `;
+                }
+
+                document.getElementById('chat-header-actions').innerHTML = actionsHtml;
 
                 // Remove unread count badge in sidebar
                 const badge = document.getElementById(`unread-badge-${taskId}`);

@@ -640,15 +640,26 @@
         <div class="modal-dialog text-start">
             <div class="modal-content" style="border-radius: 12px;">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="endTaskModalLabel">Record Task Notes</h5>
+                    <h5 class="modal-title" id="endTaskModalLabel">End Work - Record Progress</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form method="POST" action="{{ route('work-timer.end-task', $activeLog) }}">
                     @csrf
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label fs-7 fw-semibold">Rework Notes / Work Done Details</label>
-                            <textarea name="note" class="form-control" rows="3" placeholder="What progress did you make during this log?"></textarea>
+                            <label class="form-label fs-7 fw-semibold">Task Status <span class="text-danger">*</span></label>
+                            <select name="status" class="form-select form-select-sm fw-semibold" required>
+                                <option value="pending" {{ $task->status === 'pending' ? 'selected' : '' }}>Pending</option>
+                                <option value="in_progress" {{ $task->status === 'in_progress' ? 'selected' : '' }}>In Progress</option>
+                                <option value="review" {{ $task->status === 'review' ? 'selected' : '' }}>Review</option>
+                                <option value="rework" {{ $task->status === 'rework' ? 'selected' : '' }}>Rework</option>
+                                <option value="completed" {{ $task->status === 'completed' ? 'selected' : '' }}>Completed</option>
+                                <option value="cancelled" {{ $task->status === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fs-7 fw-semibold">Work Done Description <span class="text-danger">*</span></label>
+                            <textarea name="note" class="form-control" rows="3" required placeholder="Describe what progress you made during this log..."></textarea>
                         </div>
                     </div>
                     <div class="modal-footer">

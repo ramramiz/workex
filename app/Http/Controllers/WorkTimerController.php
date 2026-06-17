@@ -164,11 +164,7 @@ class WorkTimerController extends Controller
             ]);
         }
 
-        // Pause any running task
-        TaskTimeLog::where('user_id', $user->id)->where('status', 'running')->each(function ($log) {
-            $mins = $log->started_at->diffInMinutes(now());
-            $log->update(['paused_at' => now(), 'total_minutes' => $mins, 'status' => 'paused']);
-        });
+        // Starting task timer (allows multiple active tasks simultaneously)
 
         TaskTimeLog::create([
             'task_id'         => $task->id,
@@ -193,11 +189,7 @@ class WorkTimerController extends Controller
 
     public function resumeTask(Request $request, TaskTimeLog $log)
     {
-        // Pause any other running logs
-        TaskTimeLog::where('user_id', auth()->id())->where('status', 'running')->each(function ($l) {
-            $mins = $l->started_at->diffInMinutes(now());
-            $l->update(['paused_at' => now(), 'total_minutes' => $mins, 'status' => 'paused']);
-        });
+        // Resuming task timer (allows multiple active tasks simultaneously)
 
         $log->update(['resumed_at' => now(), 'status' => 'running']);
         return back()->with('success', 'Task resumed!');
@@ -205,7 +197,10 @@ class WorkTimerController extends Controller
 
     public function endTask(Request $request, TaskTimeLog $log)
     {
-        $request->validate(['note' => 'nullable|string|max:500']);
+        $request->validate([
+            'note' => 'nullable|string|max:1000',
+            'status' => 'nullable|in:pending,in_progress,review,rework,completed,cancelled',
+        ]);
 
         $mins = $log->started_at->diffInMinutes(now());
         $log->update([
@@ -214,6 +209,37 @@ class WorkTimerController extends Controller
             'note'          => $request->note,
             'status'        => 'ended',
         ]);
+
+        // Update task status if provided
+        $task = $log->task;
+        $oldStatus = $task->status;
+        $newStatus = $request->status;
+
+        if ($newStatus && $oldStatus !== $newStatus) {
+            $task->update(['status' => $newStatus]);
+
+            $statusLabels = [
+                'pending' => 'Pending',
+                'in_progress' => 'In Progress',
+                'review' => 'Review',
+                'rework' => 'Rework',
+                'completed' => 'Completed',
+                'cancelled' => 'Cancelled',
+            ];
+            $newLabel = $statusLabels[$newStatus] ?? ucfirst($newStatus);
+            $userName = auth()->user()->name;
+            \App\Models\TaskComment::create([
+                'task_id' => $task->id,
+                'user_id' => auth()->id(),
+                'comment' => "🔄 status changed to **{$newLabel}** by **{$userName}** (on ending work timer)\n\n**Notes:** " . ($request->note ?? 'None'),
+            ]);
+        } elseif ($request->note) {
+            \App\Models\TaskComment::create([
+                'task_id' => $task->id,
+                'user_id' => auth()->id(),
+                'comment' => "⏱️ **Completed time log** — worked **{$mins} mins**\n\n**Notes:** {$request->note}",
+            ]);
+        }
 
         return back()->with('success', 'Task time recorded: ' . $mins . ' minutes.');
     }
