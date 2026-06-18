@@ -33,6 +33,125 @@ Route::get('/', function () {
     return auth()->check() ? redirect()->route('dashboard') : redirect()->route('login');
 });
 
+Route::get('/diagnose-storage', function () {
+    if (request()->query('secret') !== 'workex-storage-fix') {
+        abort(404);
+    }
+
+    $storageLinkPath = public_path('storage');
+    $storageRealPath = storage_path('app/public');
+    
+    $output = "<h1>Storage Link Diagnostics</h1>";
+    $output .= "<p><b>Public Storage Link Path:</b> {$storageLinkPath}</p>";
+    $output .= "<p><b>Actual Storage Directory Path:</b> {$storageRealPath}</p>";
+    
+    // Check actual directory
+    if (is_dir($storageRealPath)) {
+        $output .= "<p style='color: green;'>✔ Actual storage directory exists.</p>";
+        $output .= "<p>Actual storage directory permissions: " . substr(sprintf('%o', fileperms($storageRealPath)), -4) . "</p>";
+    } else {
+        $output .= "<p style='color: red;'>✘ Actual storage directory does NOT exist at {$storageRealPath}!</p>";
+        // Try to create it
+        if (mkdir($storageRealPath, 0755, true)) {
+            $output .= "<p style='color: green;'>✔ Created actual storage directory.</p>";
+        } else {
+            $output .= "<p style='color: red;'>✘ Failed to create actual storage directory.</p>";
+        }
+    }
+    
+    // Check reports directory
+    $reportsPath = $storageRealPath . '/reports';
+    if (is_dir($reportsPath)) {
+        $output .= "<p style='color: green;'>✔ 'reports' directory exists inside actual storage.</p>";
+        $output .= "<p>'reports' directory permissions: " . substr(sprintf('%o', fileperms($reportsPath)), -4) . "</p>";
+        
+        // List files in reports directory
+        $files = scandir($reportsPath);
+        $output .= "<p><b>Files in 'reports':</b></p><ul>";
+        foreach ($files as $file) {
+            if ($file !== '.' && $file !== '..') {
+                $filePath = $reportsPath . '/' . $file;
+                $perms = substr(sprintf('%o', fileperms($filePath)), -4);
+                $size = filesize($filePath);
+                $output .= "<li>{$file} (Size: {$size} bytes, Perms: {$perms})</li>";
+            }
+        }
+        $output .= "</ul>";
+    } else {
+        $output .= "<p style='color: orange;'>⚠ 'reports' directory does NOT exist yet. (It will be created when a report is saved).</p>";
+    }
+
+    // Check public storage link
+    if (file_exists($storageLinkPath) || is_link($storageLinkPath)) {
+        $isLink = is_link($storageLinkPath) ? 'Yes' : 'No';
+        $output .= "<p><b>Is public/storage a symbolic link?</b> {$isLink}</p>";
+        
+        if (is_link($storageLinkPath)) {
+            $target = readlink($storageLinkPath);
+            $output .= "<p><b>Link target:</b> {$target}</p>";
+            if (file_exists($target)) {
+                $output .= "<p style='color: green;'>✔ Link target exists and is accessible.</p>";
+            } else {
+                $output .= "<p style='color: red;'>✘ Link target does NOT exist! (Broken symbolic link)</p>";
+            }
+        } else {
+            $output .= "<p style='color: orange;'>⚠ public/storage exists but is a regular DIRECTORY/FILE, not a symbolic link! This will prevent proper symlinking.</p>";
+        }
+    } else {
+        $output .= "<p style='color: red;'>✘ public/storage does NOT exist at all.</p>";
+    }
+
+    // Actions
+    if (request()->has('fix')) {
+        $output .= "<h2>Fixing storage link...</h2>";
+        
+        // Remove existing link/directory if it exists
+        if (file_exists($storageLinkPath) || is_link($storageLinkPath)) {
+            $removed = @rmdir($storageLinkPath) || @unlink($storageLinkPath);
+            if ($removed) {
+                $output .= "<p style='color: green;'>✔ Successfully removed existing symbolic link/directory.</p>";
+            } else {
+                // If rmdir and unlink failed, it might be a real non-empty directory. Rename it to preserve files.
+                $backupPath = $storageLinkPath . '_backup_' . time();
+                if (rename($storageLinkPath, $backupPath)) {
+                    $output .= "<p style='color: green;'>✔ Successfully renamed public/storage directory to {$backupPath} to free up path.</p>";
+                } else {
+                    $output .= "<p style='color: red;'>✘ Failed to remove or rename public/storage directory.</p>";
+                }
+            }
+        }
+        
+        // Recreate storage link using PHP symlink
+        try {
+            if (symlink($storageRealPath, $storageLinkPath)) {
+                $output .= "<p style='color: green;'><b>✔ Successfully created symbolic link via PHP symlink()!</b></p>";
+            } else {
+                $output .= "<p style='color: red;'>✘ symlink() returned false.</p>";
+                // Try Artisan storage:link
+                \Illuminate\Support\Facades\Artisan::call('storage:link');
+                $artisanOutput = \Illuminate\Support\Facades\Artisan::output();
+                $output .= "<p>Artisan storage:link output: <pre>{$artisanOutput}</pre></p>";
+            }
+        } catch (\Throwable $e) {
+            $output .= "<p style='color: red;'>✘ Error: {$e->getMessage()}</p>";
+            // Try Artisan storage:link
+            try {
+                \Illuminate\Support\Facades\Artisan::call('storage:link');
+                $artisanOutput = \Illuminate\Support\Facades\Artisan::output();
+                $output .= "<p>Artisan storage:link output: <pre>{$artisanOutput}</pre></p>";
+            } catch (\Throwable $ex) {
+                $output .= "<p style='color: red;'>✘ Artisan storage:link also failed: {$ex->getMessage()}</p>";
+            }
+        }
+        
+        $output .= "<p><a href='/diagnose-storage?secret=workex-storage-fix' style='display:inline-block;padding:10px 20px;background:#007bff;color:#fff;text-decoration:none;border-radius:4px;'>Refresh Diagnosis</a></p>";
+    } else {
+        $output .= "<p><a href='/diagnose-storage?secret=workex-storage-fix&fix=1' style='display:inline-block;padding:10px 20px;background:#28a745;color:#fff;text-decoration:none;border-radius:4px;'>Attempt Auto-Fix (Recreate Symlink)</a></p>";
+    }
+    
+    return $output;
+});
+
 // Auth routes (Breeze)
 require __DIR__.'/auth.php';
 
