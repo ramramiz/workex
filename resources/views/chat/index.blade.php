@@ -811,6 +811,7 @@
                                 <span class="text-muted">Assignee:</span>
                                 <img src="" id="chat-active-avatar" class="avatar-circle ms-1" style="width: 18px; height: 18px; border-radius: 50%; object-fit: cover;">
                                 <span id="chat-active-assignee" class="fw-semibold text-dark fs-8">Assignee Name</span>
+                                <span id="chat-active-deadline" class="text-muted fs-8 ms-1"></span>
                             </div>
                         </div>
                     </div>
@@ -1096,6 +1097,86 @@
         </div>
     </div>
 </div>
+
+<!-- Edit Task Modal -->
+<div class="modal fade" id="editTaskModal" tabindex="-1" aria-labelledby="editTaskModalLabel" aria-hidden="true" style="z-index: 1060;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg text-start" style="border-radius: 16px;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark" id="editTaskModalLabel">Edit Task</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" id="editTaskModalForm" action="">
+                @csrf
+                @method('PUT')
+                <div class="modal-body pt-3">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-dark">Task Title <span class="text-danger">*</span></label>
+                        <input type="text" name="title" id="edit-task-title-input" class="form-control form-control-sm" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-dark">Task Description</label>
+                        <textarea name="description" id="edit-task-desc-input" class="form-control form-control-sm" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-dark">Project</label>
+                        <select name="project_id" id="edit-task-project-select" class="form-select form-select-sm">
+                            <option value="">-- No Project --</option>
+                            @foreach($projects as $p)
+                                <option value="{{ $p->id }}">{{ $p->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold text-dark">Assignee <span class="text-danger">*</span></label>
+                            <select name="assigned_to" id="edit-task-assignee-select" class="form-select form-select-sm" required>
+                                @foreach($employees as $emp)
+                                    <option value="{{ $emp->id }}">{{ $emp->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold text-dark">Priority <span class="text-danger">*</span></label>
+                            <select name="priority" id="edit-task-priority-select" class="form-select form-select-sm" required>
+                                <option value="low">Low</option>
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                                <option value="critical">Critical</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold text-dark">Status <span class="text-danger">*</span></label>
+                            <select name="status" id="edit-task-status-select" class="form-select form-select-sm" required>
+                                <option value="pending">Pending</option>
+                                <option value="in_progress">In Progress</option>
+                                <option value="review">Review</option>
+                                <option value="rework">Rework</option>
+                                <option value="rejected">Rejected</option>
+                                <option value="completed">Completed</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold text-dark">Deadline</label>
+                            <input type="date" name="deadline" id="edit-task-deadline-input" class="form-control form-control-sm">
+                        </div>
+                    </div>
+                    <div class="mb-3 mt-3">
+                        <label class="form-label fw-semibold text-dark">Estimated Hours</label>
+                        <input type="number" step="0.5" name="estimated_hours" id="edit-task-est-input" class="form-control form-control-sm" min="0">
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm px-4">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -1271,6 +1352,27 @@
     function openTaskCompletionModalChat(taskId) {
         document.getElementById('taskCompletionModalForm').action = `{{ url('tasks') }}/${taskId}/submit-completion`;
         const modal = new bootstrap.Modal(document.getElementById('taskCompletionModal'));
+        modal.show();
+    }
+
+    function openEditTaskModalChat() {
+        if (!currentTaskData) return;
+        
+        // Form action URL
+        document.getElementById('editTaskModalForm').action = `{{ url('tasks') }}/${currentTaskData.task_id}`;
+        
+        // Populate inputs
+        document.getElementById('edit-task-title-input').value = currentTaskData.task_title || '';
+        document.getElementById('edit-task-desc-input').value = currentTaskData.description || '';
+        document.getElementById('edit-task-project-select').value = currentTaskData.project_id || '';
+        document.getElementById('edit-task-assignee-select').value = currentTaskData.assignee_id || '';
+        document.getElementById('edit-task-priority-select').value = currentTaskData.priority_raw ? currentTaskData.priority_raw.toLowerCase() : 'medium';
+        document.getElementById('edit-task-status-select').value = currentTaskData.status || 'pending';
+        document.getElementById('edit-task-deadline-input').value = currentTaskData.deadline_raw || '';
+        document.getElementById('edit-task-est-input').value = currentTaskData.estimated_hours || 0;
+        
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('editTaskModal'));
         modal.show();
     }
 
@@ -1476,10 +1578,53 @@
                 // Save selected taskId to localStorage
                 localStorage.setItem('active_chat_task_id', taskId);
 
+                // Sync deadline bracket next to assignee
+                const deadlineEl = document.getElementById('chat-active-deadline');
+                if (deadlineEl) {
+                    if (data.deadline_days !== null && data.deadline_days !== undefined) {
+                        let daysText = '';
+                        if (data.deadline_days > 0) {
+                            daysText = `(${data.deadline_days} days remaining)`;
+                        } else if (data.deadline_days === 0) {
+                            daysText = `(today)`;
+                        } else {
+                            daysText = `(overdue ${Math.abs(data.deadline_days)} days)`;
+                        }
+                        deadlineEl.textContent = daysText;
+                        
+                        // If it is less than 3 days, show in red colour
+                        if (data.deadline_days < 3) {
+                            deadlineEl.classList.add('text-danger');
+                            deadlineEl.classList.remove('text-muted');
+                        } else {
+                            deadlineEl.classList.add('text-muted');
+                            deadlineEl.classList.remove('text-danger');
+                        }
+                        
+                        deadlineEl.classList.remove('d-none');
+                    } else {
+                        deadlineEl.textContent = '';
+                        deadlineEl.classList.add('d-none');
+                        deadlineEl.classList.remove('text-danger');
+                        deadlineEl.classList.add('text-muted');
+                    }
+                }
+
                 // Build header actions dropdown items (for mobile)
-                let dropdownHtml = '';
+                let dropdownHtml = `
+                    <li>
+                        <button type="button" class="dropdown-item py-2 d-flex align-items-center gap-2 text-dark fw-semibold" onclick="openEditTaskModalChat()">
+                            <i class="bi bi-pencil-fill fs-5"></i> Edit Task
+                        </button>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                `;
                 // Build header actions desktop buttons (for PC)
-                let desktopHtml = '';
+                let desktopHtml = `
+                    <button type="button" class="btn btn-outline-secondary btn-sm me-1" onclick="openEditTaskModalChat()" title="Edit Task">
+                        <i class="bi bi-pencil-fill"></i>
+                    </button>
+                `;
 
                 if (data.active_log_id) {
                     dropdownHtml += `

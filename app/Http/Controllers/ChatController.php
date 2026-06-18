@@ -33,8 +33,11 @@ class ChatController extends Controller
             ->orderBy('updated_at', 'desc')
             ->get();
             
+        $projects = \App\Models\Project::when(!$user->isAdminOrAbove(), fn($q) => $q->where('team_leader_id', $user->id))->get();
+        $employees = \App\Models\User::whereHas('role', fn($q) => $q->whereIn('slug', ['employee', 'team-leader']))->where('status', 'active')->get();
+            
         $noSidebar = true;
-        return view('chat.index', compact('tasks', 'noSidebar'));
+        return view('chat.index', compact('tasks', 'projects', 'employees', 'noSidebar'));
     }
 
     public function show(Task $task)
@@ -94,12 +97,19 @@ class ChatController extends Controller
             ->where('status', 'running')
             ->exists();
 
+        $deadlineDays = null;
+        if ($task->deadline) {
+            $deadlineDays = now()->startOfDay()->diffInDays($task->deadline, false);
+        }
+
         return response()->json([
             'html' => $html,
             'latest_time' => $feed->count() > 0 ? $feed->last()->created_at->toISOString() : now()->toISOString(),
             'task_title' => $task->title,
             'project_name' => $task->project->name ?? 'No Project',
+            'project_id' => $task->project_id,
             'assignee_name' => $task->assignee->name ?? 'Unassigned',
+            'assignee_id' => $task->assigned_to,
             'assignee_avatar' => $task->avatar_url,
             'task_url' => route('tasks.show', $task),
             'task_id' => $task->id,
@@ -110,7 +120,11 @@ class ChatController extends Controller
             'is_working' => $isWorking,
             'description' => $task->description ?? 'No description provided.',
             'priority' => ucfirst($task->priority),
+            'priority_raw' => $task->priority,
             'deadline' => $task->deadline ? $task->deadline->format('M d, Y') : 'No deadline',
+            'deadline_raw' => $task->deadline ? $task->deadline->format('Y-m-d') : '',
+            'deadline_days' => $deadlineDays,
+            'estimated_hours' => $task->estimated_hours,
             'creator_name' => $task->creator->name ?? 'System',
             'creator_avatar' => $task->creator ? $task->creator->avatar_url : 'https://ui-avatars.com/api/?name=System',
             'status_text' => ucfirst(str_replace('_', ' ', $task->status)),

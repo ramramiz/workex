@@ -196,6 +196,10 @@ class TaskController extends Controller
             ]);
         }
 
+        if (str_contains(url()->previous(), '/chat')) {
+            return redirect()->route('chat.index')->with('success', 'Task updated!');
+        }
+
         return redirect()->route('tasks.show', $task)->with('success', 'Task updated!');
     }
 

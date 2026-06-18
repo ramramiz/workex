@@ -255,5 +255,25 @@ class ChatWorkspaceTest extends TestCase
         $response->assertStatus(200);
         $this->assertTrue($response->json('is_working'));
     }
+
+    public function test_chat_show_returns_deadline_days()
+    {
+        // Task with no deadline
+        $response = $this->actingAs($this->superAdmin)
+            ->get(route('chat.show', $this->assignedTask));
+        $response->assertStatus(200);
+        $this->assertNull($response->json('deadline_days'));
+
+        // Task with a deadline 5 days from now
+        $this->assignedTask->update([
+            'deadline' => now()->addDays(5)->format('Y-m-d'),
+        ]);
+
+        $response = $this->actingAs($this->superAdmin)
+            ->get(route('chat.show', $this->assignedTask));
+        $response->assertStatus(200);
+        $this->assertEquals(5, $response->json('deadline_days'));
+    }
 }
+
 
