@@ -100,7 +100,7 @@ class ChatController extends Controller
             'task_title' => $task->title,
             'project_name' => $task->project->name ?? 'No Project',
             'assignee_name' => $task->assignee->name ?? 'Unassigned',
-            'assignee_avatar' => $task->assignee ? $task->assignee->avatar_url : 'https://ui-avatars.com/api/?name=Unassigned',
+            'assignee_avatar' => $task->avatar_url,
             'task_url' => route('tasks.show', $task),
             'task_id' => $task->id,
             'store_url' => route('tasks.comments.store', $task),
@@ -108,6 +108,13 @@ class ChatController extends Controller
             'status' => $task->status,
             'is_buttons_disabled' => $isButtonsDisabled,
             'is_working' => $isWorking,
+            'description' => $task->description ?? 'No description provided.',
+            'priority' => ucfirst($task->priority),
+            'deadline' => $task->deadline ? $task->deadline->format('M d, Y') : 'No deadline',
+            'creator_name' => $task->creator->name ?? 'System',
+            'creator_avatar' => $task->creator ? $task->creator->avatar_url : 'https://ui-avatars.com/api/?name=System',
+            'status_text' => ucfirst(str_replace('_', ' ', $task->status)),
+            'created_at' => $task->created_at->format('M d, Y h:i A'),
         ]);
     }
 }

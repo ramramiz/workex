@@ -55,4 +55,21 @@ class Task extends Model
             default => 'secondary',
         };
     }
+
+    public function getAvatarUrlAttribute(): string
+    {
+        if (str_starts_with($this->title, 'Room Calling: ')) {
+            $roomName = substr($this->title, strlen('Room Calling: '));
+            $colors = ['f43f5e', 'ec4899', 'd946ef', 'a855f7', '8b5cf6', '6366f1', '3b82f6', '0ea5e9', '06b6d4', '14b8a6', '10b981', '22c55e', '84cc16', 'eab308', 'f97316'];
+            $hash = crc32($roomName);
+            $color = $colors[abs($hash) % count($colors)];
+            return 'https://ui-avatars.com/api/?name=' . urlencode($roomName) . '&background=' . $color . '&color=fff';
+        }
+
+        if ($this->assignee) {
+            return $this->assignee->avatar_url;
+        }
+
+        return 'https://ui-avatars.com/api/?name=Unassigned&background=cbd5e1&color=64748b';
+    }
 }

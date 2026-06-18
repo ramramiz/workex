@@ -16,6 +16,7 @@
         border-radius: 16px;
         overflow: hidden;
         border: 1px solid var(--boarder-color);
+        position: relative;
     }
     .chat-sidebar {
         width: 350px;
@@ -565,6 +566,114 @@
         background-color: #ffffff !important;
         color: #212529 !important;
     }
+
+    @media (max-width: 767.98px) {
+        .chat-sidebar {
+            width: 100% !important;
+            border-right: none !important;
+        }
+        .chat-main {
+            width: 100% !important;
+            flex: none !important;
+        }
+        
+        /* If no chat is active, hide main window */
+        .chat-layout:not(.chat-show-main) .chat-sidebar {
+            display: flex !important;
+        }
+        .chat-layout:not(.chat-show-main) .chat-main {
+            display: none !important;
+        }
+
+        /* If chat is active, hide sidebar and show main window */
+        .chat-layout.chat-show-main .chat-sidebar {
+            display: none !important;
+        }
+        .chat-layout.chat-show-main .chat-main {
+            display: flex !important;
+        }
+        
+        /* Adjust layout spacing for mobile */
+        .chat-layout {
+            height: calc(100vh - var(--topnav-height) - 16px);
+            border-radius: 0;
+            border: none;
+        }
+    }
+
+    .chat-header-desktop-actions {
+        display: flex !important;
+        align-items: center;
+        gap: 8px;
+    }
+    .chat-header-mobile-actions {
+        display: none !important;
+    }
+
+    @media (max-width: 767.98px) {
+        .chat-header-desktop-actions {
+            display: none !important;
+        }
+        .chat-header-mobile-actions {
+            display: block !important;
+        }
+    }
+
+    .hover-bg-light-circle {
+        transition: background-color 0.2s ease;
+    }
+    .hover-bg-light-circle:hover {
+        background-color: rgba(0, 0, 0, 0.05) !important;
+    }
+    .chat-header-title a {
+        color: #111b21 !important;
+        text-decoration: none;
+    }
+    .chat-header-title a:hover {
+        color: var(--primary) !important;
+        text-decoration: underline !important;
+    }
+
+    /* WhatsApp Task Info Sidebar Styles */
+    .chat-info-sidebar {
+        width: 320px;
+        border-left: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        background: #ffffff;
+        flex-shrink: 0;
+        height: 100%;
+        animation: slide-in-info 0.2s ease-out;
+    }
+    .chat-info-header {
+        height: 72px;
+        flex-shrink: 0;
+    }
+    .chat-info-body {
+        flex: 1;
+        overflow-y: auto;
+    }
+    .uppercase-title {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    @keyframes slide-in-info {
+        from { transform: translateX(100%); }
+        to { transform: translateX(0); }
+    }
+    @media (max-width: 767.98px) {
+        .chat-info-sidebar {
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 100% !important;
+            height: 100% !important;
+            z-index: 1020;
+            border-left: none !important;
+        }
+    }
 </style>
 @endpush
 
@@ -590,11 +699,7 @@
                        data-project="{{ strtolower($t->project->name ?? '') }}"
                        onclick="selectTask({{ $t->id }})">
                         <div class="position-relative" style="margin-left: 5px;">
-                            @if($t->assignee)
-                                <img src="{{ $t->assignee->avatar_url }}" alt="" class="avatar-circle">
-                            @else
-                                <img src="https://ui-avatars.com/api/?name=Unassigned&background=cbd5e1&color=64748b" alt="" class="avatar-circle">
-                            @endif
+                            <img src="{{ $t->avatar_url }}" alt="" class="avatar-circle">
                             @php
                                 $badgeClass = $t->priority_badge;
                             @endphp
@@ -605,6 +710,10 @@
                                 <span class="position-absolute bottom-0 end-0 bg-danger text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 18px; height: 18px; border: 2px solid var(--card-bg); font-size: 10px;" title="Bug">
                                     <i class="bi bi-bug-fill"></i>
                                 </span>
+                            @elseif(str_starts_with(strtolower($t->title), 'room calling:'))
+                                <span class="position-absolute bottom-0 end-0 bg-success text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 18px; height: 18px; border: 2px solid var(--card-bg); font-size: 10px;" title="Room Calling">
+                                    <i class="bi bi-telephone-fill" style="font-size: 9px;"></i>
+                                </span>
                             @endif
                         </div>
                         <div class="task-info">
@@ -612,6 +721,8 @@
                                 <div class="task-title" title="{{ $t->title }}">
                                     @if(str_starts_with(strtolower($t->title), 'bug:'))
                                         <i class="bi bi-bug-fill text-danger me-1"></i>
+                                    @elseif(str_starts_with(strtolower($t->title), 'room calling:'))
+                                        <i class="bi bi-telephone-fill text-success me-1"></i>
                                     @endif
                                     {{ $t->title }}
                                 </div>
@@ -683,24 +794,51 @@
             <div class="d-none flex-column h-100" id="chat-content-container">
                 <!-- Header -->
                 <div class="chat-header">
-                    <div class="chat-header-info">
-                        <h6 class="chat-header-title mb-0" id="chat-active-title">Task Title</h6>
-                        <div class="chat-header-subtitle d-flex align-items-center gap-1 flex-wrap">
-                            <span id="chat-active-project" class="text-primary fw-medium">Project Name</span>
-                            <span class="text-muted mx-1">•</span>
-                            <span class="text-muted">Assignee:</span>
-                            <img src="" id="chat-active-avatar" class="avatar-circle ms-1" style="width: 18px; height: 18px; border-radius: 50%; object-fit: cover;">
-                            <span id="chat-active-assignee" class="fw-semibold text-dark fs-8">Assignee Name</span>
+                    <div class="d-flex align-items-center min-width-0">
+                        <button type="button" class="btn btn-link text-dark p-0 me-3 d-md-none" onclick="goBackToChatList()" title="Back to chats">
+                            <i class="bi bi-arrow-left fs-4"></i>
+                        </button>
+                        <div class="chat-header-info">
+                            <h6 class="chat-header-title mb-0">
+                                <a href="javascript:void(0);" id="chat-active-title" onclick="toggleInfoSidebar(event)" class="text-decoration-none text-dark fw-bold">Task Title</a>
+                            </h6>
+                            <div class="chat-header-subtitle d-flex align-items-center gap-1 flex-wrap">
+                                <span id="chat-active-project" class="text-primary fw-medium">Project Name</span>
+                                <span class="text-muted mx-1">•</span>
+                                <span class="text-muted">Assignee:</span>
+                                <img src="" id="chat-active-avatar" class="avatar-circle ms-1" style="width: 18px; height: 18px; border-radius: 50%; object-fit: cover;">
+                                <span id="chat-active-assignee" class="fw-semibold text-dark fs-8">Assignee Name</span>
+                            </div>
                         </div>
                     </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <!-- Dynamic task action buttons container -->
-                        <div id="chat-header-actions" class="d-flex align-items-center gap-1"></div>
+                    <div class="d-flex align-items-center gap-1">
+                        <!-- Desktop action buttons container -->
+                        <div id="chat-header-desktop-actions" class="chat-header-desktop-actions me-2"></div>
 
-                        <a href="#" id="chat-active-details-link" class="btn btn-outline-secondary btn-sm" target="_blank" title="View Task Details">
-                            <i class="bi bi-box-arrow-up-right me-1"></i> Details
-                        </a>
+                        <!-- Search Icon Toggle Button -->
+                        <button class="btn btn-link text-muted p-1 hover-bg-light-circle" type="button" onclick="toggleChatSearch()" title="Search messages" style="border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: transparent; border: none; text-decoration: none;">
+                            <i class="bi bi-search fs-5"></i>
+                        </button>
+
+                        <!-- Dropdown Menu for Task Actions (Mobile only) -->
+                        <div class="dropdown chat-header-mobile-actions">
+                            <button class="btn btn-link text-muted p-1 hover-bg-light-circle" type="button" id="chatHeaderDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: transparent; border: none; text-decoration: none;">
+                                <i class="bi bi-chevron-down fs-5"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow border-0" aria-labelledby="chatHeaderDropdown" style="border-radius: 12px; min-width: 180px; padding: 6px; z-index: 1050;" id="chat-header-dropdown-menu">
+                                <!-- Populated dynamically -->
+                            </ul>
+                        </div>
                     </div>
+                </div>
+
+                <!-- Chat Message Search Bar (WhatsApp Style) -->
+                <div class="chat-search-bar d-none" id="chat-message-search-bar" style="background-color: #f0f2f5; border-bottom: 1px solid #e2e8f0; padding: 8px 16px; display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                    <div class="input-group input-group-sm" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #cbd5e1; padding: 2px 8px; flex: 1;">
+                        <span class="input-group-text bg-transparent border-0 text-muted p-1" style="box-shadow: none;"><i class="bi bi-search"></i></span>
+                        <input type="text" id="chat-message-search-input" class="form-control bg-transparent border-0 shadow-none p-1" placeholder="Search in this chat..." style="font-size: 13px; box-shadow: none !important;">
+                    </div>
+                    <button type="button" class="btn-close btn-close-sm shadow-none" onclick="toggleChatSearch()" style="font-size: 10px; box-shadow: none;"></button>
                 </div>
 
                 <!-- Chat Body (Messages) -->
@@ -734,6 +872,80 @@
                 </form>
             </div>
 
+        </div>
+
+        <!-- Right Sidebar: Task Information Panel (WhatsApp style) -->
+        <div class="chat-info-sidebar d-none" id="chat-info-sidebar">
+            <div class="chat-info-header d-flex align-items-center justify-content-between p-3 border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-link text-dark p-0 me-1" onclick="closeInfoSidebar()" title="Close details" style="border: none; background: transparent; text-decoration: none;">
+                        <i class="bi bi-x-lg fs-5"></i>
+                    </button>
+                    <h6 class="mb-0 fw-bold">Task Info</h6>
+                </div>
+            </div>
+            <div class="chat-info-body p-4 overflow-y-auto">
+                <div class="text-center mb-4">
+                    <img src="" id="info-task-avatar" class="avatar-circle mb-3" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; box-shadow: 0 4px 10px rgba(0,0,0,0.08);">
+                    <h5 class="fw-bold text-dark mb-1" id="info-task-title">Task Title</h5>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 fs-8" id="info-task-project">Project Name</span>
+                </div>
+                
+                <hr class="my-4 border-light">
+                
+                <div class="mb-4">
+                    <span class="fw-bold text-muted uppercase-title mb-2 d-block">Work Description</span>
+                    <div class="p-3 bg-light rounded-3 text-dark fs-7" id="info-task-desc" style="white-space: pre-wrap; line-height: 1.5; min-height: 60px;">
+                        Task Description goes here...
+                    </div>
+                </div>
+
+                <hr class="my-4 border-light">
+
+                <div class="mb-4">
+                    <span class="fw-bold text-muted uppercase-title mb-3 d-block">Task Details</span>
+                    <div class="d-flex flex-column gap-3 fs-7">
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Status:</span>
+                            <span class="fw-semibold" id="info-task-status">In Progress</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Priority:</span>
+                            <span class="fw-semibold" id="info-task-priority">Medium</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Deadline:</span>
+                            <span class="fw-semibold" id="info-task-deadline">Dec 31, 2026</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Created At:</span>
+                            <span class="fw-semibold text-end" id="info-task-created">Dec 31, 2026</span>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-4 border-light">
+
+                <div>
+                    <span class="fw-bold text-muted uppercase-title mb-3 d-block">People</span>
+                    
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <img src="" id="info-task-assignee-avatar" class="avatar-circle" style="width: 38px; height: 38px; border-radius: 50%; object-fit: cover;">
+                        <div>
+                            <div class="fw-semibold text-dark fs-7" id="info-task-assignee-name">Assignee Name</div>
+                            <div class="text-muted fs-8">Assignee</div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-3">
+                        <img src="" id="info-task-creator-avatar" class="avatar-circle" style="width: 38px; height: 38px; border-radius: 50%; object-fit: cover;">
+                        <div>
+                            <div class="fw-semibold text-dark fs-7" id="info-task-creator-name">Creator Name</div>
+                            <div class="text-muted fs-8">Creator</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
     </div>
@@ -889,7 +1101,159 @@
     let latestFeedTime = null;
     let pollInterval = null;
     let activeStoreUrl = '';
+    let currentTaskData = null;
     const isLeaderOrAbove = {{ (auth()->user()->isSuperAdmin() || auth()->user()->isTeamLeader()) ? 'true' : 'false' }};
+
+    function toggleInfoSidebar(e) {
+        if (e) e.preventDefault();
+        const sidebar = document.getElementById('chat-info-sidebar');
+        if (!sidebar) return;
+        if (sidebar.classList.contains('d-none')) {
+            openInfoSidebar();
+        } else {
+            closeInfoSidebar();
+        }
+    }
+
+    function openInfoSidebar() {
+        const sidebar = document.getElementById('chat-info-sidebar');
+        if (!sidebar || !currentTaskData) return;
+
+        // Populate fields
+        document.getElementById('info-task-avatar').src = currentTaskData.assignee_avatar;
+        document.getElementById('info-task-title').textContent = currentTaskData.task_title;
+        document.getElementById('info-task-project').textContent = currentTaskData.project_name;
+        document.getElementById('info-task-desc').textContent = currentTaskData.description;
+        document.getElementById('info-task-status').textContent = currentTaskData.status_text;
+        document.getElementById('info-task-priority').textContent = currentTaskData.priority;
+        document.getElementById('info-task-deadline').textContent = currentTaskData.deadline;
+        document.getElementById('info-task-created').textContent = currentTaskData.created_at;
+        
+        document.getElementById('info-task-assignee-avatar').src = currentTaskData.assignee_avatar;
+        document.getElementById('info-task-assignee-name').textContent = currentTaskData.assignee_name;
+        
+        document.getElementById('info-task-creator-avatar').src = currentTaskData.creator_avatar;
+        document.getElementById('info-task-creator-name').textContent = currentTaskData.creator_name;
+
+        sidebar.classList.remove('d-none');
+    }
+
+    function closeInfoSidebar() {
+        const sidebar = document.getElementById('chat-info-sidebar');
+        if (sidebar) {
+            sidebar.classList.add('d-none');
+        }
+    }
+
+    function toggleChatSearch() {
+        const searchBar = document.getElementById('chat-message-search-bar');
+        if (!searchBar) return;
+        
+        if (searchBar.classList.contains('d-none')) {
+            searchBar.classList.remove('d-none');
+            searchBar.classList.add('d-flex');
+            document.getElementById('chat-message-search-input').focus();
+        } else {
+            searchBar.classList.remove('d-flex');
+            searchBar.classList.add('d-none');
+            document.getElementById('chat-message-search-input').value = '';
+            filterChatMessages('');
+        }
+    }
+
+    function filterChatMessages(query) {
+        query = query.toLowerCase().trim();
+        const chatRows = document.querySelectorAll('#chat-messages-container .chat-row');
+        
+        chatRows.forEach(row => {
+            if (!query) {
+                row.classList.remove('d-none');
+                removeHighlighting(row);
+                return;
+            }
+
+            const commentEl = row.querySelector('.chat-text');
+            const noteEl = row.querySelector('.time-log-note-content');
+            
+            let commentText = commentEl ? commentEl.textContent : '';
+            let noteText = noteEl ? noteEl.textContent : '';
+            
+            const matchesComment = commentText.toLowerCase().includes(query);
+            const matchesNote = noteText.toLowerCase().includes(query);
+            
+            if (matchesComment || matchesNote) {
+                row.classList.remove('d-none');
+                if (matchesComment && commentEl) {
+                    highlightText(commentEl, query);
+                }
+                if (matchesNote && noteEl) {
+                    highlightText(noteEl, query);
+                }
+            } else {
+                row.classList.add('d-none');
+            }
+        });
+    }
+
+    function highlightText(element, query) {
+        if (element.dataset.originalHtml) {
+            element.innerHTML = element.dataset.originalHtml;
+        } else {
+            element.dataset.originalHtml = element.innerHTML;
+        }
+
+        const escapedQuery = query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+        const walk = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null, false);
+        let node;
+        const matches = [];
+        while (node = walk.nextNode()) {
+            if (node.nodeValue.toLowerCase().includes(query)) {
+                matches.push(node);
+            }
+        }
+        
+        matches.forEach(textNode => {
+            const parent = textNode.parentNode;
+            if (parent && (parent.tagName !== 'SPAN' || !parent.classList.contains('chat-highlight'))) {
+                const text = textNode.nodeValue;
+                const regex = new RegExp(`(${escapedQuery})`, 'gi');
+                const fragment = document.createDocumentFragment();
+                let lastIndex = 0;
+                let match;
+                
+                while (match = regex.exec(text)) {
+                    const before = text.substring(lastIndex, match.index);
+                    if (before) fragment.appendChild(document.createTextNode(before));
+                    
+                    const span = document.createElement('span');
+                    span.className = 'chat-highlight bg-warning text-dark px-1 rounded';
+                    span.appendChild(document.createTextNode(match[0]));
+                    fragment.appendChild(span);
+                    
+                    lastIndex = regex.lastIndex;
+                }
+                
+                const after = text.substring(lastIndex);
+                if (after) fragment.appendChild(document.createTextNode(after));
+                
+                parent.replaceChild(fragment, textNode);
+            }
+        });
+    }
+
+    function removeHighlighting(row) {
+        const commentEl = row.querySelector('.chat-text');
+        const noteEl = row.querySelector('.time-log-note-content');
+        
+        if (commentEl && commentEl.dataset.originalHtml) {
+            commentEl.innerHTML = commentEl.dataset.originalHtml;
+            delete commentEl.dataset.originalHtml;
+        }
+        if (noteEl && noteEl.dataset.originalHtml) {
+            noteEl.innerHTML = noteEl.dataset.originalHtml;
+            delete noteEl.dataset.originalHtml;
+        }
+    }
 
     function openEndTaskModalChat(logId, currentStatus) {
         document.getElementById('endTaskModalForm').action = `{{ url('work-timer/end-task') }}/${logId}`;
@@ -943,6 +1307,13 @@
                 }, 100);
             }
         }
+
+        const chatSearchInput = document.getElementById('chat-message-search-input');
+        if (chatSearchInput) {
+            chatSearchInput.addEventListener('input', function() {
+                filterChatMessages(this.value);
+            });
+        }
     });
 
     // Search filter
@@ -960,8 +1331,43 @@
         });
     });
 
+    function goBackToChatList() {
+        const layout = document.querySelector('.chat-layout');
+        if (layout) {
+            layout.classList.remove('chat-show-main');
+        }
+        
+        closeInfoSidebar();
+        
+        // Clear active task list selection highlight
+        document.querySelectorAll('.chat-task-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        
+        // Remove task id from local storage
+        localStorage.removeItem('active_chat_task_id');
+        
+        // Clear activeTaskId so it can be reselected
+        activeTaskId = null;
+        
+        if (pollInterval) {
+            clearInterval(pollInterval);
+        }
+    }
+
     function selectTask(taskId) {
         if (activeTaskId === taskId) return;
+        
+        // Hide search bar when switching chats
+        const searchBar = document.getElementById('chat-message-search-bar');
+        if (searchBar) {
+            searchBar.classList.remove('d-flex');
+            searchBar.classList.add('d-none');
+        }
+        const searchInput = document.getElementById('chat-message-search-input');
+        if (searchInput) {
+            searchInput.value = '';
+        }
         
         // Clear old interval
         if (pollInterval) {
@@ -975,6 +1381,12 @@
             item.classList.remove('active');
         });
         document.getElementById(`chat-task-item-${taskId}`).classList.add('active');
+
+        // Add class to trigger mobile transition to active chat
+        const layout = document.querySelector('.chat-layout');
+        if (layout) {
+            layout.classList.add('chat-show-main');
+        }
 
         // Show window, hide placeholder
         document.getElementById('chat-no-task-placeholder').classList.add('d-none');
@@ -995,10 +1407,20 @@
         fetch(`{{ url('chat/tasks') }}/${taskId}?_t=${new Date().getTime()}`)
             .then(response => response.json())
             .then(data => {
+                currentTaskData = data;
+
+                // Update info sidebar if it's currently open
+                const sidebar = document.getElementById('chat-info-sidebar');
+                if (sidebar && !sidebar.classList.contains('d-none')) {
+                    openInfoSidebar();
+                }
+
                 // Populate headers
                 let titleHtml = '';
                 if (data.task_title.toLowerCase().startsWith('bug:')) {
                     titleHtml = `<i class="bi bi-bug-fill text-danger me-1"></i>${data.task_title}`;
+                } else if (data.task_title.toLowerCase().startsWith('room calling:')) {
+                    titleHtml = `<i class="bi bi-telephone-fill text-success me-1"></i>${data.task_title}`;
                 } else {
                     titleHtml = data.task_title;
                 }
@@ -1035,7 +1457,7 @@
                 document.getElementById('chat-active-project').textContent = data.project_name;
                 document.getElementById('chat-active-assignee').textContent = data.assignee_name;
                 document.getElementById('chat-active-avatar').src = data.assignee_avatar;
-                document.getElementById('chat-active-details-link').href = data.task_url;
+                document.getElementById('chat-active-title').href = data.task_url;
                 
                 // Form action
                 document.getElementById('chat-form').action = data.store_url;
@@ -1044,30 +1466,55 @@
                 // Save selected taskId to localStorage
                 localStorage.setItem('active_chat_task_id', taskId);
 
-                // Build header actions
-                let actionsHtml = '';
+                // Build header actions dropdown items (for mobile)
+                let dropdownHtml = '';
+                // Build header actions desktop buttons (for PC)
+                let desktopHtml = '';
 
                 if (data.active_log_id) {
-                    actionsHtml += `
-                        <button type="button" class="btn btn-danger btn-sm me-1" onclick="openEndTaskModalChat(${data.active_log_id}, '${data.status}')" ${data.is_buttons_disabled ? 'disabled' : ''}>
+                    dropdownHtml += `
+                        <li>
+                            <button type="button" class="dropdown-item py-2 d-flex align-items-center gap-2 text-danger fw-semibold" onclick="openEndTaskModalChat(${data.active_log_id}, '${data.status}')" ${data.is_buttons_disabled ? 'disabled' : ''}>
+                                <i class="bi bi-stop-fill fs-5"></i> End Work
+                            </button>
+                        </li>
+                    `;
+                    desktopHtml += `
+                        <button type="button" class="btn btn-danger btn-sm" onclick="openEndTaskModalChat(${data.active_log_id}, '${data.status}')" ${data.is_buttons_disabled ? 'disabled' : ''}>
                             <i class="bi bi-stop-fill me-1"></i> End Work
                         </button>
                     `;
                 } else {
-                    actionsHtml += `
-                        <form method="POST" action="{{ url('work-timer/start-task') }}/${taskId}" class="d-inline me-1" onsubmit="this.querySelector('button').disabled = true;">
+                    dropdownHtml += `
+                        <li>
+                            <form method="POST" action="{{ url('work-timer/start-task') }}/${taskId}" onsubmit="this.querySelector('button').disabled = true;">
+                                @csrf
+                                <button type="submit" class="dropdown-item py-2 d-flex align-items-center gap-2 text-success fw-semibold" ${data.is_buttons_disabled ? 'disabled' : ''}>
+                                    <i class="bi bi-play-fill fs-5"></i> Start Work
+                                </button>
+                            </form>
+                        </li>
+                        <li>
+                            <button type="button" class="dropdown-item py-2 d-flex align-items-center gap-2 text-primary fw-semibold" onclick="openTaskCompletionModalChat(${taskId})" ${data.is_buttons_disabled ? 'disabled' : ''}>
+                                <i class="bi bi-check2-circle fs-5"></i> Complete
+                            </button>
+                        </li>
+                    `;
+                    desktopHtml += `
+                        <form method="POST" action="{{ url('work-timer/start-task') }}/${taskId}" class="d-inline" onsubmit="this.querySelector('button').disabled = true;">
                             @csrf
                             <button type="submit" class="btn btn-success btn-sm" ${data.is_buttons_disabled ? 'disabled' : ''}>
                                 <i class="bi bi-play-fill me-1"></i> Start Work
                             </button>
                         </form>
-                        <button type="button" class="btn btn-primary btn-sm me-1" onclick="openTaskCompletionModalChat(${taskId})" ${data.is_buttons_disabled ? 'disabled' : ''}>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="openTaskCompletionModalChat(${taskId})" ${data.is_buttons_disabled ? 'disabled' : ''}>
                             <i class="bi bi-check2-circle me-1"></i> Complete
                         </button>
                     `;
                 }
 
-                document.getElementById('chat-header-actions').innerHTML = actionsHtml;
+                document.getElementById('chat-header-dropdown-menu').innerHTML = dropdownHtml;
+                document.getElementById('chat-header-desktop-actions').innerHTML = desktopHtml;
 
                 // Remove unread count badge in sidebar
                 const badge = document.getElementById(`unread-badge-${taskId}`);
