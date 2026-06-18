@@ -136,6 +136,9 @@
     .chat-header-info {
         min-width: 0;
     }
+    .min-width-0 {
+        min-width: 0 !important;
+    }
     .chat-header-title {
         font-size: 15px;
         font-weight: 600;
@@ -1417,12 +1420,19 @@
 
                 // Populate headers
                 let titleHtml = '';
-                if (data.task_title.toLowerCase().startsWith('bug:')) {
-                    titleHtml = `<i class="bi bi-bug-fill text-danger me-1"></i>${data.task_title}`;
-                } else if (data.task_title.toLowerCase().startsWith('room calling:')) {
-                    titleHtml = `<i class="bi bi-telephone-fill text-success me-1"></i>${data.task_title}`;
+                let displayTitle = data.task_title;
+                if (window.innerWidth <= 767.98) {
+                    if (displayTitle.length > 25) {
+                        displayTitle = displayTitle.substring(0, 25) + '...';
+                    }
+                }
+
+                if (displayTitle.toLowerCase().startsWith('bug:')) {
+                    titleHtml = `<i class="bi bi-bug-fill text-danger me-1"></i>${displayTitle}`;
+                } else if (displayTitle.toLowerCase().startsWith('room calling:')) {
+                    titleHtml = `<i class="bi bi-telephone-fill text-success me-1"></i>${displayTitle}`;
                 } else {
-                    titleHtml = data.task_title;
+                    titleHtml = displayTitle;
                 }
 
                 if (isLeaderOrAbove && data.is_working) {
