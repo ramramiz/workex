@@ -187,7 +187,11 @@
                         <div style="font-size:13px;font-weight:600;color:#10b981;">{{ $session->total_hours }}</div>
                         <div style="font-size:11px;color:#94a3b8;">worked</div>
                     </div>
-                    <span class="badge rounded-pill" style="background:#d1fae5;color:#065f46;font-size:11px;">Working</span>
+                    @if($session->timeLogs->isNotEmpty())
+                        <span class="badge rounded-pill" style="background:#d1fae5;color:#065f46;font-size:11px;">Working</span>
+                    @else
+                        <span class="badge rounded-pill" style="background:#fef3c7;color:#92400e;font-size:11px;">Idle</span>
+                    @endif
                 </div>
                 @empty
                 <div class="text-center py-5 text-muted">

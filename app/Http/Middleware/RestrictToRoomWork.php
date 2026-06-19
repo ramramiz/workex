@@ -12,6 +12,10 @@ class RestrictToRoomWork
     {
         $user = auth()->user();
 
+        if ($user) {
+            $this->cleanupStaleSessions();
+        }
+
         if ($user && $user->company_id) {
             $company = \App\Models\Company::find($user->company_id);
             if ($company && $company->status === 'suspended') {
@@ -144,5 +148,140 @@ class RestrictToRoomWork
         }
 
         return $next($request);
+    }
+
+    /**
+     * Automatically completes active/paused work sessions from previous days.
+     */
+    private function cleanupStaleSessions(): void
+    {
+        // Limit cleanup run to once every 5 minutes to avoid DB overhead
+        if (\Illuminate\Support\Facades\Cache::has('last_stale_session_cleanup')) {
+            return;
+        }
+
+        \Illuminate\Support\Facades\Cache::put('last_stale_session_cleanup', true, now()->addMinutes(5));
+
+        $today = \Carbon\Carbon::today();
+
+        // 1. Clean up stale standard WorkSessions
+        $staleWorkSessions = \App\Models\WorkSession::where('status', 'active')
+            ->whereDate('date', '<', $today)
+            ->get();
+
+        foreach ($staleWorkSessions as $session) {
+            // Find running task logs for this session and end them
+            $runningLogs = \App\Models\TaskTimeLog::where('work_session_id', $session->id)
+                ->where('status', 'running')
+                ->get();
+                
+            foreach ($runningLogs as $log) {
+                $log->update([
+                    'ended_at' => $log->started_at,
+                    'total_minutes' => 0,
+                    'status' => 'ended',
+                    'note' => 'Auto-ended by system (stale task timer)',
+                ]);
+            }
+            
+            // Find the last ended task log to estimate when they actually left
+            $lastLog = \App\Models\TaskTimeLog::where('work_session_id', $session->id)
+                ->where('status', 'ended')
+                ->orderBy('ended_at', 'desc')
+                ->first();
+                
+            $sessionEnd = $session->started_at->addHours(8);
+            if ($lastLog && $lastLog->ended_at && $lastLog->ended_at->isSameDay($session->date)) {
+                $sessionEnd = $lastLog->ended_at;
+            }
+            
+            $dayEnd = \Carbon\Carbon::parse($session->date)->endOfDay();
+            if ($sessionEnd->gt($dayEnd)) {
+                $sessionEnd = $dayEnd;
+            }
+            
+            $totalMins = max(0, $session->started_at->diffInMinutes($sessionEnd));
+            $productiveMins = \App\Models\TaskTimeLog::where('work_session_id', $session->id)->sum('total_minutes');
+            
+            $session->update([
+                'ended_at' => $sessionEnd,
+                'total_minutes' => $totalMins,
+                'productive_minutes' => $productiveMins,
+                'status' => 'ended',
+                'work_done' => 'Auto-closed by system (forgot to clock out)',
+            ]);
+            
+            $attendance = \App\Models\Attendance::where('user_id', $session->user_id)
+                ->whereDate('date', $session->date)
+                ->first();
+                
+            if ($attendance) {
+                $attendance->update([
+                    'logout_time' => $sessionEnd,
+                    'total_minutes' => $totalMins,
+                ]);
+            }
+        }
+
+        // 2. Clean up stale LeadRoomWorkSessions (telecaller sessions)
+        $staleRoomSessions = \App\Models\LeadRoomWorkSession::whereIn('status', ['active', 'paused'])
+            ->whereDate('created_at', '<', $today)
+            ->get();
+
+        foreach ($staleRoomSessions as $session) {
+            $finalSeconds = $session->total_seconds;
+            if ($session->status === 'active') {
+                $elapsed = intval(abs($session->started_at->diffInSeconds(now())));
+                $maxEnd = $session->started_at->addHours(8);
+                $dayEnd = $session->created_at->endOfDay();
+                if ($maxEnd->gt($dayEnd)) {
+                    $maxEnd = $dayEnd;
+                }
+                $diff = max(0, $session->started_at->diffInSeconds($maxEnd));
+                $finalSeconds += $diff;
+            }
+            
+            // Auto-end any running calling task time logs for this telecaller
+            $runningLogs = \App\Models\TaskTimeLog::where('user_id', $session->user_id)
+                ->where('status', 'running')
+                ->whereHas('task', function($q) {
+                    $q->where('title', 'like', 'Room Calling:%');
+                })
+                ->get();
+                
+            foreach ($runningLogs as $log) {
+                $log->update([
+                    'ended_at' => $log->started_at,
+                    'total_minutes' => 0,
+                    'status' => 'ended',
+                    'note' => 'Auto-ended by system (stale calling timer)',
+                ]);
+            }
+            
+            $callsCount = \App\Models\LeadCall::where('telecaller_id', $session->user_id)
+                ->whereBetween('created_at', [$session->created_at, $session->created_at->endOfDay()])
+                ->count();
+                
+            $leadIds = \App\Models\LeadCall::where('telecaller_id', $session->user_id)
+                ->whereBetween('created_at', [$session->created_at, $session->created_at->endOfDay()])
+                ->pluck('lead_id');
+                
+            $convertedCount = \App\Models\Lead::whereIn('id', $leadIds)
+                ->where('status', 'converted')
+                ->count();
+                
+            $session->update([
+                'ended_at' => $session->created_at->endOfDay(),
+                'total_seconds' => $finalSeconds,
+                'calls_count' => $callsCount,
+                'converted_count' => $convertedCount,
+                'status' => 'pending',
+            ]);
+            
+            $u = \App\Models\User::find($session->user_id);
+            if ($u && $u->active_room_work_session_id == $session->id) {
+                $u->update(['active_room_work_session_id' => null]);
+            }
+        }
     }
 }
