@@ -71,17 +71,22 @@
                                 @endif
                             </td>
                             <td class="text-end">
+                                <a href="{{ route('reseller.companies.edit', $company) }}" class="btn btn-outline-primary btn-sm px-3 me-1">
+                                    <i class="bi bi-pencil me-1"></i>Edit
+                                </a>
                                 @if($company->id !== 1)
                                     <form action="{{ route('reseller.companies.toggle-status', $company) }}" method="POST" class="d-inline">
                                         @csrf
                                         @if($company->status === 'active')
-                                            <button type="submit" class="btn btn-outline-danger btn-sm px-3"><i class="bi bi-slash-circle me-1"></i>Suspend</button>
+                                            <button type="submit" class="btn btn-outline-danger btn-sm px-3">
+                                                <i class="bi bi-slash-circle me-1"></i>Suspend
+                                            </button>
                                         @else
-                                            <button type="submit" class="btn btn-outline-success btn-sm px-3"><i class="bi bi-check-circle me-1"></i>Activate</button>
+                                            <button type="submit" class="btn btn-outline-success btn-sm px-3">
+                                                <i class="bi bi-check-circle me-1"></i>Activate
+                                            </button>
                                         @endif
                                     </form>
-                                @else
-                                    <span class="text-muted small">—</span>
                                 @endif
                             </td>
                         </tr>

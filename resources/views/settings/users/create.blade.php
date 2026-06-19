@@ -23,7 +23,7 @@
                 <h5 class="mb-0">Create User Login</h5>
             </div>
             <div class="card-body">
-                <form method="POST" action="{{ route('users.store') }}">
+                <form method="POST" action="{{ route('users.store') }}" enctype="multipart/form-data">
                     @csrf
                     
                     <div class="row g-3 mb-3">
@@ -49,6 +49,11 @@
                                 @endforeach
                             </select>
                             @error('role_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">Profile Picture</label>
+                            <input type="file" name="avatar" class="form-control @error('avatar') is-invalid @enderror" accept="image/*">
+                            @error('avatar')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                     </div>
 

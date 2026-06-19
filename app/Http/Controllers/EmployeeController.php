@@ -45,16 +45,33 @@ class EmployeeController extends Controller
             'joining_date'  => 'required|date',
             'employee_code' => 'nullable|unique:employees,employee_code',
             'salary'        => 'nullable|numeric',
+            'avatar'        => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
-        $user = User::create([
+        $plainPassword = $request->password ?? 'Password@123';
+
+        $userData = [
             'name'     => $request->name,
             'email'    => $request->email,
-            'password' => Hash::make($request->password ?? 'Password@123'),
+            'password' => Hash::make($plainPassword),
             'role_id'  => $request->role_id,
             'status'   => 'active',
             'email_verified_at' => now(),
-        ]);
+        ];
+
+        if ($request->hasFile('avatar')) {
+            $userData['avatar'] = $request->file('avatar')->store('avatars', 'public');
+        }
+
+        $user = User::create($userData);
+
+        try {
+            \Illuminate\Support\Facades\Mail::to($user->email)->send(
+                new \App\Mail\WelcomeEmployeeMail($user, $plainPassword)
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Failed to send welcome email to employee: " . $e->getMessage());
+        }
 
         Employee::updateOrCreate(
             ['user_id' => $user->id],
@@ -97,6 +114,7 @@ class EmployeeController extends Controller
             'email'         => 'required|email|unique:users,email,' . $employee->user_id,
             'department_id' => 'required|exists:departments,id',
             'password'      => 'nullable|string|min:8',
+            'avatar'        => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
         $userData = [
@@ -107,6 +125,13 @@ class EmployeeController extends Controller
 
         if ($request->filled('password')) {
             $userData['password'] = Hash::make($request->password);
+        }
+
+        if ($request->hasFile('avatar')) {
+            if ($employee->user->avatar) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($employee->user->avatar);
+            }
+            $userData['avatar'] = $request->file('avatar')->store('avatars', 'public');
         }
 
         $employee->user->update($userData);

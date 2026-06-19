@@ -19,16 +19,52 @@ class UserController extends Controller
     public function create() { $roles = Role::all(); return view('settings.users.create', compact('roles')); }
     public function store(Request $request)
     {
-        $request->validate(['name' => 'required|string|max:255', 'email' => 'required|email|unique:users,email', 'role_id' => 'required|exists:roles,id', 'password' => 'required|min:8|confirmed']);
-        User::create(['name' => $request->name, 'email' => $request->email, 'role_id' => $request->role_id, 'password' => Hash::make($request->password), 'status' => 'active', 'email_verified_at' => now()]);
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'role_id' => 'required|exists:roles,id',
+            'password' => 'required|min:8|confirmed',
+            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+        ]);
+        
+        $data = [
+            'name' => $request->name,
+            'email' => $request->email,
+            'role_id' => $request->role_id,
+            'password' => Hash::make($request->password),
+            'status' => 'active',
+            'email_verified_at' => now(),
+        ];
+
+        if ($request->hasFile('avatar')) {
+            $data['avatar'] = $request->file('avatar')->store('avatars', 'public');
+        }
+
+        User::create($data);
         return redirect()->route('users.index')->with('success', 'User created!');
     }
     public function edit(User $user) { $roles = Role::all(); return view('settings.users.edit', compact('user', 'roles')); }
     public function update(Request $request, User $user)
     {
-        $request->validate(['name' => 'required|string|max:255', 'email' => 'required|email|unique:users,email,' . $user->id, 'role_id' => 'required|exists:roles,id']);
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,' . $user->id,
+            'role_id' => 'required|exists:roles,id',
+            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+        ]);
+        
         $data = $request->only(['name', 'email', 'role_id', 'status']);
-        if ($request->password) { $data['password'] = Hash::make($request->password); }
+        if ($request->password) {
+            $data['password'] = Hash::make($request->password);
+        }
+        
+        if ($request->hasFile('avatar')) {
+            if ($user->avatar) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($user->avatar);
+            }
+            $data['avatar'] = $request->file('avatar')->store('avatars', 'public');
+        }
+        
         $user->update($data);
         return redirect()->route('users.index')->with('success', 'User updated!');
     }

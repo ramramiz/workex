@@ -295,52 +295,118 @@
     <form method="POST" action="{{ route('login') }}">
         @csrf
 
-        <div class="mb-4">
-            <label class="form-label">Email Address</label>
-            <div class="input-group-custom">
-                <i class="bi bi-envelope input-icon"></i>
-                <input type="email" name="email" id="email"
-                    class="form-control @error('email') is-invalid @enderror"
-                    value="{{ old('email') }}" required autofocus autocomplete="username"
-                    placeholder="admin@workmonitor.com">
-                @error('email')
-                    <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
+        @if(isset($otp_required) && $otp_required)
+            <input type="hidden" name="email" value="{{ $otp_email }}">
+            
+            <div class="mb-4">
+                <label class="form-label">Email Address</label>
+                <div class="input-group-custom">
+                    <i class="bi bi-envelope input-icon"></i>
+                    <input type="email" class="form-control" value="{{ $otp_email }}" readonly disabled>
+                </div>
             </div>
-        </div>
 
-        <div class="mb-4">
-            <div class="d-flex justify-content-between align-items-center mb-1">
-                <label class="form-label mb-0">Password</label>
-                @if(Route::has('password.request'))
-                    <a href="{{ route('password.request') }}" style="font-size:13px;color:#6366f1;text-decoration:none;">Forgot password?</a>
-                @endif
+            <div class="mb-4">
+                <label class="form-label">One-Time Password (OTP)</label>
+                <div class="input-group-custom">
+                    <i class="bi bi-shield-lock input-icon"></i>
+                    <input type="text" name="otp" id="otp"
+                        class="form-control @error('otp') is-invalid @enderror"
+                        required autofocus placeholder="Enter 6-digit OTP code">
+                    @error('otp')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
             </div>
-            <div class="input-group-custom">
-                <i class="bi bi-lock input-icon"></i>
-                <input type="password" name="password" id="password"
-                    class="form-control @error('password') is-invalid @enderror"
-                    required autocomplete="current-password" placeholder="••••••••">
-                <i class="bi bi-eye toggle-pw" onclick="togglePassword()" id="toggleIcon"></i>
-                @error('password')
-                    <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
+
+            <button type="submit" class="btn-login">
+                <i class="bi bi-shield-check"></i> Verify & Sign In
+            </button>
+
+            <div class="mt-4 text-center d-flex justify-content-between" style="font-size: 13.5px;">
+                <a href="javascript:void(0)" onclick="resendOtp()" style="color:#6366f1;text-decoration:none;font-weight:600;"><i class="bi bi-arrow-clockwise"></i> Resend Code</a>
+                <a href="{{ route('login') }}" style="color:#64748b;text-decoration:none;"><i class="bi bi-arrow-left"></i> Use different email</a>
             </div>
-        </div>
 
-        <div class="mb-4 d-flex align-items-center gap-2">
-            <input type="checkbox" name="remember" id="remember" class="form-check-input mt-0" {{ old('remember') ? 'checked' : '' }}>
-            <label for="remember" style="font-size:14px;color:#64748b;cursor:pointer;">Remember me for 30 days</label>
-        </div>
+        @else
 
-        <button type="submit" class="btn-login">
-            <i class="bi bi-box-arrow-in-right"></i> Sign In
-        </button>
+            <div class="mb-4">
+                <label class="form-label">Email Address</label>
+                <div class="input-group-custom">
+                    <i class="bi bi-envelope input-icon"></i>
+                    <input type="email" name="email" id="email"
+                        class="form-control @error('email') is-invalid @enderror"
+                        value="{{ old('email') }}" required autofocus autocomplete="username"
+                        placeholder="admin@workmonitor.com">
+                    @error('email')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <label class="form-label mb-0">Password</label>
+                    @if(Route::has('password.request'))
+                        <a href="{{ route('password.request') }}" style="font-size:13px;color:#6366f1;text-decoration:none;">Forgot password?</a>
+                    @endif
+                </div>
+                <div class="input-group-custom">
+                    <i class="bi bi-lock input-icon"></i>
+                    <input type="password" name="password" id="password"
+                        class="form-control @error('password') is-invalid @enderror"
+                        required autocomplete="current-password" placeholder="••••••••">
+                    <i class="bi bi-eye toggle-pw" onclick="togglePassword()" id="toggleIcon"></i>
+                    @error('password')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+            </div>
+
+            @if(isset($captcha_question) && $captcha_question)
+                <div class="mb-4">
+                    <label class="form-label text-warning"><i class="bi bi-shield-exclamation"></i> Security Verification (CAPTCHA)</label>
+                    <div class="alert alert-dark p-2 mb-2 d-flex align-items-center justify-content-between" style="background: #1e293b; border-color: rgba(255,255,255,0.06);">
+                        <span style="font-weight: 700; color: #ffffff; letter-spacing: 0.5px;">{{ $captcha_question }}</span>
+                        <span style="font-size: 11px; background: rgba(245, 158, 11, 0.15); color: #fbbf24; padding: 2px 8px; border-radius: 4px;">Required</span>
+                    </div>
+                    <div class="input-group-custom">
+                        <i class="bi bi-calculator input-icon"></i>
+                        <input type="number" name="captcha" id="captcha"
+                            class="form-control @error('captcha') is-invalid @enderror"
+                            required placeholder="Enter the math result">
+                        @error('captcha')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
+            @endif
+
+            <div class="mb-4 d-flex align-items-center gap-2">
+                <input type="checkbox" name="remember" id="remember" class="form-check-input mt-0" {{ old('remember') ? 'checked' : '' }}>
+                <label for="remember" style="font-size:14px;color:#64748b;cursor:pointer;">Remember me for 30 days</label>
+            </div>
+
+            <button type="submit" class="btn-login">
+                <i class="bi bi-box-arrow-in-right"></i> Sign In
+            </button>
+
+        @endif
     </form>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+    function resendOtp() {
+        const form = document.querySelector('form');
+        const resendInput = document.createElement('input');
+        resendInput.type = 'hidden';
+        resendInput.name = 'resend_otp';
+        resendInput.value = '1';
+        form.appendChild(resendInput);
+        form.submit();
+    }
+
     function togglePassword() {
         const pw = document.getElementById('password');
         const icon = document.getElementById('toggleIcon');

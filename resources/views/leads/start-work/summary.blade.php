@@ -42,7 +42,7 @@
                     
                     <div class="d-flex justify-content-between align-items-center p-3 bg-white rounded-3 border">
                         <span class="text-secondary fw-medium fs-7.5"><i class="bi bi-door-open-fill text-warning me-2"></i>Lead Room</span>
-                        <span class="fw-bold text-dark">{{ $room->name }}</span>
+                        <span class="fw-bold text-dark">{{ $room->name ?? 'N/A' }}</span>
                     </div>
 
                     <div class="d-flex justify-content-between align-items-center p-3 bg-white rounded-3 border">
@@ -62,8 +62,23 @@
                     </div>
 
                     <div class="d-flex justify-content-between align-items-center p-3 bg-white rounded-3 border">
-                        <span class="text-secondary fw-medium fs-7.5"><i class="bi bi-telephone-outbound-fill text-success me-2"></i>Calls Completed</span>
-                        <span class="fw-bold text-success">{{ $session->calls_count }}</span>
+                        <span class="text-secondary fw-medium fs-7.5"><i class="bi bi-telephone-outbound-fill text-dark me-2"></i>Total Calls Logged</span>
+                        <span class="fw-bold text-dark">{{ $totalCalls }}</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center p-3 bg-white rounded-3 border">
+                        <span class="text-secondary fw-medium fs-7.5"><i class="bi bi-telephone-fill text-success me-2"></i>Connected Calls</span>
+                        <span class="fw-bold text-success">{{ $connectedCalls }}</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center p-3 bg-white rounded-3 border">
+                        <span class="text-secondary fw-medium fs-7.5"><i class="bi bi-star-fill text-warning me-2"></i>Interested Leads</span>
+                        <span class="fw-bold text-warning">{{ $interestedCount }}</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center p-3 bg-white rounded-3 border">
+                        <span class="text-secondary fw-medium fs-7.5"><i class="bi bi-telephone-x-fill text-danger me-2"></i>Not Connected / Busy</span>
+                        <span class="fw-bold text-danger">{{ $notConnectedCalls }}</span>
                     </div>
 
                     <div class="d-flex justify-content-between align-items-center p-3 bg-white rounded-3 border">

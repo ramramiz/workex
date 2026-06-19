@@ -2,6 +2,144 @@
 @section('title', 'Live Status Board')
 @section('page-title', 'Live Status Board')
 
+@push('styles')
+<style>
+    /* Premium live board styling */
+    .status-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03), 0 2px 4px -1px rgba(0,0,0,0.02);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .status-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 20px -8px rgba(0,0,0,0.08);
+        border-color: var(--primary);
+    }
+    
+    /* Glowing Avatar Ring */
+    .avatar-wrapper {
+        position: relative;
+        display: inline-block;
+        padding: 4px;
+        border-radius: 50%;
+        transition: all 0.3s ease;
+    }
+    
+    .avatar-wrapper.status-working {
+        background: linear-gradient(135deg, #10b981, #34d399);
+        box-shadow: 0 0 12px rgba(16, 185, 129, 0.35);
+        animation: glow-working 2s infinite alternate;
+    }
+    
+    .avatar-wrapper.status-idle {
+        background: linear-gradient(135deg, #f59e0b, #fbbf24);
+        box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
+    }
+    
+    .avatar-wrapper.status-completed {
+        background: linear-gradient(135deg, #3b82f6, #60a5fa);
+        box-shadow: 0 0 12px rgba(59, 130, 246, 0.25);
+    }
+    
+    .avatar-wrapper.status-not_started {
+        background: linear-gradient(135deg, #94a3b8, #cbd5e1);
+    }
+    
+    @keyframes glow-working {
+        0% { box-shadow: 0 0 6px rgba(16, 185, 129, 0.2); }
+        100% { box-shadow: 0 0 14px rgba(16, 185, 129, 0.5); }
+    }
+    
+    .avatar-img {
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid var(--card-bg);
+        background: var(--body-bg);
+    }
+    
+    /* Expanded Area Styling */
+    .expandable-panel {
+        border-top: 1px dashed var(--border-color);
+        margin-top: 14px;
+        padding-top: 14px;
+        transition: all 0.3s ease;
+    }
+    
+    .section-header {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--text-secondary);
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    
+    .activity-item {
+        padding: 10px 12px;
+        margin-bottom: 8px;
+        border-radius: 10px;
+        font-size: 13px;
+        line-height: 1.4;
+        transition: all 0.2s ease;
+    }
+    
+    .activity-item.doing-now {
+        background: rgba(16, 185, 129, 0.06);
+        border-left: 4px solid #10b981;
+    }
+    [data-bs-theme="dark"] .activity-item.doing-now {
+        background: rgba(16, 185, 129, 0.12);
+    }
+    
+    .activity-item.completed-task {
+        background: var(--body-bg);
+        border-left: 4px solid var(--primary);
+    }
+    
+    .activity-item.completed-call {
+        background: var(--body-bg);
+        border-left: 4px solid #06b6d4;
+    }
+    
+    .activity-item.completed-session {
+        background: var(--body-bg);
+        border-left: 4px solid #8b5cf6;
+    }
+    
+    /* Toggle Arrow Animation */
+    .toggle-arrow-btn {
+        background: none;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+        color: var(--text-secondary);
+        transition: color 0.2s, transform 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .toggle-arrow-btn:hover {
+        color: var(--primary);
+    }
+    .toggle-arrow-btn.rotated {
+        transform: rotate(180deg);
+    }
+    .text-purple {
+        color: #8b5cf6 !important;
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="page-header">
     <div>
@@ -15,7 +153,7 @@
             <i class="bi bi-circle-fill me-1" style="font-size:8px;"></i>
             <span id="count-num">—</span> Working
         </span>
-        <button class="btn btn-outline-secondary btn-sm" onclick="fetchStatus()">
+        <button class="btn btn-outline-secondary btn-sm" onclick="window.location.reload()">
             <i class="bi bi-arrow-clockwise me-1"></i> Refresh
         </button>
     </div>
@@ -57,16 +195,16 @@ function pad(num) {
     return ("0" + num).slice(-2);
 }
 
-function toggleWorkingTasks(employeeId, btn) {
-    const container = document.getElementById(`working-tasks-${employeeId}`);
-    const icon = btn.querySelector('i');
+function toggleEmployeeDetails(employeeId, btn) {
+    const container = document.getElementById(`employee-details-${employeeId}`);
+    if (!container) return;
     if (container.style.display === 'none') {
         container.style.display = 'block';
-        icon.className = 'bi bi-chevron-up';
+        btn.classList.add('rotated');
         window.expandedEmployees.add(employeeId);
     } else {
         container.style.display = 'none';
-        icon.className = 'bi bi-chevron-down';
+        btn.classList.remove('rotated');
         window.expandedEmployees.delete(employeeId);
     }
 }
@@ -101,80 +239,164 @@ function fetchStatus() {
             document.getElementById('last-updated').textContent = 'Last updated: ' + data.updated_at;
 
             const dark = isDark();
-            const cardBg    = dark ? '#111c2a' : '#ffffff';
             const cardBorder = dark ? '#1e293b' : '#e2e8f0';
             const textPrimary   = dark ? '#f8fafc' : '#0f172a';
-            const textSecondary = dark ? '#94a3b8' : '#94a3b8';
-            const taskRowBg = dark ? '#1e293b' : '#f0fdf4';
-            const taskRowBorder = dark ? '#334155' : '#bbf7d0';
-            const taskTitleColor = dark ? '#f8fafc' : '#0f172a';
+            const textSecondary = dark ? '#94a3b8' : '#64748b';
             const dottedBorder = dark ? '#334155' : '#e2e8f0';
 
             grid.innerHTML = data.employees.map(e => {
                 const isExpanded = window.expandedEmployees.has(e.id);
                 const displayStyle = isExpanded ? 'block' : 'none';
-                const iconClass = isExpanded ? 'bi bi-chevron-up' : 'bi bi-chevron-down';
                 const statusStyle = getStatusStyle(e.status);
-                const borderAccent = e.status === 'working' ? '#10b981' : e.status === 'idle' ? '#f59e0b' : '#cbd5e1';
+                
+                const hasActivity = (e.working_tasks && e.working_tasks.length > 0) || (e.completed_work && e.completed_work.length > 0);
+                
+                const arrowButton = hasActivity ? `
+                    <button class="toggle-arrow-btn ${isExpanded ? 'rotated' : ''}" 
+                            onclick="toggleEmployeeDetails(${e.id}, this)" 
+                            title="Toggle Details">
+                        <i class="bi bi-chevron-down" style="font-size: 16px;"></i>
+                    </button>
+                ` : '';
 
                 return `
                 <div class="col-md-6 col-xl-4">
-                    <div class="stat-card d-flex gap-3 align-items-start" style="border-left:4px solid ${borderAccent};">
-                        <img src="${e.avatar}" class="rounded-circle" width="48" height="48" alt="">
-                        <div class="flex-grow-1">
-                            <div class="d-flex align-items-center justify-content-between">
-                                <div>
-                                    <div style="font-size:15px;font-weight:600;color:${textPrimary};">${e.name}</div>
-                                    <div style="font-size:12px;color:${textSecondary};">${e.role ?? ''} ${e.department ? '· '+e.department : ''}</div>
+                    <div class="status-card p-4">
+                        <div class="d-flex gap-3 align-items-start">
+                            <div class="avatar-wrapper status-${e.status}">
+                                <img src="${e.avatar}" class="avatar-img" alt="">
+                            </div>
+                            <div class="flex-grow-1 min-width-0">
+                                <div class="d-flex align-items-center justify-content-between gap-2">
+                                    <div class="min-width-0">
+                                        <div style="font-size:16px;font-weight:700;color:${textPrimary};" class="text-truncate">${e.name}</div>
+                                        <div style="font-size:12px;color:${textSecondary};" class="text-truncate">${e.role ?? ''} ${e.department ? '· '+e.department : ''}</div>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                                        <span style="background:${statusStyle.bg};color:${statusStyle.color};font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:4px;">
+                                            ${e.status==='working'?'<span class=\'status-dot working\' style=\'margin-right:0;\'></span>':''}${LABELS[e.status]}
+                                        </span>
+                                        ${arrowButton}
+                                    </div>
                                 </div>
-                                <span style="background:${statusStyle.bg};color:${statusStyle.color};font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;">
-                                    ${e.status==='working'?'<span class=\'status-dot working\' style=\'margin-right:4px;\'></span>':''}${LABELS[e.status]}
-                                </span>
-                            </div>
-                            <div class="mt-2" style="font-size:13px;color:${textPrimary};">
-                                ${e.current_task
-                                    ? e.calls_count !== null
-                                        ? `<i class="bi bi-play-circle-fill text-success me-1"></i><strong>${e.current_task} <span class="live-task-ticker font-monospace text-success" data-start="${e.current_task_start}">(${e.current_task_time || '00:00'})</span></strong><div style="font-size:11px;color:${textSecondary};">${e.current_project ?? ''}</div>`
-                                        : `<i class="bi bi-stopwatch-fill text-success me-1"></i><strong>Timer: <span class="live-task-ticker font-monospace text-success" data-start="${e.current_task_start}">(${e.current_task_time || '00:00'})</span></strong>`
-                                    : e.status==='not_started'
-                                        ? `<i class="bi bi-clock me-1" style="color:${textSecondary};"></i><span style="color:${textSecondary};">Day not started</span>`
-                                        : e.status==='completed'
-                                            ? '<i class="bi bi-check2-all text-primary me-1"></i>Work day ended'
-                                            : '<i class="bi bi-pause-circle text-warning me-1"></i>No active task'
-                                }
-                            </div>
-                            <div class="d-flex justify-content-between mt-2" style="font-size:12px;color:${textSecondary};">
-                                ${e.started_at ? `<span><i class="bi bi-play me-1"></i>Started ${e.started_at}</span>` : '<span></span>'}
-                                <div class="d-flex gap-2 align-items-center">
-                                    ${e.calls_count !== null && e.calls_count !== undefined
-                                        ? `<span style="font-size:11px;font-weight:600;background:${dark?'#1e293b':'#f1f5f9'};color:${textSecondary};border:1px solid ${cardBorder};border-radius:6px;padding:2px 8px;"><i class="bi bi-telephone me-1"></i>${e.calls_count} ${e.calls_count === 1 ? 'call' : 'calls'}</span>`
-                                        : ''
+                                
+                                <div class="mt-3" style="font-size:13px;color:${textPrimary};">
+                                    ${e.current_task
+                                        ? e.calls_count !== null
+                                            ? `<div class="d-flex align-items-center gap-1 text-truncate"><i class="bi bi-telephone-fill text-success"></i><strong class="text-truncate">${e.current_task}</strong></div><div style="font-size:11px;color:${textSecondary};" class="ms-4">${e.current_project ?? ''}</div>`
+                                            : e.current_task_id
+                                                ? `<div class="d-flex align-items-center gap-1 text-truncate"><i class="bi bi-stopwatch-fill text-success"></i><strong class="text-truncate"><a href="/chat?select_task=${e.current_task_id}" target="_blank" class="text-decoration-none text-success" title="Go to Task Chat">${e.current_task} <i class="bi bi-chat-dots ms-1" style="font-size: 10px;"></i></a></strong></div><div style="font-size:11px;color:${textSecondary};" class="ms-4">${e.current_project ?? ''}</div>`
+                                                : `<div class="d-flex align-items-center gap-1 text-truncate"><i class="bi bi-stopwatch-fill text-success"></i><strong class="text-truncate">${e.current_task}</strong></div><div style="font-size:11px;color:${textSecondary};" class="ms-4">${e.current_project ?? ''}</div>`
+                                        : e.status==='not_started'
+                                            ? `<i class="bi bi-moon-stars me-1" style="color:${textSecondary};"></i><span style="color:${textSecondary};">Day not started</span>`
+                                            : e.status==='completed'
+                                                ? '<i class="bi bi-check2-all text-primary me-1"></i>Work day completed'
+                                                : '<i class="bi bi-cup-hot text-warning me-1"></i>No active task (Idle)'
                                     }
-                                    <span style="font-weight:600;color:${textPrimary};">${e.total_hours} worked</span>
+                                </div>
+                                
+                                <div class="d-flex justify-content-between align-items-center mt-3 pt-2" style="font-size:12px;color:${textSecondary}; border-top: 1px solid ${dottedBorder};">
+                                    ${e.started_at ? `<span><i class="bi bi-box-arrow-in-right me-1"></i>Started ${e.started_at}</span>` : '<span>Not active</span>'}
+                                    <div class="d-flex gap-2 align-items-center">
+                                        ${e.calls_count !== null && e.calls_count !== undefined
+                                            ? `<span style="font-size:11px;font-weight:600;background:${dark?'rgba(6,182,212,0.1)':'#e0f7fa'};color:${dark?'#22d3ee':'#00838f'};border:1px solid ${dark?'rgba(6,182,212,0.2)':'#b2ebf2'};border-radius:6px;padding:2px 8px;"><i class="bi bi-telephone me-1"></i>${e.calls_count} ${e.calls_count === 1 ? 'call' : 'calls'}</span>`
+                                            : ''
+                                        }
+                                        <span style="font-weight:600;color:${textPrimary};"><i class="bi bi-hourglass-split me-1"></i>${e.total_hours}</span>
+                                    </div>
                                 </div>
                             </div>
+                        </div>
 
-                            ${e.status === 'working' && e.working_tasks && e.working_tasks.length > 0 ? `
-                                <div style="border-top: 1px dashed ${dottedBorder}; margin-top: 10px; padding-top: 8px;">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <span style="font-size: 11.5px; font-weight: 500; color:${textSecondary};">Active Tasks (${e.working_tasks.length})</span>
-                                        <button class="btn btn-link p-0 d-flex align-items-center justify-content-center" 
-                                                onclick="toggleWorkingTasks(${e.id}, this)" 
-                                                style="width: 24px; height: 24px; border-radius: 50%; background: ${dark?'rgba(34,197,94,0.15)':'#f0fdf4'}; border: 1px solid ${dark?'#166534':'#bbf7d0'}; color: #22c55e; text-decoration: none;">
-                                            <i class="${iconClass}" style="font-size: 12px; transition: transform 0.2s ease;"></i>
-                                        </button>
-                                    </div>
-                                    <div class="working-tasks-container mt-2" id="working-tasks-${e.id}" style="display: ${displayStyle};">
-                                        ${e.working_tasks.map(wt => `
-                                            <div style="padding:8px 10px;margin-bottom:6px;border-radius:8px;background:${taskRowBg};border-left:3px solid #22c55e;font-size:12.5px;">
-                                                <div class="d-flex align-items-center justify-content-between mb-1">
-                                                    <strong style="color:${taskTitleColor};">${wt.task_title}</strong>
-                                                    <span class="live-task-ticker font-monospace text-success fw-bold" data-start="${wt.task_start}">(${wt.task_time || '00:00'})</span>
-                                                </div>
-                                                <div style="font-size: 11px; color:${textSecondary};">${wt.project_name}</div>
+                        <!-- Collapsible Panel containing Doing Now and Completed Today -->
+                        <div class="expandable-panel" id="employee-details-${e.id}" style="display: ${displayStyle};">
+                            ${e.working_tasks && e.working_tasks.length > 0 ? `
+                                <div class="section-header">
+                                    <i class="bi bi-activity text-success"></i> Doing Now
+                                </div>
+                                <div class="working-tasks-container mb-3">
+                                    ${e.working_tasks.map(wt => `
+                                        <div class="activity-item doing-now">
+                                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                                <strong style="color:${textPrimary};" class="text-truncate">
+                                                    ${wt.task_id
+                                                        ? `<a href="/chat?select_task=${wt.task_id}" target="_blank" class="text-decoration-none fw-bold" style="color:${textPrimary};" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='${textPrimary}'" title="Go to Task Chat">
+                                                            ${wt.task_title} <i class="bi bi-chat-dots ms-1 text-success" style="font-size: 10px;"></i>
+                                                           </a>`
+                                                        : wt.task_title
+                                                    }
+                                                </strong>
+                                                <span class="live-task-ticker font-monospace text-success fw-bold" data-start="${wt.task_start}">(${wt.task_time || '00:00'})</span>
                                             </div>
-                                        `).join('')}
-                                    </div>
+                                            <div style="font-size: 11px; color:${textSecondary};">${wt.project_name}</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+
+                            ${e.completed_work && e.completed_work.length > 0 ? `
+                                <div class="section-header">
+                                    <i class="bi bi-check2-circle text-primary"></i> Completed Today
+                                </div>
+                                <div class="completed-tasks-container">
+                                    ${e.completed_work.map(cw => {
+                                        if (cw.type === 'room_summary') {
+                                            const itemClass = 'completed-session';
+                                            let icon = '<i class="bi bi-door-open-fill text-purple me-1"></i>';
+                                            let titleColor = '#8b5cf6';
+                                            let borderLeftColor = '#8b5cf6';
+                                            if (cw.room_id === 'followups') {
+                                                icon = '<i class="bi bi-bell-fill text-danger me-1"></i>';
+                                                titleColor = '#dc3545';
+                                                borderLeftColor = '#dc3545';
+                                            }
+                                            return `
+                                                <div class="activity-item ${itemClass}" style="border-left: 4px solid ${borderLeftColor};">
+                                                    <div class="d-flex align-items-center justify-content-between mb-1">
+                                                        <span class="min-width-0 text-truncate">
+                                                            ${icon}
+                                                            <a href="${cw.url}" class="fw-bold text-decoration-none" style="color: ${titleColor};" title="Click to view call details">
+                                                                ${cw.title} <i class="bi bi-box-arrow-up-right" style="font-size: 10px;"></i>
+                                                            </a>
+                                                        </span>
+                                                        <span style="font-size: 11px; font-weight: 600;" class="text-secondary">Summary</span>
+                                                    </div>
+                                                    <div class="d-flex gap-3 mt-2" style="font-size: 12.5px;">
+                                                        <span class="text-secondary"><i class="bi bi-telephone-outbound-fill text-info me-1"></i>Called: <strong style="color: ${textPrimary};">${cw.called_count}</strong></span>
+                                                        <span class="text-secondary"><i class="bi bi-heart-fill text-danger me-1"></i>Interested: <strong style="color: ${textPrimary};">${cw.interested_count}</strong></span>
+                                                    </div>
+                                                </div>
+                                            `;
+                                        }
+
+                                        let itemClass = 'completed-task';
+                                        let icon = '<i class="bi bi-check2-all text-primary me-1"></i>';
+                                        if (cw.type === 'call') {
+                                            itemClass = 'completed-call';
+                                            icon = '<i class="bi bi-telephone text-info me-1"></i>';
+                                        } else if (cw.type === 'room_session') {
+                                            itemClass = 'completed-session';
+                                            icon = '<i class="bi bi-door-open text-purple me-1"></i>';
+                                        }
+                                        
+                                        const titleDisplay = (cw.type === 'task' && cw.task_id)
+                                            ? `<a href="/chat?select_task=${cw.task_id}" target="_blank" class="text-decoration-none" style="font-weight:600; color:${textPrimary};" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='${textPrimary}'" title="Go to Task Chat">
+                                                ${icon}${cw.title} <i class="bi bi-chat-dots ms-1 text-success" style="font-size: 10px;"></i>
+                                               </a>`
+                                            : `<span style="font-weight:600; color:${textPrimary};" class="min-width-0">${icon}${cw.title}</span>`;
+                                        
+                                        return `
+                                            <div class="activity-item ${itemClass}">
+                                                <div class="d-flex align-items-start justify-content-between gap-2 mb-1">
+                                                    <span class="min-width-0">${titleDisplay}</span>
+                                                    <span class="text-muted font-monospace fw-semibold flex-shrink-0" style="font-size: 11px;">${cw.ended_at} (${cw.duration})</span>
+                                                </div>
+                                                <div class="text-secondary" style="font-size: 11.5px; font-style: italic; white-space: pre-wrap;">
+                                                    ${cw.note}
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('')}
                                 </div>
                             ` : ''}
                         </div>

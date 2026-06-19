@@ -982,11 +982,13 @@
              @if(session('active_room_work'))
                  @php
                      $activeRoomWork = session('active_room_work');
-                     $roomName = \App\Models\LeadRoom::find($activeRoomWork['room_id'])?->name ?? 'Room';
+                     $isFollowups = ($activeRoomWork['room_id'] === 'followups');
+                     $roomName = $isFollowups ? "Today's Follow-ups" : (\App\Models\LeadRoom::find($activeRoomWork['room_id'])?->name ?? 'Select Room');
+                     $timerUrl = $isFollowups ? route('leads.start-work.followup-leads') : ($activeRoomWork['room_id'] ? route('leads.start-work.leads', $activeRoomWork['room_id']) : route('leads.start-work.select-room'));
                  @endphp
-                <a href="{{ route('leads.start-work.leads', $activeRoomWork['room_id']) }}" class="work-timer-badge working d-none d-md-flex align-items-center gap-2 text-decoration-none" id="nav-room-timer" data-start-time="{{ $activeRoomWork['started_at'] ?? '' }}" data-status="{{ $activeRoomWork['status'] ?? '' }}" data-accumulated="{{ $activeRoomWork['accumulated_seconds'] ?? 0 }}" style="background: {{ ($activeRoomWork['status'] ?? '') === 'active' ? '#fffbeb' : '#f1f5f9' }}; color: {{ ($activeRoomWork['status'] ?? '') === 'active' ? '#b45309' : '#475569' }}; border: 1px solid {{ ($activeRoomWork['status'] ?? '') === 'active' ? '#fde68a' : '#cbd5e1' }}; cursor: pointer;">
+                <a href="{{ $timerUrl }}" class="work-timer-badge working d-none d-md-flex align-items-center gap-2 text-decoration-none" id="nav-room-timer" data-start-time="{{ $activeRoomWork['started_at'] ?? '' }}" data-status="{{ $activeRoomWork['status'] ?? '' }}" data-accumulated="{{ $activeRoomWork['accumulated_seconds'] ?? 0 }}" style="background: {{ ($activeRoomWork['status'] ?? '') === 'active' ? '#fffbeb' : '#f1f5f9' }}; color: {{ ($activeRoomWork['status'] ?? '') === 'active' ? '#b45309' : '#475569' }}; border: 1px solid {{ ($activeRoomWork['status'] ?? '') === 'active' ? '#fde68a' : '#cbd5e1' }}; cursor: pointer;">
                     <span class="status-dot {{ ($activeRoomWork['status'] ?? '') === 'active' ? 'working' : '' }}" style="background: {{ ($activeRoomWork['status'] ?? '') === 'active' ? '#d97706' : '#94a3b8' }};"></span>
-                    <span style="font-size: 12px; font-weight: 600; max-width: 150px;" class="text-truncate">Room: {{ $roomName }}</span>
+                    <span style="font-size: 12px; font-weight: 600; max-width: 150px;" class="text-truncate">{{ $roomName }}</span>
                     <span class="badge text-white ms-1" id="nav-room-timer-counter" style="background: {{ ($activeRoomWork['status'] ?? '') === 'active' ? '#d97706' : '#94a3b8' }}; font-size: 11px;">00:00:00</span>
                 </a>
             @elseif($activeTaskLog)
@@ -1413,35 +1415,51 @@
     });
 </script>
 <script>
-    // Global notification sound utility using Web Audio API
+    // Global notification sound utility using Web Audio API with autoplay gesture fix
+    let globalAudioCtx = null;
+    function initAudioContext() {
+        if (!globalAudioCtx) {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (AudioContext) {
+                globalAudioCtx = new AudioContext();
+            }
+        }
+        if (globalAudioCtx && globalAudioCtx.state === 'suspended') {
+            globalAudioCtx.resume();
+        }
+    }
+    // Listen for user interaction to initialize/resume the AudioContext
+    ['click', 'keydown', 'touchstart'].forEach(event => {
+        document.addEventListener(event, initAudioContext, { once: false });
+    });
+
     window.playNotificationSound = function() {
         try {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            if (!AudioContext) return;
-            const audioCtx = new AudioContext();
-            const now = audioCtx.currentTime;
+            initAudioContext();
+            if (!globalAudioCtx) return;
+            const now = globalAudioCtx.currentTime;
             
             // Note 1 (E5, 659.25Hz)
-            const osc1 = audioCtx.createOscillator();
-            const gain1 = audioCtx.createGain();
+            const osc1 = globalAudioCtx.createOscillator();
+            const gain1 = globalAudioCtx.createGain();
             osc1.type = 'sine';
             osc1.frequency.setValueAtTime(659.25, now);
             gain1.gain.setValueAtTime(0.15, now);
             gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
             osc1.connect(gain1);
-            gain1.connect(audioCtx.destination);
+            gain1.connect(globalAudioCtx.destination);
             osc1.start(now);
             osc1.stop(now + 0.4);
             
             // Note 2 (A5, 880Hz)
-            const osc2 = audioCtx.createOscillator();
-            const gain2 = audioCtx.createGain();
+            const osc2 = globalAudioCtx.createOscillator();
+            const gain2 = globalAudioCtx.createGain();
             osc2.type = 'sine';
             osc2.frequency.setValueAtTime(880.00, now + 0.08);
             gain2.gain.setValueAtTime(0.15, now + 0.08);
             gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
             osc2.connect(gain2);
-            gain2.connect(audioCtx.destination);
+            gain2.connect(globalAudioCtx.destination);
             osc2.start(now + 0.08);
             osc2.stop(now + 0.5);
         } catch (e) {
@@ -1455,7 +1473,7 @@
         let currentUnreadEmailsCount = parseInt("{{ \App\Models\MailboxMessage::where('receiver_id', auth()->id())->where('is_read', false)->whereNull('receiver_deleted_at')->count() }}") || 0;
         
         const pollNotifications = () => {
-            fetch("{{ route('notifications.unread-count') }}")
+            fetch("/notifications/unread-count")
                 .then(response => response.json())
                 .then(data => {
                     const newUnreadCount = data.unread_count;

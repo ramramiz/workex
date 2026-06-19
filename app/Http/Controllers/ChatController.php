@@ -92,6 +92,11 @@ class ChatController extends Controller
             ->where('user_id', $user->id)
             ->where('status', 'running')
             ->first();
+        if (!$activeLog && (auth()->user()->isSuperAdmin() || auth()->user()->isTeamLeader() || auth()->user()->isAdmin())) {
+            $activeLog = \App\Models\TaskTimeLog::where('task_id', $task->id)
+                ->where('status', 'running')
+                ->first();
+        }
         $isButtonsDisabled = $task->status === 'completed' || $task->status === 'review';
         $isWorking = \App\Models\TaskTimeLog::where('task_id', $task->id)
             ->where('status', 'running')
@@ -102,18 +107,23 @@ class ChatController extends Controller
             $deadlineDays = now()->startOfDay()->diffInDays($task->deadline, false);
         }
 
+        $lastComment = $feed->where('feed_type', 'comment')->last();
+        $lastTimelog = $feed->where('feed_type', 'time_log')->last();
+
         return response()->json([
             'html' => $html,
             'latest_time' => $feed->count() > 0 ? $feed->last()->created_at->toISOString() : now()->toISOString(),
+            'last_comment_id' => $lastComment?->id,
+            'last_timelog_id' => $lastTimelog?->id,
             'task_title' => $task->title,
             'project_name' => $task->project->name ?? 'No Project',
             'project_id' => $task->project_id,
             'assignee_name' => $task->assignee->name ?? 'Unassigned',
             'assignee_id' => $task->assigned_to,
             'assignee_avatar' => $task->avatar_url,
-            'task_url' => route('tasks.show', $task),
+            'task_url' => '/tasks/' . $task->id,
             'task_id' => $task->id,
-            'store_url' => route('tasks.comments.store', $task),
+            'store_url' => '/tasks/' . $task->id . '/comments',
             'active_log_id' => $activeLog?->id,
             'status' => $task->status,
             'is_buttons_disabled' => $isButtonsDisabled,
@@ -129,6 +139,40 @@ class ChatController extends Controller
             'creator_avatar' => $task->creator ? $task->creator->avatar_url : 'https://ui-avatars.com/api/?name=System',
             'status_text' => ucfirst(str_replace('_', ' ', $task->status)),
             'created_at' => $task->created_at->format('M d, Y h:i A'),
+        ]);
+    }
+
+    public function getUnreadCounts()
+    {
+        $user = auth()->user();
+        
+        $tasks = Task::select('id')
+            ->where('status', '!=', 'completed')
+            ->when(!$user->isLeaderOrAbove(), fn($q) => $q->where('assigned_to', $user->id))
+            ->when($user->isTeamLeader(), function($q) {
+                $q->where(function($sq) {
+                    $sq->whereDoesntHave('assignee')
+                       ->orWhereHas('assignee.role', function($r) {
+                           $r->where('slug', '!=', 'telecaller');
+                       });
+                });
+            })
+            ->get();
+            
+        $taskIds = $tasks->pluck('id');
+        
+        $unreadComments = \App\Models\TaskComment::whereIn('task_id', $taskIds)
+            ->where('user_id', '!=', $user->id)
+            ->whereDoesntHave('views', function($q) use ($user) {
+                $q->where('user_id', $user->id);
+            })
+            ->select('task_id', \DB::raw('count(*) as count'))
+            ->groupBy('task_id')
+            ->get()
+            ->pluck('count', 'task_id');
+            
+        return response()->json([
+            'unread_counts' => $unreadComments
         ]);
     }
 }

@@ -17,7 +17,10 @@ class DailyReportController extends Controller
             ->latest('date')->paginate(20);
 
         $todaySessions = \App\Models\WorkSession::with(['user', 'timeLogs.task'])
-            ->whereDate('date', today())
+            ->where(function($q) {
+                $q->whereDate('date', today())
+                  ->orWhere('status', 'active');
+            })
             ->when(!$user->isAdminOrAbove(), fn($q) => $q->where('user_id', $user->id))
             ->orderBy('started_at', 'desc')
             ->get();

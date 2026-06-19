@@ -47,7 +47,10 @@ class DashboardController extends Controller
 
         $stats = [
             'total_employees' => \App\Models\Employee::where('status', 'active')->count(),
-            'working_today'   => WorkSession::whereDate('date', $today)->where('status', 'active')->count(),
+            'working_today'   => WorkSession::where(function($q) use ($today) {
+                $q->whereDate('date', $today)
+                  ->orWhere('status', 'active');
+            })->distinct('user_id')->count(),
             'total_projects'  => Project::count(),
             'active_projects' => Project::whereIn('status', ['planning', 'design', 'development', 'testing', 'client_review'])->count(),
             'delayed_projects' => Project::whereNotIn('status', ['completed', 'delivered', 'cancelled'])->whereDate('deadline', '<', $today)->count(),
@@ -62,7 +65,7 @@ class DashboardController extends Controller
 
         $recentProjects = Project::with(['client', 'teamLeader'])->latest()->take(6)->get();
         $activeEmployees = WorkSession::with(['user.role', 'timeLogs' => fn($q) => $q->where('status', 'running')->with('task')])
-            ->whereDate('date', $today)->where('status', 'active')->take(8)->get();
+            ->where('status', 'active')->take(8)->get();
         $pendingReports = DailyReport::with('user')->where('status', 'pending')->latest()->take(5)->get();
         $employees = User::whereHas('role', fn($q) => $q->whereIn('slug', ['employee', 'team-leader']))
             ->where('status', 'active')

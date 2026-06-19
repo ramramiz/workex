@@ -27,6 +27,19 @@ class LoginRequest extends FormRequest
      */
     public function rules(): array
     {
+        $email = $this->input('email');
+        $attempts = 0;
+        if ($email) {
+            $attempts = \Illuminate\Support\Facades\Cache::get('login_attempts_' . $email, 0);
+        }
+
+        if ($attempts >= 4 || $this->has('otp') || $this->input('resend_otp') == '1') {
+            return [
+                'email' => ['required', 'string', 'email'],
+                'otp' => $this->input('resend_otp') == '1' ? ['nullable'] : ['required'],
+            ];
+        }
+
         return [
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],

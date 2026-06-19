@@ -731,7 +731,7 @@
                                 </div>
                                 <span class="text-muted flex-shrink-0 ms-2" style="font-size: 10px;">{{ $t->updated_at->diffForHumans(null, true) }}</span>
                             </div>
-                            <div class="d-flex align-items-center justify-content-between mt-1">
+                            <div class="d-flex align-items-center justify-content-between mt-1" id="badge-container-{{ $t->id }}">
                                 <div class="text-truncate fs-8 d-flex align-items-center gap-1 flex-wrap" style="color: #667781;">
                                     <span class="task-project" style="color: var(--primary);">{{ $t->project->name ?? 'No Project' }}</span>
                                     <span>-</span>
@@ -1183,6 +1183,8 @@
 <script>
     let activeTaskId = null;
     let latestFeedTime = null;
+    let lastCommentId = null;
+    let lastTimelogId = null;
     let pollInterval = null;
     let activeStoreUrl = '';
     let currentTaskData = null;
@@ -1340,7 +1342,7 @@
     }
 
     function openEndTaskModalChat(logId, currentStatus) {
-        document.getElementById('endTaskModalForm').action = `{{ url('work-timer/end-task') }}/${logId}`;
+        document.getElementById('endTaskModalForm').action = `/work-timer/end-task/${logId}`;
         const statusSelect = document.querySelector('#endTaskModal #endTaskStatusSelect');
         if (statusSelect) {
             statusSelect.value = currentStatus;
@@ -1350,7 +1352,7 @@
     }
 
     function openTaskCompletionModalChat(taskId) {
-        document.getElementById('taskCompletionModalForm').action = `{{ url('tasks') }}/${taskId}/submit-completion`;
+        document.getElementById('taskCompletionModalForm').action = `/tasks/${taskId}/submit-completion`;
         const modal = new bootstrap.Modal(document.getElementById('taskCompletionModal'));
         modal.show();
     }
@@ -1359,7 +1361,7 @@
         if (!currentTaskData) return;
         
         // Form action URL
-        document.getElementById('editTaskModalForm').action = `{{ url('tasks') }}/${currentTaskData.task_id}`;
+        document.getElementById('editTaskModalForm').action = `/tasks/${currentTaskData.task_id}`;
         
         // Populate inputs
         document.getElementById('edit-task-title-input').value = currentTaskData.task_title || '';
@@ -1377,7 +1379,7 @@
     }
 
     function updateTaskStatusChat(taskId, status) {
-        fetch(`{{ url('tasks') }}/${taskId}/update-status`, {
+        fetch(`/tasks/${taskId}/update-status`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1419,6 +1421,18 @@
                 filterChatMessages(this.value);
             });
         }
+
+        // Populate initial unread counts
+        document.querySelectorAll('[id^="unread-badge-"]').forEach(badge => {
+            const taskId = parseInt(badge.id.replace('unread-badge-', ''));
+            if (!isNaN(taskId)) {
+                previousUnreadCounts[taskId] = parseInt(badge.textContent) || 0;
+            }
+        });
+
+        // Poll chat list unread counts every 10 seconds
+        pollChatListUnreadCounts();
+        setInterval(pollChatListUnreadCounts, 10000);
     });
 
     // Search filter
@@ -1509,7 +1523,7 @@
         `;
 
         // Load details via AJAX
-        fetch(`{{ url('chat/tasks') }}/${taskId}?_t=${new Date().getTime()}`)
+        fetch(`/chat/tasks/${taskId}?_t=${new Date().getTime()}`)
             .then(response => response.json())
             .then(data => {
                 currentTaskData = data;
@@ -1642,7 +1656,7 @@
                 } else {
                     dropdownHtml += `
                         <li>
-                            <form method="POST" action="{{ url('work-timer/start-task') }}/${taskId}" onsubmit="this.querySelector('button').disabled = true;">
+                            <form method="POST" action="/work-timer/start-task/${taskId}" onsubmit="this.querySelector('button').disabled = true;">
                                 @csrf
                                 <button type="submit" class="dropdown-item py-2 d-flex align-items-center gap-2 text-success fw-semibold" ${data.is_buttons_disabled ? 'disabled' : ''}>
                                     <i class="bi bi-play-fill fs-5"></i> Start Work
@@ -1656,7 +1670,7 @@
                         </li>
                     `;
                     desktopHtml += `
-                        <form method="POST" action="{{ url('work-timer/start-task') }}/${taskId}" class="d-inline" onsubmit="this.querySelector('button').disabled = true;">
+                        <form method="POST" action="/work-timer/start-task/${taskId}" class="d-inline" onsubmit="this.querySelector('button').disabled = true;">
                             @csrf
                             <button type="submit" class="btn btn-success btn-sm" ${data.is_buttons_disabled ? 'disabled' : ''}>
                                 <i class="bi bi-play-fill me-1"></i> Start Work
@@ -1676,6 +1690,7 @@
                 if (badge) {
                     badge.remove();
                 }
+                previousUnreadCounts[taskId] = 0;
 
                 // Load messages
                 if (data.html.trim() === '') {
@@ -1694,6 +1709,8 @@
                 chatBody.scrollTop = chatBody.scrollHeight;
 
                 latestFeedTime = data.latest_time;
+                lastCommentId = data.last_comment_id;
+                lastTimelogId = data.last_timelog_id;
 
                 // Focus input
                 document.getElementById('whatsapp-comment-input').focus();
@@ -1707,16 +1724,78 @@
             });
     }
 
+    let previousUnreadCounts = {};
+
+    const pollChatListUnreadCounts = () => {
+        fetch("/chat/unread-counts")
+            .then(response => response.json())
+            .then(data => {
+                const unreadCounts = data.unread_counts || {};
+                let shouldPlaySound = false;
+
+                // Loop through all task items to update badges
+                document.querySelectorAll('.chat-task-item').forEach(item => {
+                    const taskId = parseInt(item.id.replace('chat-task-item-', ''));
+                    if (isNaN(taskId)) return;
+
+                    const count = (taskId === activeTaskId) ? 0 : (parseInt(unreadCounts[taskId]) || 0);
+                    const container = document.getElementById('badge-container-' + taskId);
+                    
+                    if (container) {
+                        let badge = document.getElementById('unread-badge-' + taskId);
+                        if (count > 0) {
+                            if (!badge) {
+                                badge = document.createElement('span');
+                                badge.id = 'unread-badge-' + taskId;
+                                badge.className = 'badge bg-success rounded-circle d-flex align-items-center justify-content-center';
+                                badge.style.cssText = 'width: 18px; height: 18px; font-size: 9px; padding: 0; line-height: 1; flex-shrink: 0;';
+                                container.appendChild(badge);
+                            }
+                            badge.textContent = count;
+                        } else {
+                            if (badge) {
+                                badge.remove();
+                            }
+                        }
+                    }
+
+                    // Only play sound for tasks OTHER than the active task
+                    if (taskId !== activeTaskId) {
+                        const prevCount = previousUnreadCounts[taskId] || 0;
+                        if (count > prevCount) {
+                            shouldPlaySound = true;
+                        }
+                    }
+                    
+                    // Update tracked counts
+                    previousUnreadCounts[taskId] = count;
+                });
+
+                if (shouldPlaySound && typeof window.playNotificationSound === 'function') {
+                    window.playNotificationSound();
+                }
+            })
+            .catch(error => console.error('Error polling unread chat counts:', error));
+    };
+
     const pollChatUpdates = () => {
         if (!activeTaskId || !latestFeedTime) return;
 
-        const url = `{{ url('tasks') }}/${activeTaskId}/feed-updates?since=${encodeURIComponent(latestFeedTime)}`;
+        let url = `/tasks/${activeTaskId}/feed-updates?since=${encodeURIComponent(latestFeedTime)}`;
+        if (lastCommentId) {
+            url += `&last_comment_id=${lastCommentId}`;
+        }
+        if (lastTimelogId) {
+            url += `&last_timelog_id=${lastTimelogId}`;
+        }
         
         fetch(url)
             .then(response => response.json())
             .then(data => {
                 if (data.has_updates) {
                     latestFeedTime = data.latest_time;
+                    lastCommentId = data.last_comment_id;
+                    lastTimelogId = data.last_timelog_id;
                     
                     const messagesContainer = document.getElementById('chat-messages-container');
                     const chatBody = document.querySelector('.chat-body');
@@ -1728,15 +1807,35 @@
                         
                         const isNearBottom = chatBody.scrollHeight - chatBody.clientHeight - chatBody.scrollTop < 100;
                         
-                        messagesContainer.insertAdjacentHTML('beforeend', data.html);
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = data.html;
+                        const newRows = tempDiv.querySelectorAll('.chat-row');
+                        let appendedAny = false;
+                        let playSound = false;
+                        let hasSentMessage = false;
                         
-                        if (isNearBottom) {
-                            chatBody.scrollTop = chatBody.scrollHeight;
+                        newRows.forEach(row => {
+                            if (!document.getElementById(row.id)) {
+                                messagesContainer.appendChild(row);
+                                appendedAny = true;
+                                if (row.classList.contains('received')) {
+                                    playSound = true;
+                                }
+                                if (row.classList.contains('sent')) {
+                                    hasSentMessage = true;
+                                }
+                            }
+                        });
+                        
+                        if (appendedAny) {
+                            if (isNearBottom || hasSentMessage) {
+                                chatBody.scrollTop = chatBody.scrollHeight;
+                            }
+                            
+                            if (playSound && typeof window.playNotificationSound === 'function') {
+                                window.playNotificationSound();
+                            }
                         }
-                    }
-                    
-                    if (data.play_sound && typeof window.playNotificationSound === 'function') {
-                        window.playNotificationSound();
                     }
                 }
             })

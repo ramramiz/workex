@@ -15,22 +15,29 @@ class WorkTimerController extends Controller
     {
         $user = auth()->user();
         $today = Carbon::today();
-        $session = WorkSession::where('user_id', $user->id)->whereDate('date', $today)->first();
+        $session = WorkSession::where('user_id', $user->id)
+            ->where(function($q) use ($today) {
+                $q->where('status', 'active')
+                  ->orWhereDate('date', $today);
+            })
+            ->latest()
+            ->first();
         $myTasks = Task::where('assigned_to', $user->id)
             ->whereNotIn('status', ['completed', 'cancelled'])
             ->with(['project', 'timeLogs' => fn($q) => $q->where('status', 'running')])
             ->get();
         $activeLog = TaskTimeLog::where('user_id', $user->id)->where('status', 'running')->with('task.project')->first();
-        $todayLogs = TaskTimeLog::where('user_id', $user->id)->whereDate('created_at', $today)->with('task')->get();
+        $todayLogs = $session
+            ? TaskTimeLog::where('work_session_id', $session->id)->with('task')->get()
+            : TaskTimeLog::where('user_id', $user->id)->whereDate('created_at', $today)->with('task')->get();
         $runningTimers = TaskTimeLog::where('status', 'running')
             ->with(['user', 'task.project'])
             ->orderBy('started_at', 'desc')
             ->get();
 
-        $firstLog = TaskTimeLog::where('user_id', $user->id)
-            ->whereDate('created_at', $today)
-            ->orderBy('started_at', 'asc')
-            ->first();
+        $firstLog = $session
+            ? TaskTimeLog::where('work_session_id', $session->id)->orderBy('started_at', 'asc')->first()
+            : TaskTimeLog::where('user_id', $user->id)->whereDate('created_at', $today)->orderBy('started_at', 'asc')->first();
         $sessionStart = $firstLog ? $firstLog->started_at : ($session ? $session->started_at : null);
 
         return view('work-timer.index', compact('session', 'myTasks', 'activeLog', 'todayLogs', 'runningTimers', 'sessionStart'));
@@ -41,8 +48,17 @@ class WorkTimerController extends Controller
         $user = auth()->user();
         $today = Carbon::today();
 
-        $existing = WorkSession::where('user_id', $user->id)->whereDate('date', $today)->first();
+        $existing = WorkSession::where('user_id', $user->id)
+            ->where(function($q) use ($today) {
+                $q->where('status', 'active')
+                  ->orWhereDate('date', $today);
+            })
+            ->latest()
+            ->first();
         if ($existing) {
+            if ($existing->status === 'active') {
+                return back()->with('warning', 'You already have an active work session!');
+            }
             return back()->with('warning', 'You have already started your day!');
         }
 
@@ -80,7 +96,7 @@ class WorkTimerController extends Controller
         ]);
 
         $user = auth()->user();
-        $session = WorkSession::where('user_id', $user->id)->whereDate('date', today())->where('status', 'active')->first();
+        $session = WorkSession::where('user_id', $user->id)->where('status', 'active')->latest()->first();
 
         if (!$session) {
             return back()->with('error', 'No active work session found.');
@@ -93,13 +109,11 @@ class WorkTimerController extends Controller
         });
 
         // Calculate total mins based on first task start to last task end
-        $firstLog = TaskTimeLog::where('user_id', $user->id)
-            ->whereDate('created_at', today())
+        $firstLog = TaskTimeLog::where('work_session_id', $session->id)
             ->orderBy('started_at', 'asc')
             ->first();
 
-        $lastLog = TaskTimeLog::where('user_id', $user->id)
-            ->whereDate('created_at', today())
+        $lastLog = TaskTimeLog::where('work_session_id', $session->id)
             ->orderBy('ended_at', 'desc')
             ->first();
 
@@ -112,7 +126,7 @@ class WorkTimerController extends Controller
         }
 
         $totalMins = $sessionStart->diffInMinutes($sessionEnd);
-        $productiveMins = TaskTimeLog::where('user_id', $user->id)->whereDate('created_at', today())->sum('total_minutes');
+        $productiveMins = TaskTimeLog::where('work_session_id', $session->id)->sum('total_minutes');
 
         $session->update([
             'started_at'        => $sessionStart,
@@ -124,7 +138,7 @@ class WorkTimerController extends Controller
         ]);
 
         // Update attendance
-        Attendance::where('user_id', $user->id)->whereDate('date', today())->update([
+        Attendance::where('user_id', $user->id)->whereDate('date', $session->date)->update([
             'login_time'    => $sessionStart,
             'logout_time'   => $sessionEnd,
             'total_minutes' => $totalMins,
@@ -139,7 +153,13 @@ class WorkTimerController extends Controller
     {
         $user = auth()->user();
         
-        $session = WorkSession::where('user_id', $user->id)->whereDate('date', today())->first();
+        $session = WorkSession::where('user_id', $user->id)
+            ->where(function($q) {
+                $q->where('status', 'active')
+                  ->orWhereDate('date', today());
+            })
+            ->latest()
+            ->first();
 
         if (!$session) {
             $session = WorkSession::create([
@@ -157,12 +177,12 @@ class WorkTimerController extends Controller
         }
 
         // Mark attendance if not already marked
-        $attendance = Attendance::where('user_id', $user->id)->whereDate('date', today())->first();
+        $attendance = Attendance::where('user_id', $user->id)->whereDate('date', $session->date)->first();
 
         if (!$attendance) {
             Attendance::create([
                 'user_id'      => $user->id,
-                'date'         => today(),
+                'date'         => $session->date,
                 'login_time'   => now(),
                 'type'         => 'office',
                 'status'       => 'present',
@@ -262,7 +282,13 @@ class WorkTimerController extends Controller
     public function status()
     {
         $user = auth()->user();
-        $session = WorkSession::where('user_id', $user->id)->whereDate('date', today())->first();
+        $session = WorkSession::where('user_id', $user->id)
+            ->where(function($q) {
+                $q->where('status', 'active')
+                  ->orWhereDate('date', today());
+            })
+            ->latest()
+            ->first();
         $activeLog = TaskTimeLog::where('user_id', $user->id)->where('status', 'running')->with('task')->first();
 
         return response()->json([

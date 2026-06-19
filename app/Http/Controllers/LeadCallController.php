@@ -31,6 +31,23 @@ class LeadCallController extends Controller
             'duration' => 'nullable|integer',
         ]);
 
+        $isFollowup = $request->boolean('is_followup');
+        if (!$isFollowup) {
+            if (session('active_room_work') && session('active_room_work')['room_id'] === 'followups') {
+                $isFollowup = true;
+            } else if ($user && $user->active_room_work_session_id) {
+                $sess = $user->activeRoomWorkSession;
+                if ($sess && $sess->lead_room_id === null) {
+                    $isFollowup = \App\Models\TaskTimeLog::where('user_id', $user->id)
+                        ->whereIn('status', ['running', 'paused'])
+                        ->whereHas('task', function($q) {
+                            $q->where('title', 'Room Calling: Today Follow-ups');
+                        })
+                        ->exists();
+                }
+            }
+        }
+
         LeadCall::create([
             'lead_id' => $lead->id,
             'telecaller_id' => auth()->id(),
@@ -40,6 +57,7 @@ class LeadCallController extends Controller
             'next_action' => $request->next_action,
             'remarks' => $request->remarks,
             'duration' => $request->duration,
+            'is_followup' => $isFollowup,
         ]);
 
         if ($request->filled('next_follow_up_date')) {
@@ -57,6 +75,10 @@ class LeadCallController extends Controller
             if (!$request->filled('lead_status')) {
                 $lead->update(['status' => 'following_up']);
             }
+        } else {
+            $lead->update([
+                'follow_up_date' => null,
+            ]);
         }
 
         if ($request->filled('lead_status')) {
@@ -66,6 +88,11 @@ class LeadCallController extends Controller
         \Illuminate\Support\Facades\Cache::forget('user_current_call_' . auth()->id());
 
         if ($request->input('source') === 'room_work') {
+            if ($isFollowup) {
+                return redirect()->route('leads.start-work.followup-leads')
+                    ->with('success', 'Call log registered successfully!');
+            }
+
             return redirect()->route('leads.start-work.leads', [
                 'room' => $lead->lead_room_id,
                 'tab' => 'uncalled'

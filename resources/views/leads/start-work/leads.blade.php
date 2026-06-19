@@ -55,6 +55,11 @@
                 </form>
             @endif
 
+            <!-- Change Room Button -->
+            <a href="{{ route('leads.start-work.select-room') }}" class="btn btn-outline-warning btn-sm fw-bold d-flex align-items-center gap-2 px-3 py-1.5 text-dark" style="border-radius: 20px;">
+                <i class="bi bi-door-open-fill"></i> Change Room
+            </a>
+
             <!-- Stop Work Button -->
             <button type="button" class="btn btn-outline-danger btn-sm fw-bold d-flex align-items-center gap-2 px-3 py-1.5" style="border-radius: 20px;" data-bs-toggle="modal" data-bs-target="#confirmStopWorkModal">
                 <i class="bi bi-stop-circle-fill"></i> Stop Work

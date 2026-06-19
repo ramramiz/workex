@@ -6,6 +6,7 @@
                 @csrf
                 <input type="hidden" name="source" id="logCallSource" value="">
                 <input type="hidden" name="duration" id="logCallDuration" value="0">
+                <input type="hidden" name="is_followup" id="logCallIsFollowup" value="0">
                 <div class="modal-header border-bottom">
                     <h5 class="modal-title" id="logCallModalLabel"><i class="bi bi-telephone-outbound me-2 text-success"></i>Log Call Activity</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -209,10 +210,16 @@
                         // Big Contact Info & Timer Logic
                         const bigName = button.getAttribute('data-bs-client-name');
                         const bigPhone = button.getAttribute('data-bs-client-phone');
+                        const isFollowup = button.getAttribute('data-bs-is-followup') === '1';
                         const bigInfoContainer = modalEl.querySelector('#logCallModalBigContactInfo');
                         const sourceInput = modalEl.querySelector('#logCallSource');
                         const durationInput = modalEl.querySelector('#logCallDuration');
+                        const isFollowupInput = modalEl.querySelector('#logCallIsFollowup');
                         const timerValEl = modalEl.querySelector('#logCallTimerVal');
+
+                        if (isFollowupInput) {
+                            isFollowupInput.value = isFollowup ? '1' : '0';
+                        }
 
                         if (bigName && bigPhone && bigInfoContainer) {
                             bigInfoContainer.classList.remove('d-none');
@@ -255,6 +262,7 @@
                             if (bigInfoContainer) bigInfoContainer.classList.add('d-none');
                             if (sourceInput) sourceInput.value = '';
                             if (durationInput) durationInput.value = '0';
+                            if (isFollowupInput) isFollowupInput.value = '0';
                             if (window.callTimerInterval) {
                                 clearInterval(window.callTimerInterval);
                                 window.callTimerInterval = null;

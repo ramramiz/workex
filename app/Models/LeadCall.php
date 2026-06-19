@@ -15,10 +15,12 @@ class LeadCall extends Model
         'next_action',
         'remarks',
         'duration',
+        'is_followup',
     ];
 
     protected $casts = [
         'call_date_time' => 'datetime',
+        'is_followup' => 'boolean',
     ];
 
     public function lead()

@@ -440,6 +440,9 @@
                     <div class="d-flex flex-column gap-2 mb-4">
                         @php
                             $activeLog = $task->timeLogs->where('user_id', auth()->id())->where('status', 'running')->first();
+                            if (!$activeLog && (auth()->user()->isSuperAdmin() || auth()->user()->isTeamLeader() || auth()->user()->isAdmin())) {
+                                $activeLog = $task->timeLogs->where('status', 'running')->first();
+                            }
                             $isButtonsDisabled = $task->status === 'completed' || $task->status === 'review';
                         @endphp
                         
@@ -810,7 +813,7 @@
         
         alertBox.classList.add('d-none');
 
-        fetch("{{ route('tasks.update-status', $task) }}", {
+        fetch(`/tasks/{{ $task->id }}/update-status`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1222,19 +1225,27 @@
                     chatImageInput.value = '';
                     document.getElementById('markup-comment-input').value = '';
                 });
-            }
-
-            // Polling chat updates
+            }            // Polling chat updates
             let latestFeedTime = "{{ $feed->count() > 0 ? $feed->last()->created_at->toISOString() : now()->toISOString() }}";
+            let lastCommentId = {{ $feed->where('feed_type', 'comment')->count() > 0 ? $feed->where('feed_type', 'comment')->last()->id : 'null' }};
+            let lastTimelogId = {{ $feed->where('feed_type', 'time_log')->count() > 0 ? $feed->where('feed_type', 'time_log')->last()->id : 'null' }};
             
             const pollChatUpdates = () => {
-                const url = "{{ route('tasks.feed-updates', $task) }}?since=" + encodeURIComponent(latestFeedTime);
+                let url = `/tasks/{{ $task->id }}/feed-updates?since=` + encodeURIComponent(latestFeedTime);
+                if (lastCommentId) {
+                    url += "&last_comment_id=" + lastCommentId;
+                }
+                if (lastTimelogId) {
+                    url += "&last_timelog_id=" + lastTimelogId;
+                }
                 
                 fetch(url)
                     .then(response => response.json())
                     .then(data => {
                         if (data.has_updates) {
                             latestFeedTime = data.latest_time;
+                            lastCommentId = data.last_comment_id;
+                            lastTimelogId = data.last_timelog_id;
                             
                             const chatContainer = document.querySelector('.chat-container');
                             if (chatContainer) {
@@ -1245,21 +1256,41 @@
                                 
                                 const isNearBottom = chatContainer.scrollHeight - chatContainer.clientHeight - chatContainer.scrollTop < 100;
                                 
-                                chatContainer.insertAdjacentHTML('beforeend', data.html);
+                                const tempDiv = document.createElement('div');
+                                tempDiv.innerHTML = data.html;
+                                const newRows = tempDiv.querySelectorAll('.chat-row');
+                                let appendedAny = false;
+                                let playSound = false;
+                                let hasSentMessage = false;
                                 
-                                if (isNearBottom) {
-                                    chatContainer.scrollTop = chatContainer.scrollHeight;
-                                }
-                            }
-                            
-                            if (data.play_sound && typeof window.playNotificationSound === 'function') {
-                                window.playNotificationSound();
+                                newRows.forEach(row => {
+                                     if (!document.getElementById(row.id)) {
+                                         chatContainer.appendChild(row);
+                                         appendedAny = true;
+                                         if (row.classList.contains('received')) {
+                                             playSound = true;
+                                         }
+                                         if (row.classList.contains('sent')) {
+                                             hasSentMessage = true;
+                                         }
+                                     }
+                                 });
+                                 
+                                 if (appendedAny) {
+                                     if (isNearBottom || hasSentMessage) {
+                                         chatContainer.scrollTop = chatContainer.scrollHeight;
+                                     }
+                                     
+                                     if (playSound && typeof window.playNotificationSound === 'function') {
+                                         window.playNotificationSound();
+                                     }
+                                 }
                             }
                         }
                     })
                     .catch(error => console.error('Error polling chat updates:', error));
             };
-
+ 
             // Poll chat updates every 5 seconds
             setInterval(pollChatUpdates, 5000);
         }

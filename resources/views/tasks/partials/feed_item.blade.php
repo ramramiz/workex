@@ -3,7 +3,7 @@
     $formattedTime = $formattedTime ?? $item->created_at->format('h:i A');
 @endphp
 
-<div class="chat-row {{ $isSent ? 'sent' : 'received' }} mb-2">
+<div class="chat-row {{ $isSent ? 'sent' : 'received' }} mb-2" id="chat-row-{{ $item->feed_type }}-{{ $item->id }}">
     @if(!$isSent)
         <img src="{{ $item->user->avatar_url }}" alt="{{ $item->user->name }}" class="chat-avatar" title="{{ $item->user->name }}">
     @endif

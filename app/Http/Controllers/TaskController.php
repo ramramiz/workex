@@ -470,25 +470,53 @@ class TaskController extends Controller
     public function getFeedUpdates(Request $request, Task $task)
     {
         $since = $request->input('since');
+        $lastCommentId = $request->input('last_comment_id');
+        $lastTimelogId = $request->input('last_timelog_id');
+
+        \Log::info("getFeedUpdates polling", [
+            'task_id' => $task->id,
+            'since' => $since,
+            'last_comment_id' => $lastCommentId,
+            'last_timelog_id' => $lastTimelogId,
+            'user_id' => auth()->id(),
+            'request_ip' => $request->ip()
+        ]);
         if (!$since) {
-            return response()->json(['html' => '', 'latest_time' => null, 'has_updates' => false, 'play_sound' => false]);
+            return response()->json([
+                'html' => '',
+                'latest_time' => null,
+                'last_comment_id' => null,
+                'last_timelog_id' => null,
+                'has_updates' => false,
+                'play_sound' => false
+            ]);
         }
 
         $sinceDate = \Carbon\Carbon::parse($since)->setTimezone(config('app.timezone'));
 
-        $newComments = $task->comments()
+        $commentsQuery = $task->comments()
             ->with(['user', 'views.user'])
-            ->where('created_at', '>', $sinceDate)
-            ->get()
+            ->where('created_at', '>=', $sinceDate->toDateTimeString());
+
+        if ($lastCommentId) {
+            $commentsQuery->where('id', '>', $lastCommentId);
+        }
+
+        $newComments = $commentsQuery->get()
             ->map(function($c) {
                 $c->feed_type = 'comment';
                 return $c;
             });
 
-        $newTimeLogs = $task->timeLogs()
+        $timeLogsQuery = $task->timeLogs()
             ->with('user')
-            ->where('created_at', '>', $sinceDate)
-            ->get()
+            ->where('created_at', '>=', $sinceDate->toDateTimeString());
+
+        if ($lastTimelogId) {
+            $timeLogsQuery->where('id', '>', $lastTimelogId);
+        }
+
+        $newTimeLogs = $timeLogsQuery->get()
             ->map(function($l) {
                 $l->feed_type = 'time_log';
                 return $l;
@@ -519,10 +547,15 @@ class TaskController extends Controller
         }
 
         $latestTime = $newFeed->count() > 0 ? $newFeed->last()->created_at->toISOString() : $since;
+        
+        $latestCommentId = $newComments->count() > 0 ? $newComments->last()->id : $lastCommentId;
+        $latestTimelogId = $newTimeLogs->count() > 0 ? $newTimeLogs->last()->id : $lastTimelogId;
 
         return response()->json([
             'html' => $html,
             'latest_time' => $latestTime,
+            'last_comment_id' => $latestCommentId,
+            'last_timelog_id' => $latestTimelogId,
             'has_updates' => $newFeed->count() > 0,
             'play_sound' => $newFeed->contains(fn($item) => $item->user_id !== auth()->id())
         ]);

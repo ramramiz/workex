@@ -23,7 +23,7 @@
                 <h5 class="mb-0">Edit User Login: {{ $user->name }}</h5>
             </div>
             <div class="card-body">
-                <form method="POST" action="{{ route('users.update', $user) }}">
+                <form method="POST" action="{{ route('users.update', $user) }}" enctype="multipart/form-data">
                     @csrf
                     @method('PUT')
                     
@@ -65,6 +65,14 @@
                             <label class="form-label">New Password <span class="text-muted">(Leave empty to keep current)</span></label>
                             <input type="password" name="password" class="form-control @error('password') is-invalid @enderror" placeholder="Minimum 8 characters">
                             @error('password')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">Profile Picture</label>
+                            <div class="d-flex align-items-center gap-3">
+                                <img src="{{ $user->avatar_url }}" alt="" class="rounded-circle border" style="width: 50px; height: 50px; object-fit: cover;">
+                                <input type="file" name="avatar" class="form-control @error('avatar') is-invalid @enderror" accept="image/*">
+                            </div>
+                            @error('avatar')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
                     </div>
 

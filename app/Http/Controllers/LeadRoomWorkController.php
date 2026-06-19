@@ -22,14 +22,454 @@ class LeadRoomWorkController extends Controller
         if ($user->active_room_work_session_id) {
             $session = $user->activeRoomWorkSession;
             if ($session && $session->status === 'active') {
-                return redirect()->route('leads.start-work.leads', $session->lead_room_id)
-                    ->with('info', 'Redirected to your active calling session.');
+                if ($session->lead_room_id) {
+                    return redirect()->route('leads.start-work.leads', $session->lead_room_id)
+                        ->with('info', 'Redirected to your active calling session.');
+                } else {
+                    return redirect()->route('leads.start-work.select-room')
+                        ->with('info', 'Please select a room to start calling.');
+                }
             }
+        }
+
+        return view('leads.start-work.index');
+    }
+
+    public function startWorkSession(Request $request)
+    {
+        $user = auth()->user();
+        if (!$user->isTelecaller()) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        if ($user->active_room_work_session_id) {
+            $session = $user->activeRoomWorkSession;
+            if ($session && $session->status === 'active') {
+                if ($session->lead_room_id) {
+                    return redirect()->route('leads.start-work.leads', $session->lead_room_id)
+                        ->with('warning', 'You already have an active calling session.');
+                } else {
+                    return redirect()->route('leads.start-work.select-room')
+                        ->with('warning', 'Please select a room to start calling.');
+                }
+            }
+        }
+
+        // Create the session in database (lead_room_id is null)
+        $session = LeadRoomWorkSession::create([
+            'user_id' => $user->id,
+            'lead_room_id' => null,
+            'started_at' => now(),
+            'status' => 'active',
+        ]);
+
+        $user->update([
+            'active_room_work_session_id' => $session->id,
+        ]);
+
+        session(['active_room_work' => [
+            'room_id' => null,
+            'started_at' => $session->started_at->toISOString(),
+            'status' => 'active',
+            'accumulated_seconds' => 0,
+        ]]);
+
+        // Notify Admins on Session Start
+        $admins = \App\Models\User::whereHas('role', fn($q) => $q->whereIn('slug', ['super-admin', 'admin']))->get();
+        foreach ($admins as $admin) {
+            \App\Models\AppNotification::create([
+                'user_id' => $admin->id,
+                'type' => 'work_session',
+                'title' => 'Telecaller Work Started',
+                'message' => $user->name . ' started day work session',
+                'url' => route('admin.telecaller-sessions.index'),
+            ]);
+
+            \App\Models\MailboxMessage::create([
+                'sender_id' => $user->id,
+                'receiver_id' => $admin->id,
+                'subject' => 'Work Session Started: Day Work by ' . $user->name,
+                'body' => $user->name . ' has started a Day Work session at ' . now()->format('h:i A') . '.',
+                'is_read' => false,
+            ]);
+        }
+
+        return redirect()->route('leads.start-work.select-room')->with('success', 'Work session started! Please select a room.');
+    }
+
+    public function selectRoomList()
+    {
+        $user = auth()->user();
+        if (!$user->isTelecaller()) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        $session = $user->activeRoomWorkSession;
+        if (!$session || $session->status !== 'active') {
+            return redirect()->route('leads.start-work.index')
+                ->with('error', 'Please start your day work session first.');
         }
 
         $rooms = $user->rooms()->withCount('leads')->latest()->get();
 
-        return view('leads.start-work.index', compact('rooms'));
+        // Fetch today's follow-up leads assigned to the telecaller's rooms or direct
+        $todayFollowUps = Lead::where(function($q) use ($rooms, $user) {
+                $q->whereIn('lead_room_id', $rooms->pluck('id'))
+                  ->orWhere(function($sub) use ($user) {
+                      $sub->whereNull('lead_room_id')->where('assigned_to', $user->id);
+                  });
+            })
+            ->whereDate('follow_up_date', today())
+            ->with('room')
+            ->get();
+
+        return view('leads.start-work.select_room', compact('rooms', 'todayFollowUps'));
+    }
+
+    public function selectRoom(LeadRoom $room)
+    {
+        $user = auth()->user();
+        if (!$user->isTelecaller()) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        if (!$room->users()->where('users.id', $user->id)->exists()) {
+            abort(403, 'Unauthorized access to this room.');
+        }
+
+        $session = $user->activeRoomWorkSession;
+        if (!$session || $session->status !== 'active') {
+            return redirect()->route('leads.start-work.index')
+                ->with('error', 'Please start your day work session first.');
+        }
+
+        // Update session's lead_room_id
+        $session->update([
+            'lead_room_id' => $room->id,
+        ]);
+
+        // Update session state
+        $activeRoomWork = session('active_room_work', []);
+        $activeRoomWork['room_id'] = $room->id;
+        session(['active_room_work' => $activeRoomWork]);
+
+        // Handle the task logging:
+        // 1. End any existing active TaskTimeLog for a room task
+        $runningLogs = \App\Models\TaskTimeLog::where('user_id', $user->id)
+            ->where('status', 'running')
+            ->whereHas('task', function($q) {
+                $q->where('title', 'like', 'Room Calling:%');
+            })
+            ->get();
+        
+        foreach ($runningLogs as $log) {
+            $elapsedMins = intval(abs(now()->diffInMinutes($log->started_at)));
+            $log->update([
+                'ended_at' => now(),
+                'total_minutes' => $log->total_minutes + $elapsedMins,
+                'status' => 'ended',
+                'note' => 'Switched to calling room: ' . $room->name,
+            ]);
+        }
+
+        // 2. Create/find the room calling task for the new room, and start a new TaskTimeLog
+        $task = \App\Models\Task::firstOrCreate(
+            [
+                'title' => 'Room Calling: ' . $room->name,
+                'assigned_to' => $user->id,
+            ],
+            [
+                'project_id' => \App\Models\Project::first()?->id,
+                'created_by' => \App\Models\User::whereHas('role', fn($q) => $q->where('slug', 'super-admin'))->first()?->id ?? $user->id,
+                'description' => 'Telecaller calling work for room ' . $room->name,
+                'status' => 'in_progress',
+                'priority' => 'medium',
+            ]
+        );
+
+        if ($task->status !== 'in_progress') {
+            $task->update(['status' => 'in_progress']);
+        }
+
+        \App\Models\TaskTimeLog::create([
+            'task_id' => $task->id,
+            'user_id' => $user->id,
+            'started_at' => now(),
+            'status' => 'running',
+            'note' => 'Started/Switched calling session in room: ' . $room->name,
+        ]);
+
+        return redirect()->route('leads.start-work.leads', $room)
+            ->with('success', 'Room ' . $room->name . ' selected!');
+    }
+
+    public function selectFollowupRoom()
+    {
+        $user = auth()->user();
+        if (!$user->isTelecaller()) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        $session = $user->activeRoomWorkSession;
+        if (!$session || $session->status !== 'active') {
+            return redirect()->route('leads.start-work.index')
+                ->with('error', 'Please start your day work session first.');
+        }
+
+        // Update session's lead_room_id
+        $session->update([
+            'lead_room_id' => null,
+        ]);
+
+        // Update session state
+        $activeRoomWork = session('active_room_work', []);
+        $activeRoomWork['room_id'] = 'followups';
+        session(['active_room_work' => $activeRoomWork]);
+
+        // Handle the task logging:
+        // 1. End any existing active TaskTimeLog for a room task
+        $runningLogs = \App\Models\TaskTimeLog::where('user_id', $user->id)
+            ->where('status', 'running')
+            ->whereHas('task', function($q) {
+                $q->where('title', 'like', 'Room Calling:%');
+            })
+            ->get();
+        
+        foreach ($runningLogs as $log) {
+            $elapsedMins = intval(abs(now()->diffInMinutes($log->started_at)));
+            $log->update([
+                'ended_at' => now(),
+                'total_minutes' => $log->total_minutes + $elapsedMins,
+                'status' => 'ended',
+                'note' => 'Switched to calling room: Today Follow-ups',
+            ]);
+        }
+
+        // 2. Create/find the room calling task for the followups, and start a new TaskTimeLog
+        $task = \App\Models\Task::firstOrCreate(
+            [
+                'title' => 'Room Calling: Today Follow-ups',
+                'assigned_to' => $user->id,
+            ],
+            [
+                'project_id' => \App\Models\Project::first()?->id,
+                'created_by' => \App\Models\User::whereHas('role', fn($q) => $q->where('slug', 'super-admin'))->first()?->id ?? $user->id,
+                'description' => 'Telecaller calling work for Today Follow-ups',
+                'status' => 'in_progress',
+                'priority' => 'medium',
+            ]
+        );
+
+        if ($task->status !== 'in_progress') {
+            $task->update(['status' => 'in_progress']);
+        }
+
+        \App\Models\TaskTimeLog::create([
+            'task_id' => $task->id,
+            'user_id' => $user->id,
+            'started_at' => now(),
+            'status' => 'running',
+            'note' => 'Started/Switched calling session in room: Today Follow-ups',
+        ]);
+
+        return redirect()->route('leads.start-work.followup-leads')
+            ->with('success', 'Joined Today\'s Follow-ups Room!');
+    }
+
+    public function followupLeads(Request $request)
+    {
+        $user = auth()->user();
+        if (!$user->isTelecaller()) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        $session = $user->activeRoomWorkSession;
+        if (!$session || $session->status !== 'active') {
+            return redirect()->route('leads.start-work.index')
+                ->with('error', 'Please start your day work session first.');
+        }
+
+        // Automatically align room if session points to a different room
+        $activeRoomWork = session('active_room_work', []);
+        if (($activeRoomWork['room_id'] ?? null) !== 'followups') {
+            $session->update([
+                'lead_room_id' => null,
+            ]);
+
+            $activeRoomWork['room_id'] = 'followups';
+            $activeRoomWork['started_at'] = $session->started_at ? $session->started_at->toISOString() : now()->toISOString();
+            $activeRoomWork['status'] = $session->status;
+            $activeRoomWork['accumulated_seconds'] = $session->total_seconds;
+            session(['active_room_work' => $activeRoomWork]);
+
+            // Handle the task logging:
+            // End active TaskTimeLogs for previous room calling tasks
+            $runningLogs = \App\Models\TaskTimeLog::where('user_id', $user->id)
+                ->where('status', 'running')
+                ->whereHas('task', function($q) {
+                    $q->where('title', 'like', 'Room Calling:%');
+                })
+                ->get();
+            
+            foreach ($runningLogs as $log) {
+                $elapsedMins = intval(abs(now()->diffInMinutes($log->started_at)));
+                $log->update([
+                    'ended_at' => now(),
+                    'total_minutes' => $log->total_minutes + $elapsedMins,
+                    'status' => 'ended',
+                    'note' => 'Switched to calling room: Today Follow-ups',
+                ]);
+            }
+
+            // Create/find new task log
+            $task = \App\Models\Task::firstOrCreate(
+                [
+                    'title' => 'Room Calling: Today Follow-ups',
+                    'assigned_to' => $user->id,
+                ],
+                [
+                    'project_id' => \App\Models\Project::first()?->id,
+                    'created_by' => \App\Models\User::whereHas('role', fn($q) => $q->where('slug', 'super-admin'))->first()?->id ?? $user->id,
+                    'description' => 'Telecaller calling work for Today Follow-ups',
+                    'status' => 'in_progress',
+                    'priority' => 'medium',
+                ]
+            );
+
+            if ($task->status !== 'in_progress') {
+                $task->update(['status' => 'in_progress']);
+            }
+
+            \App\Models\TaskTimeLog::create([
+                'task_id' => $task->id,
+                'user_id' => $user->id,
+                'started_at' => now(),
+                'status' => 'running',
+                'note' => 'Started/Switched calling session in room: Today Follow-ups',
+            ]);
+        }
+
+        if (!session()->has('active_room_work') || session('active_room_work')['room_id'] !== 'followups') {
+            session(['active_room_work' => [
+                'room_id' => 'followups',
+                'started_at' => $session->started_at ? $session->started_at->toISOString() : now()->toISOString(),
+                'status' => $session->status,
+                'accumulated_seconds' => $session->total_seconds,
+            ]]);
+        }
+
+        $rooms = $user->rooms()->get();
+
+        $leadsQuery = Lead::where(function($q) use ($rooms, $user) {
+                $q->whereIn('lead_room_id', $rooms->pluck('id'))
+                  ->orWhere(function($sub) use ($user) {
+                      $sub->whereNull('lead_room_id')->where('assigned_to', $user->id);
+                  });
+            })
+            ->whereDate('follow_up_date', today())
+            ->with('room')
+            ->latest();
+
+        $leads = $leadsQuery->paginate(15);
+        $totalFollowUps = $leadsQuery->count();
+
+        return view('leads.start-work.followups', compact('leads', 'session', 'totalFollowUps'));
+    }
+
+    public function pauseFollowupWork(Request $request)
+    {
+        $user = auth()->user();
+        if (!$user->isTelecaller()) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        $session = $user->activeRoomWorkSession;
+        if (!$session || $session->lead_room_id !== null || $session->status !== 'active') {
+            return back()->with('error', 'No active session found to pause.');
+        }
+
+        // Calculate elapsed seconds since started_at (last resume/start)
+        $elapsed = intval(abs(now()->diffInSeconds($session->started_at)));
+        $newAccumulated = $session->total_seconds + $elapsed;
+
+        $session->update([
+            'status' => 'paused',
+            'total_seconds' => $newAccumulated,
+        ]);
+
+        session(['active_room_work' => [
+            'room_id' => 'followups',
+            'status' => 'paused',
+            'accumulated_seconds' => $newAccumulated,
+        ]]);
+
+        $task = \App\Models\Task::where('title', 'Room Calling: Today Follow-ups')
+            ->where('assigned_to', $user->id)
+            ->first();
+        if ($task) {
+            $taskLog = \App\Models\TaskTimeLog::where('task_id', $task->id)
+                ->where('user_id', $user->id)
+                ->where('status', 'running')
+                ->latest()
+                ->first();
+            if ($taskLog) {
+                $elapsedMins = intval(abs(now()->diffInMinutes($taskLog->started_at)));
+                $taskLog->update([
+                    'paused_at' => now(),
+                    'total_minutes' => $taskLog->total_minutes + $elapsedMins,
+                    'status' => 'paused',
+                    'note' => 'Paused calling session in room: Today Follow-ups',
+                ]);
+            }
+        }
+
+        return back()->with('success', 'Work session paused.');
+    }
+
+    public function resumeFollowupWork(Request $request)
+    {
+        $user = auth()->user();
+        if (!$user->isTelecaller()) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        $session = $user->activeRoomWorkSession;
+        if (!$session || $session->lead_room_id !== null || $session->status !== 'paused') {
+            return back()->with('error', 'No paused session found to resume.');
+        }
+
+        $session->update([
+            'status' => 'active',
+            'started_at' => now(),
+        ]);
+
+        session(['active_room_work' => [
+            'room_id' => 'followups',
+            'started_at' => $session->started_at->toISOString(),
+            'status' => 'active',
+            'accumulated_seconds' => $session->total_seconds,
+        ]]);
+
+        $task = \App\Models\Task::where('title', 'Room Calling: Today Follow-ups')
+            ->where('assigned_to', $user->id)
+            ->first();
+        if ($task) {
+            $taskLog = \App\Models\TaskTimeLog::where('task_id', $task->id)
+                ->where('user_id', $user->id)
+                ->where('status', 'paused')
+                ->latest()
+                ->first();
+            if ($taskLog) {
+                $taskLog->update([
+                    'resumed_at' => now(),
+                    'started_at' => now(),
+                    'status' => 'running',
+                    'note' => 'Resumed calling session in room: Today Follow-ups',
+                ]);
+            }
+        }
+
+        return back()->with('success', 'Work session resumed!');
     }
 
     public function room(LeadRoom $room)
@@ -154,8 +594,65 @@ class LeadRoomWorkController extends Controller
         }
 
         $session = $user->activeRoomWorkSession;
+        if (!$session || $session->status !== 'active') {
+            return redirect()->route('leads.start-work.index')
+                ->with('error', 'Please start your day work session first.');
+        }
 
-        if ($session && $session->lead_room_id == $room->id && !session()->has('active_room_work')) {
+        // Automatically align room if session points to a different room
+        if ($session->lead_room_id != $room->id) {
+            $session->update([
+                'lead_room_id' => $room->id,
+            ]);
+
+            // Handle the task logging:
+            // End active TaskTimeLogs for previous room calling tasks
+            $runningLogs = \App\Models\TaskTimeLog::where('user_id', $user->id)
+                ->where('status', 'running')
+                ->whereHas('task', function($q) {
+                    $q->where('title', 'like', 'Room Calling:%');
+                })
+                ->get();
+            
+            foreach ($runningLogs as $log) {
+                $elapsedMins = intval(abs(now()->diffInMinutes($log->started_at)));
+                $log->update([
+                    'ended_at' => now(),
+                    'total_minutes' => $log->total_minutes + $elapsedMins,
+                    'status' => 'ended',
+                    'note' => 'Switched to calling room: ' . $room->name,
+                ]);
+            }
+
+            // Create/find new task log
+            $task = \App\Models\Task::firstOrCreate(
+                [
+                    'title' => 'Room Calling: ' . $room->name,
+                    'assigned_to' => $user->id,
+                ],
+                [
+                    'project_id' => \App\Models\Project::first()?->id,
+                    'created_by' => \App\Models\User::whereHas('role', fn($q) => $q->where('slug', 'super-admin'))->first()?->id ?? $user->id,
+                    'description' => 'Telecaller calling work for room ' . $room->name,
+                    'status' => 'in_progress',
+                    'priority' => 'medium',
+                ]
+            );
+
+            if ($task->status !== 'in_progress') {
+                $task->update(['status' => 'in_progress']);
+            }
+
+            \App\Models\TaskTimeLog::create([
+                'task_id' => $task->id,
+                'user_id' => $user->id,
+                'started_at' => now(),
+                'status' => 'running',
+                'note' => 'Started/Switched calling session in room: ' . $room->name,
+            ]);
+        }
+
+        if (!session()->has('active_room_work') || session('active_room_work')['room_id'] != $room->id) {
             session(['active_room_work' => [
                 'room_id' => $room->id,
                 'started_at' => $session->started_at ? $session->started_at->toISOString() : now()->toISOString(),
@@ -329,12 +826,9 @@ class LeadRoomWorkController extends Controller
             ->with('lead')
             ->get();
 
-        $interestedLeads = $session->room->leads()
+        // Get interested leads called during this session timeframe (across all rooms)
+        $interestedLeads = Lead::whereIn('id', $leadIds)
             ->where('status', 'interested')
-            ->whereHas('calls', function($q) use ($session) {
-                $q->where('telecaller_id', $session->user_id)
-                  ->whereBetween('created_at', [$session->created_at, now()]);
-            })
             ->get();
 
         // Generate PDF report
@@ -420,18 +914,50 @@ class LeadRoomWorkController extends Controller
             ]);
         }
 
-        return redirect()->route('leads.start-work.summary', [$session->lead_room_id, $session->id])
+        return redirect()->route('leads.start-work.summary', [$session->lead_room_id ?: 0, $session->id])
             ->with('success', 'Work session completed and submitted for approval!');
     }
 
-    public function summary(LeadRoom $room, LeadRoomWorkSession $session)
+    public function summary($room, LeadRoomWorkSession $session)
     {
         $user = auth()->user();
         if ($user->isTelecaller() && $session->user_id != $user->id) {
             abort(403, 'Unauthorized access to this summary.');
         }
 
-        return view('leads.start-work.summary', compact('room', 'session'));
+        $roomModel = null;
+        if ($room && $room != '0' && $room != 0) {
+            $roomModel = \App\Models\LeadRoom::find($room);
+        }
+        $room = $roomModel;
+
+        // Get calls from session timeframe
+        $startTime = $session->created_at;
+        $endTime = $session->ended_at ?? now();
+
+        $todayCalls = LeadCall::where('telecaller_id', $session->user_id)
+            ->whereBetween('created_at', [$startTime, $endTime])
+            ->get();
+
+        $totalCalls = $todayCalls->count();
+        $connectedCalls = $todayCalls->where('status', 'Connected')->count();
+        
+        $notConnectedStatuses = ['Not Connected', 'Busy', 'Switched Off'];
+        $notConnectedCalls = $todayCalls->whereIn('status', $notConnectedStatuses)->count();
+
+        $leadIds = $todayCalls->pluck('lead_id')->unique();
+        $interestedCount = Lead::whereIn('id', $leadIds)
+            ->where('status', 'interested')
+            ->count();
+
+        return view('leads.start-work.summary', compact(
+            'room', 
+            'session', 
+            'totalCalls', 
+            'connectedCalls', 
+            'notConnectedCalls', 
+            'interestedCount'
+        ));
     }
 
     // Admin Session Review

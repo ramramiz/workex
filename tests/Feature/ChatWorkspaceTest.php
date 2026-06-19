@@ -274,6 +274,76 @@ class ChatWorkspaceTest extends TestCase
         $response->assertStatus(200);
         $this->assertEquals(5, $response->json('deadline_days'));
     }
+
+    public function test_unread_counts_endpoint()
+    {
+        // Initially should be empty
+        $response = $this->actingAs($this->employee)
+            ->get(route('chat.unread-counts'));
+        $response->assertStatus(200);
+        $this->assertEmpty($response->json('unread_counts'));
+
+        // Post a comment from superAdmin to the employee's assigned task
+        TaskComment::create([
+            'task_id' => $this->assignedTask->id,
+            'user_id' => $this->superAdmin->id,
+            'comment' => 'Hey employee!',
+        ]);
+
+        // Fetch unread counts as employee
+        $response = $this->actingAs($this->employee)
+            ->get(route('chat.unread-counts'));
+        $response->assertStatus(200);
+        $response->assertJson([
+            'unread_counts' => [
+                (string)$this->assignedTask->id => 1
+            ]
+        ]);
+
+        // Post a comment from employee (should not show up in unread counts for them)
+        TaskComment::create([
+            'task_id' => $this->assignedTask->id,
+            'user_id' => $this->employee->id,
+            'comment' => 'Self comment',
+        ]);
+
+        $response = $this->actingAs($this->employee)
+            ->get(route('chat.unread-counts'));
+        $response->assertStatus(200);
+        $response->assertJson([
+            'unread_counts' => [
+                (string)$this->assignedTask->id => 1
+            ]
+        ]);
+    }
+
+    public function test_feed_updates_endpoint()
+    {
+        // Setup initial comment
+        $comment1 = TaskComment::create([
+            'task_id' => $this->assignedTask->id,
+            'user_id' => $this->superAdmin->id,
+            'comment' => 'Initial comment',
+        ]);
+
+        $since = $comment1->created_at->toISOString();
+
+        // Add a second comment
+        $comment2 = new TaskComment([
+            'task_id' => $this->assignedTask->id,
+            'user_id' => $this->employee->id,
+            'comment' => 'New updates',
+        ]);
+        $comment2->created_at = now()->addSeconds(5);
+        $comment2->save();
+
+        $response = $this->actingAs($this->employee)
+            ->get(route('tasks.feed-updates', ['task' => $this->assignedTask->id, 'since' => $since]));
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'has_updates' => true,
+        ]);
+        $this->assertStringContainsString('New updates', $response->json('html'));
+    }
 }
-
-

@@ -40,6 +40,13 @@ class RestrictToRoomWork
                 'leads.start-work.resume',
                 'leads.start-work.stop',
                 'leads.start-work.summary',
+                'leads.start-work.start-session',
+                'leads.start-work.select-room',
+                'leads.start-work.select-room-join',
+                'leads.start-work.select-followups',
+                'leads.start-work.followup-leads',
+                'leads.start-work.pause-followups',
+                'leads.start-work.resume-followups',
                 'leads.calls.store',
                 'leads.appointments.store',
                 'leads.requirements.update',
@@ -88,8 +95,15 @@ class RestrictToRoomWork
             if ($session) {
                 // Keep the Laravel session in sync
                 if (!session()->has('active_room_work')) {
+                    $isFollowup = \App\Models\TaskTimeLog::where('user_id', $user->id)
+                        ->whereIn('status', ['running', 'paused'])
+                        ->whereHas('task', function($q) {
+                            $q->where('title', 'Room Calling: Today Follow-ups');
+                        })
+                        ->exists();
+
                     session(['active_room_work' => [
-                        'room_id' => $session->lead_room_id,
+                        'room_id' => $isFollowup ? 'followups' : $session->lead_room_id,
                         'started_at' => $session->started_at ? $session->started_at->toISOString() : null,
                         'status' => $session->status,
                         'accumulated_seconds' => $session->total_seconds,
@@ -99,26 +113,31 @@ class RestrictToRoomWork
                 if ($session->status === 'active') {
                     $allowedRoutes = [
                         'leads.start-work.leads',
+                        'leads.start-work.followup-leads',
                         'leads.calls.store',
                         'leads.start-work.stop',
                         'leads.start-work.pause',
+                        'leads.start-work.pause-followups',
+                        'leads.start-work.resume-followups',
+                        'leads.start-work.select-room',
+                        'leads.start-work.select-room-join',
+                        'leads.start-work.select-followups',
                         'logout',
                     ];
 
                     $currentRoute = $request->route()?->getName();
 
                     if (!in_array($currentRoute, $allowedRoutes)) {
+                        if (session('active_room_work') && session('active_room_work')['room_id'] === 'followups') {
+                            return redirect()->route('leads.start-work.followup-leads')
+                                ->with('warning', 'Please pause or stop your active calling session before accessing other pages.');
+                        }
+                        if (!$session->lead_room_id) {
+                            return redirect()->route('leads.start-work.select-room')
+                                ->with('warning', 'Please select a room to start calling.');
+                        }
                         return redirect()->route('leads.start-work.leads', $session->lead_room_id)
                             ->with('warning', 'Please pause or stop your active calling session before accessing other pages.');
-                    }
-
-                    if ($currentRoute === 'leads.start-work.leads') {
-                        $room = $request->route('room');
-                        $roomId = is_object($room) ? $room->id : $room;
-                        if ($roomId != $session->lead_room_id) {
-                            return redirect()->route('leads.start-work.leads', $session->lead_room_id)
-                                ->with('warning', 'You have an active calling session in another room.');
-                        }
                     }
                 }
             }

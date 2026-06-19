@@ -46,12 +46,24 @@
                         <div class="tab-pane fade show active" id="company" role="tabpanel">
                             <div class="row g-3">
                                 @foreach($settings['company'] ?? [] as $s)
+                                    @php
+                                        $val = $s->value;
+                                        if (isset($company) && $company) {
+                                            if ($s->key === 'company_name') $val = $company->name ?: $s->value;
+                                            elseif ($s->key === 'company_email') $val = $company->email ?: $s->value;
+                                            elseif ($s->key === 'company_auth_person_name') $val = $company->auth_person_name ?: $s->value;
+                                            elseif ($s->key === 'company_auth_person_email') $val = $company->auth_person_email ?: $s->value;
+                                            elseif ($s->key === 'company_phone') $val = $company->phone ?: $s->value;
+                                            elseif ($s->key === 'company_address') $val = $company->address ?: $s->value;
+                                            elseif ($s->key === 'company_gst') $val = $company->gst ?: $s->value;
+                                        }
+                                    @endphp
                                     <div class="col-12 {{ $s->type === 'textarea' ? 'col-md-12' : 'col-md-6' }}">
                                         <label class="form-label fw-medium">{{ $s->label }}</label>
                                         @if($s->type === 'textarea')
-                                            <textarea name="{{ $s->key }}" class="form-control" rows="3">{{ $s->value }}</textarea>
+                                            <textarea name="{{ $s->key }}" class="form-control" rows="3">{{ $val }}</textarea>
                                         @else
-                                            <input type="text" name="{{ $s->key }}" class="form-control" value="{{ $s->value }}">
+                                            <input type="text" name="{{ $s->key }}" class="form-control" value="{{ $val }}">
                                         @endif
                                     </div>
                                 @endforeach

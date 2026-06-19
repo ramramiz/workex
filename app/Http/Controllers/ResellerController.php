@@ -68,6 +68,51 @@ class ResellerController extends Controller
         return redirect()->route('reseller.dashboard')->with('success', 'Company created successfully!');
     }
 
+    public function edit(Company $company)
+    {
+        $admin = User::where('company_id', $company->id)
+            ->whereHas('role', function ($q) {
+                $q->where('slug', 'super-admin')->orWhere('slug', 'admin');
+            })
+            ->first();
+
+        return view('reseller.companies.edit', compact('company', 'admin'));
+    }
+
+    public function update(Request $request, Company $company)
+    {
+        $admin = User::where('company_id', $company->id)
+            ->whereHas('role', function ($q) {
+                $q->where('slug', 'super-admin')->orWhere('slug', 'admin');
+            })
+            ->first();
+
+        $request->validate([
+            'company_name' => 'required|string|max:255',
+            'admin_name'   => 'required|string|max:255',
+            'admin_email'  => 'required|email|unique:users,email,' . ($admin ? $admin->id : 'NULL'),
+            'admin_password' => 'nullable|string|min:8',
+        ]);
+
+        $company->update([
+            'name'  => $request->company_name,
+            'email' => $request->admin_email,
+        ]);
+
+        if ($admin) {
+            $adminData = [
+                'name'  => $request->admin_name,
+                'email' => $request->admin_email,
+            ];
+            if ($request->filled('admin_password')) {
+                $adminData['password'] = Hash::make($request->admin_password);
+            }
+            $admin->update($adminData);
+        }
+
+        return redirect()->route('reseller.dashboard')->with('success', 'Company updated successfully!');
+    }
+
     public function toggleStatus(Company $company)
     {
         // Prevent toggling the default company

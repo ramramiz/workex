@@ -106,7 +106,15 @@ class User extends Authenticatable
 
     public function todayWorkSession()
     {
-        return $this->hasOne(WorkSession::class)->whereDate('date', today());
+        return $this->hasOne(WorkSession::class)->where(function($query) {
+            $query->where('status', 'active')
+                  ->orWhereDate('date', today());
+        })->latestOfMany();
+    }
+
+    public function activeWorkSession()
+    {
+        return $this->hasOne(WorkSession::class)->where('status', 'active');
     }
 
     public function timeLogs()

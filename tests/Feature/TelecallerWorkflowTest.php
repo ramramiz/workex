@@ -387,22 +387,31 @@ class TelecallerWorkflowTest extends TestCase
         ]);
         $room->users()->attach($this->telecaller1->id);
 
+        // 1. Visit Start Work Session page (index)
         $response = $this->actingAs($this->telecaller1)->get(route('leads.start-work.index'));
-        $response->assertStatus(200);
-        $response->assertSee('Assigned Room');
-
-        $response = $this->actingAs($this->telecaller1)->get(route('leads.start-work.room', $room));
         $response->assertStatus(200);
         $response->assertSee('Start Work Session');
 
-        $response = $this->actingAs($this->telecaller1)->post(route('leads.start-work.start', $room));
+        // 2. Start session
+        $response = $this->actingAs($this->telecaller1)->post(route('leads.start-work.start-session'));
+        $response->assertRedirect(route('leads.start-work.select-room'));
+
+        // 3. See assigned room on select-room page
+        $response = $this->actingAs($this->telecaller1)->get(route('leads.start-work.select-room'));
+        $response->assertStatus(200);
+        $response->assertSee('Assigned Room');
+
+        // 4. Select the room
+        $response = $this->actingAs($this->telecaller1)->get(route('leads.start-work.select-room-join', $room));
         $response->assertRedirect(route('leads.start-work.leads', $room));
         $this->assertEquals($room->id, session('active_room_work.room_id'));
 
+        // 5. Access Leads page
         $response = $this->actingAs($this->telecaller1)->get(route('leads.start-work.leads', $room));
         $response->assertStatus(200);
         $response->assertSee('**********'); // Masked number
 
+        // 6. Stop session
         $response = $this->actingAs($this->telecaller1)->post(route('leads.start-work.stop'));
         
         $session = \App\Models\LeadRoomWorkSession::where('user_id', $this->telecaller1->id)->first();
@@ -536,6 +545,10 @@ class TelecallerWorkflowTest extends TestCase
         ]);
         $room->users()->attach($this->telecaller1->id);
 
+        // Start work session and select room
+        $this->actingAs($this->telecaller1)->post(route('leads.start-work.start-session'));
+        $this->actingAs($this->telecaller1)->get(route('leads.start-work.select-room-join', $room));
+
         // Create 2 leads in this room
         $lead1 = Lead::create([
             'client_name' => 'Client Uncalled',
@@ -591,6 +604,10 @@ class TelecallerWorkflowTest extends TestCase
             'created_by' => $this->admin->id
         ]);
         $room->users()->attach($this->telecaller1->id);
+
+        // Start work session and select room
+        $this->actingAs($this->telecaller1)->post(route('leads.start-work.start-session'));
+        $this->actingAs($this->telecaller1)->get(route('leads.start-work.select-room-join', $room));
 
         // Create 3 leads in this room
         $lead1 = Lead::create([
@@ -674,6 +691,10 @@ class TelecallerWorkflowTest extends TestCase
             'created_by' => $this->admin->id
         ]);
         $room->users()->attach($this->telecaller1->id);
+
+        // Start work session and select room
+        $this->actingAs($this->telecaller1)->post(route('leads.start-work.start-session'));
+        $this->actingAs($this->telecaller1)->get(route('leads.start-work.select-room-join', $room));
 
         // Lead 1: Interested
         $lead1 = Lead::create([
@@ -1127,6 +1148,162 @@ class TelecallerWorkflowTest extends TestCase
             'subject' => $mailboxMsg->subject,
             'body' => $mailboxMsg->body
         ]);
+    }
+
+    public function test_telecaller_select_room_shows_today_follow_ups_and_summary_shows_metrics_breakdown(): void
+    {
+        $room = \App\Models\LeadRoom::create([
+            'name' => 'Room Alpha',
+            'description' => 'Test room',
+            'created_by' => $this->admin->id
+        ]);
+        $room->users()->attach($this->telecaller1->id);
+
+        $lead = Lead::create([
+            'client_name' => 'Followup Cust',
+            'requirement' => 'Design Call',
+            'assigned_to' => $this->telecaller1->id,
+            'lead_room_id' => $room->id,
+            'created_by' => $this->admin->id,
+            'source' => 'direct',
+            'status' => 'new',
+            'follow_up_date' => today()
+        ]);
+
+        // Start day session
+        $this->actingAs($this->telecaller1)->post(route('leads.start-work.start-session'));
+
+        // Visit select-room page and check if it lists today's follow-up
+        $response = $this->actingAs($this->telecaller1)->get(route('leads.start-work.select-room'));
+        $response->assertStatus(200);
+        $response->assertSee('Room Alpha');
+        $response->assertSee("Today's Follow-ups", false);
+
+        // Select the room
+        $this->actingAs($this->telecaller1)->get(route('leads.start-work.select-room-join', $room));
+
+        // Log one connected call (marked interested)
+        $this->actingAs($this->telecaller1)->post(route('leads.calls.store', $lead), [
+            'status' => 'Connected',
+            'lead_status' => 'interested',
+            'duration' => 60,
+            'source' => 'room_work'
+        ]);
+
+        // Log one not connected call
+        $lead2 = Lead::create([
+            'client_name' => 'Busy Cust',
+            'requirement' => 'Support',
+            'assigned_to' => $this->telecaller1->id,
+            'lead_room_id' => $room->id,
+            'created_by' => $this->admin->id,
+            'source' => 'direct',
+            'status' => 'new'
+        ]);
+        $this->actingAs($this->telecaller1)->post(route('leads.calls.store', $lead2), [
+            'status' => 'Busy',
+            'duration' => 5,
+            'source' => 'room_work'
+        ]);
+
+        // Stop session
+        $this->actingAs($this->telecaller1)->post(route('leads.start-work.stop'));
+        
+        $session = \App\Models\LeadRoomWorkSession::where('user_id', $this->telecaller1->id)->first();
+        
+        // Visit summary and check if breakdown stats exist
+        $response = $this->actingAs($this->telecaller1)->get(route('leads.start-work.summary', [$room->id, $session->id]));
+        $response->assertStatus(200);
+        
+        // Assert view has data
+        $response->assertViewHas('totalCalls', 2);
+        $response->assertViewHas('connectedCalls', 1);
+        $response->assertViewHas('notConnectedCalls', 1);
+        $response->assertViewHas('interestedCount', 1);
+
+        $response->assertSee('Total Calls Logged');
+        $response->assertSee('Connected Calls');
+        $response->assertSee('Interested Leads');
+        $response->assertSee('Not Connected / Busy');
+    }
+
+    public function test_telecaller_virtual_followup_room_workflow(): void
+    {
+        $room = \App\Models\LeadRoom::create([
+            'name' => 'Room Alpha',
+            'description' => 'Test room',
+            'created_by' => $this->admin->id
+        ]);
+        $room->users()->attach($this->telecaller1->id);
+
+        $lead = Lead::create([
+            'client_name' => 'Followup Cust',
+            'requirement' => 'Design Call',
+            'assigned_to' => $this->telecaller1->id,
+            'lead_room_id' => $room->id,
+            'created_by' => $this->admin->id,
+            'source' => 'direct',
+            'status' => 'new',
+            'follow_up_date' => today()
+        ]);
+
+        // Start day session
+        $this->actingAs($this->telecaller1)->post(route('leads.start-work.start-session'));
+
+        // Visit select-room page and check if it has the Today's Follow-ups virtual card
+        $response = $this->actingAs($this->telecaller1)->get(route('leads.start-work.select-room'));
+        $response->assertStatus(200);
+        $response->assertSee("Today's Follow-ups", false);
+        $response->assertSee("1 Scheduled");
+
+        // Join virtual room
+        $response = $this->actingAs($this->telecaller1)->get(route('leads.start-work.select-followups'));
+        $response->assertRedirect(route('leads.start-work.followup-leads'));
+        $this->assertEquals('followups', session('active_room_work.room_id'));
+
+        // Try to access dashboard - should be locked & redirect to follow-ups leads page
+        $response = $this->actingAs($this->telecaller1)->get(route('dashboard'));
+        $response->assertRedirect(route('leads.start-work.followup-leads'));
+
+        // View followups leads list
+        $response = $this->actingAs($this->telecaller1)->get(route('leads.start-work.followup-leads'));
+        $response->assertStatus(200);
+        $response->assertSee('Followup Cust');
+
+        // Log a call inside virtual followups room
+        $response = $this->actingAs($this->telecaller1)->post(route('leads.calls.store', $lead), [
+            'status' => 'Connected',
+            'lead_status' => 'interested',
+            'duration' => 30,
+            'source' => 'room_work'
+        ]);
+        $response->assertRedirect(route('leads.start-work.followup-leads'));
+
+        // Verify that the lead's follow_up_date has been set to null (saved as blank)
+        $lead->refresh();
+        $this->assertNull($lead->follow_up_date);
+
+        // Pause follow-up session
+        $response = $this->actingAs($this->telecaller1)->post(route('leads.start-work.pause-followups'));
+        $response->assertRedirect();
+        $this->assertEquals('paused', session('active_room_work.status'));
+
+        // Resume follow-up session
+        $response = $this->actingAs($this->telecaller1)->post(route('leads.start-work.resume-followups'));
+        $response->assertRedirect();
+        $this->assertEquals('active', session('active_room_work.status'));
+
+        // Stop session
+        $response = $this->actingAs($this->telecaller1)->post(route('leads.start-work.stop'));
+        
+        $session = \App\Models\LeadRoomWorkSession::where('user_id', $this->telecaller1->id)->first();
+        $response->assertRedirect(route('leads.start-work.summary', [0, $session->id]));
+
+        // Visit summary and check if breakdown stats exist
+        $response = $this->actingAs($this->telecaller1)->get(route('leads.start-work.summary', [0, $session->id]));
+        $response->assertStatus(200);
+        $response->assertSee('Total Calls Logged');
+        $response->assertSee('N/A'); // Room is N/A for followups virtual room
     }
 }
 

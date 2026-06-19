@@ -165,6 +165,7 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['role:super-admin'])->group(function () {
         Route::get('/live-status', [LiveStatusController::class, 'index'])->name('live-status');
         Route::get('/live-status/data', [LiveStatusController::class, 'data'])->name('live-status.data');
+        Route::get('/live-status/telecaller/{user}/room/{room}', [LiveStatusController::class, 'telecallerRoomCalls'])->name('live-status.telecaller-room-calls');
     });
 
     // Work Timer
@@ -284,6 +285,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Unified Tasks Chat
     Route::get('chat', [ChatController::class, 'index'])->name('chat.index');
+    Route::get('chat/unread-counts', [ChatController::class, 'getUnreadCounts'])->name('chat.unread-counts');
     Route::get('chat/tasks/{task}', [ChatController::class, 'show'])->name('chat.show');
 
     // Custom Domain Mailbox
@@ -332,6 +334,13 @@ Route::middleware(['auth'])->group(function () {
 
     // Telecaller Start Today Work Section
     Route::get('start-work', [\App\Http\Controllers\LeadRoomWorkController::class, 'index'])->name('leads.start-work.index');
+    Route::post('start-work/start', [\App\Http\Controllers\LeadRoomWorkController::class, 'startWorkSession'])->name('leads.start-work.start-session');
+    Route::get('start-work/select-room', [\App\Http\Controllers\LeadRoomWorkController::class, 'selectRoomList'])->name('leads.start-work.select-room');
+    Route::get('start-work/followups/select', [\App\Http\Controllers\LeadRoomWorkController::class, 'selectFollowupRoom'])->name('leads.start-work.select-followups');
+    Route::get('start-work/followups/leads', [\App\Http\Controllers\LeadRoomWorkController::class, 'followupLeads'])->name('leads.start-work.followup-leads');
+    Route::post('start-work/followups/pause', [\App\Http\Controllers\LeadRoomWorkController::class, 'pauseFollowupWork'])->name('leads.start-work.pause-followups');
+    Route::post('start-work/followups/resume', [\App\Http\Controllers\LeadRoomWorkController::class, 'resumeFollowupWork'])->name('leads.start-work.resume-followups');
+    Route::get('start-work/room/{room}/select', [\App\Http\Controllers\LeadRoomWorkController::class, 'selectRoom'])->name('leads.start-work.select-room-join');
     Route::get('start-work/room/{room}', [\App\Http\Controllers\LeadRoomWorkController::class, 'room'])->name('leads.start-work.room');
     Route::post('start-work/room/{room}/start', [\App\Http\Controllers\LeadRoomWorkController::class, 'startWork'])->name('leads.start-work.start');
     Route::get('start-work/room/{room}/leads', [\App\Http\Controllers\LeadRoomWorkController::class, 'leads'])->name('leads.start-work.leads');
@@ -354,6 +363,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('reseller/dashboard', [\App\Http\Controllers\ResellerController::class, 'index'])->name('reseller.dashboard');
         Route::get('reseller/companies/create', [\App\Http\Controllers\ResellerController::class, 'create'])->name('reseller.companies.create');
         Route::post('reseller/companies', [\App\Http\Controllers\ResellerController::class, 'store'])->name('reseller.companies.store');
+        Route::get('reseller/companies/{company}/edit', [\App\Http\Controllers\ResellerController::class, 'edit'])->name('reseller.companies.edit');
+        Route::put('reseller/companies/{company}', [\App\Http\Controllers\ResellerController::class, 'update'])->name('reseller.companies.update');
         Route::post('reseller/companies/{company}/toggle-status', [\App\Http\Controllers\ResellerController::class, 'toggleStatus'])->name('reseller.companies.toggle-status');
     });
 });
