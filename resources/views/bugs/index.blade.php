@@ -20,9 +20,11 @@
 <div class="card">
     <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-3">
         <h5 class="mb-0">{{ request('filter') === 'solved' ? 'Solved Bugs' : 'Logged Issues & Bugs' }}</h5>
-        <a href="{{ route('bugs.create') }}" class="btn btn-danger btn-sm">
-            <i class="bi bi-bug me-1"></i> Log a Bug
-        </a>
+        @if(auth()->user()->isLeaderOrAbove())
+            <a href="{{ route('bugs.create') }}" class="btn btn-danger btn-sm">
+                <i class="bi bi-bug me-1"></i> Log a Bug
+            </a>
+        @endif
     </div>
 
     <!-- Filters -->
@@ -137,16 +139,18 @@
                                 <a href="{{ route('bugs.show', $bug) }}" class="btn btn-outline-secondary btn-sm" title="View details">
                                     <i class="bi bi-eye"></i>
                                 </a>
-                                <a href="{{ route('bugs.edit', $bug) }}" class="btn btn-outline-primary btn-sm" title="Edit">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                                <form method="POST" action="{{ route('bugs.destroy', $bug) }}" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this bug log?');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
+                                @if(auth()->user()->isLeaderOrAbove())
+                                    <a href="{{ route('bugs.edit', $bug) }}" class="btn btn-outline-primary btn-sm" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <form method="POST" action="{{ route('bugs.destroy', $bug) }}" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this bug log?');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                @endif
                             </div>
                         </td>
                     </tr>

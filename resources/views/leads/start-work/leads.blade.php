@@ -70,50 +70,20 @@
     <!-- Tabs Navigation -->
     <div class="px-4 py-3 bg-light border-bottom d-flex align-items-center justify-content-between flex-wrap gap-3" style="background-color: #f8f9fa !important;">
         <ul class="nav nav-pills" id="leadWorkTabs" style="gap: 8px;">
+            <!-- 1. Next Call -->
             <li class="nav-item">
                 <a class="nav-link {{ ($tab ?? 'uncalled') === 'uncalled' ? 'active bg-warning text-dark' : 'bg-white text-secondary border border-light-subtle' }} fw-bold px-4 py-2 d-flex align-items-center gap-2" 
                    href="{{ route('leads.start-work.leads', ['room' => $room->id, 'tab' => 'uncalled']) }}"
                    style="border-radius: 20px; transition: all 0.2s ease; font-size: 13px;">
                     <i class="bi bi-telephone"></i>
-                    Uncalled Leads
+                    Next Call
                     <span class="badge {{ ($tab ?? 'uncalled') === 'uncalled' ? 'bg-dark text-white' : 'bg-secondary-subtle text-secondary' }} rounded-pill" style="font-size: 11px;">
                         {{ $uncalledCount ?? 0 }}
                     </span>
                 </a>
             </li>
-            <li class="nav-item">
-                <a class="nav-link {{ ($tab ?? 'uncalled') === 'not_connected' ? 'active bg-warning text-dark' : 'bg-white text-secondary border border-light-subtle' }} fw-bold px-4 py-2 d-flex align-items-center gap-2" 
-                   href="{{ route('leads.start-work.leads', ['room' => $room->id, 'tab' => 'not_connected']) }}"
-                   style="border-radius: 20px; transition: all 0.2s ease; font-size: 13px;">
-                    <i class="bi bi-telephone-x"></i>
-                    Not Connected Leads
-                    <span class="badge {{ ($tab ?? 'uncalled') === 'not_connected' ? 'bg-dark text-white' : 'bg-secondary-subtle text-secondary' }} rounded-pill" style="font-size: 11px;">
-                        {{ $notConnectedCount ?? 0 }}
-                    </span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ ($tab ?? 'uncalled') === 'called' ? 'active bg-warning text-dark' : 'bg-white text-secondary border border-light-subtle' }} fw-bold px-4 py-2 d-flex align-items-center gap-2" 
-                   href="{{ route('leads.start-work.leads', ['room' => $room->id, 'tab' => 'called']) }}"
-                   style="border-radius: 20px; transition: all 0.2s ease; font-size: 13px;">
-                    <i class="bi bi-telephone-outbound"></i>
-                    Called Leads
-                    <span class="badge {{ ($tab ?? 'uncalled') === 'called' ? 'bg-dark text-white' : 'bg-secondary-subtle text-secondary' }} rounded-pill" style="font-size: 11px;">
-                        {{ $calledCount ?? 0 }}
-                    </span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ ($tab ?? 'uncalled') === 'interested' ? 'active bg-warning text-dark' : 'bg-white text-secondary border border-light-subtle' }} fw-bold px-4 py-2 d-flex align-items-center gap-2" 
-                   href="{{ route('leads.start-work.leads', ['room' => $room->id, 'tab' => 'interested']) }}"
-                   style="border-radius: 20px; transition: all 0.2s ease; font-size: 13px;">
-                    <i class="bi bi-star"></i>
-                    Interested
-                    <span class="badge {{ ($tab ?? 'uncalled') === 'interested' ? 'bg-dark text-white' : 'bg-secondary-subtle text-secondary' }} rounded-pill" style="font-size: 11px;">
-                        {{ $interestedCount ?? 0 }}
-                    </span>
-                </a>
-            </li>
+
+            <!-- 2. Today Follow-ups -->
             <li class="nav-item">
                 <a class="nav-link {{ ($tab ?? 'uncalled') === 'today_follow_up' ? 'active bg-warning text-dark' : 'bg-white text-secondary border border-light-subtle' }} fw-bold px-4 py-2 d-flex align-items-center gap-2" 
                    href="{{ route('leads.start-work.leads', ['room' => $room->id, 'tab' => 'today_follow_up']) }}"
@@ -126,6 +96,45 @@
                     Today Follow-ups
                     <span class="badge {{ ($tab ?? 'uncalled') === 'today_follow_up' ? 'bg-dark text-white' : 'bg-secondary-subtle text-secondary' }} rounded-pill" style="font-size: 11px;">
                         {{ $todayFollowUpCount ?? 0 }}
+                    </span>
+                </a>
+            </li>
+
+            <!-- 3. Interested Leads -->
+            <li class="nav-item">
+                <a class="nav-link {{ ($tab ?? 'uncalled') === 'interested' ? 'active bg-warning text-dark' : 'bg-white text-secondary border border-light-subtle' }} fw-bold px-4 py-2 d-flex align-items-center gap-2" 
+                   href="{{ route('leads.start-work.leads', ['room' => $room->id, 'tab' => 'interested']) }}"
+                   style="border-radius: 20px; transition: all 0.2s ease; font-size: 13px;">
+                    <i class="bi bi-star-fill text-success"></i>
+                    Interested
+                    <span class="badge {{ ($tab ?? 'uncalled') === 'interested' ? 'bg-dark text-white' : 'bg-secondary-subtle text-secondary' }} rounded-pill" style="font-size: 11px;">
+                        {{ $interestedCount ?? 0 }}
+                    </span>
+                </a>
+            </li>
+
+            <!-- 4. Not Connected Leads -->
+            <li class="nav-item">
+                <a class="nav-link {{ ($tab ?? 'uncalled') === 'not_connected' ? 'active bg-warning text-dark' : 'bg-white text-secondary border border-light-subtle' }} fw-bold px-4 py-2 d-flex align-items-center gap-2" 
+                   href="{{ route('leads.start-work.leads', ['room' => $room->id, 'tab' => 'not_connected']) }}"
+                   style="border-radius: 20px; transition: all 0.2s ease; font-size: 13px;">
+                    <i class="bi bi-telephone-x"></i>
+                    Not Connected Leads
+                    <span class="badge {{ ($tab ?? 'uncalled') === 'not_connected' ? 'bg-dark text-white' : 'bg-secondary-subtle text-secondary' }} rounded-pill" style="font-size: 11px;">
+                        {{ $notConnectedCount ?? 0 }}
+                    </span>
+                </a>
+            </li>
+
+            <!-- 5. All Contacts -->
+            <li class="nav-item">
+                <a class="nav-link {{ ($tab ?? 'uncalled') === 'all_contacts' ? 'active bg-warning text-dark' : 'bg-white text-secondary border border-light-subtle' }} fw-bold px-4 py-2 d-flex align-items-center gap-2" 
+                   href="{{ route('leads.start-work.leads', ['room' => $room->id, 'tab' => 'all_contacts']) }}"
+                   style="border-radius: 20px; transition: all 0.2s ease; font-size: 13px;">
+                    <i class="bi bi-people-fill"></i>
+                    All Contacts
+                    <span class="badge {{ ($tab ?? 'uncalled') === 'all_contacts' ? 'bg-dark text-white' : 'bg-secondary-subtle text-secondary' }} rounded-pill" style="font-size: 11px;">
+                        {{ $allContactsCount ?? 0 }}
                     </span>
                 </a>
             </li>
@@ -347,6 +356,22 @@
     }
     .animate-pulse {
         animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    .hover-stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.06) !important;
+    }
+    .shadow-md {
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08) !important;
+    }
+    @keyframes bellRing {
+        0%, 100% { transform: rotate(0); }
+        20%, 60% { transform: rotate(12deg); }
+        40%, 80% { transform: rotate(-12deg); }
+    }
+    .animate-bell {
+        display: inline-block;
+        animation: bellRing 3s ease infinite;
     }
 </style>
 @endpush

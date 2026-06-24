@@ -461,9 +461,11 @@
                                 @csrf
                                 <button type="submit" class="btn btn-success btn-sm w-100" {{ $isButtonsDisabled ? 'disabled' : '' }}><i class="bi bi-play-fill me-1"></i> Start Work</button>
                             </form>
-                            <button type="button" class="btn btn-primary btn-sm w-100" data-bs-toggle="modal" data-bs-target="#taskCompletionModal" {{ $isButtonsDisabled ? 'disabled' : '' }}>
-                                <i class="bi bi-check2-circle me-1"></i> Mark as Complete
-                            </button>
+                            @if($task->status !== 'pending')
+                                <button type="button" class="btn btn-primary btn-sm w-100" data-bs-toggle="modal" data-bs-target="#taskCompletionModal" {{ $isButtonsDisabled ? 'disabled' : '' }}>
+                                    <i class="bi bi-send-check me-1"></i> Submit for Review
+                                </button>
+                            @endif
                         @endif
 
                         <div class="d-flex gap-2 w-100">
@@ -473,7 +475,9 @@
                                 <option value="review" {{ $task->status === 'review' ? 'selected' : '' }}>Review</option>
                                 <option value="rework" {{ $task->status === 'rework' ? 'selected' : '' }}>Rework</option>
                                 <option value="rejected" {{ $task->status === 'rejected' ? 'selected' : '' }}>Rejected</option>
-                                <option value="completed" {{ $task->status === 'completed' ? 'selected' : '' }}>Completed</option>
+                                @if($task->status === 'completed')
+                                    <option value="completed" selected>Completed</option>
+                                @endif
                                 <option value="cancelled" {{ $task->status === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
                             </select>
 
@@ -630,8 +634,14 @@
                         </label>
                         <input type="file" id="chat-image-input" accept="image/*" style="display: none;">
 
-                        <div class="whatsapp-input-container">
-                            <textarea name="comment" id="whatsapp-comment-input" class="whatsapp-input" placeholder="Type a message" rows="1" autocomplete="off"></textarea>
+                        <div class="whatsapp-input-container flex-column align-items-start py-2">
+                            <!-- Attachment Preview -->
+                            <div id="chat-attachment-preview" class="d-none mb-2 position-relative" style="width: 80px; height: 80px; border-radius: 8px; border: 1px solid #cbd5e1; overflow: visible; background-size: cover; background-position: center;">
+                                <button type="button" id="chat-attachment-remove" class="btn btn-danger btn-sm p-0 d-flex align-items-center justify-content-center position-absolute" style="width: 20px; height: 20px; border-radius: 50%; top: -8px; right: -8px; font-size: 11px; z-index: 10;">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
+                            <textarea name="comment" id="whatsapp-comment-input" class="whatsapp-input w-100" placeholder="Type a message" rows="1" autocomplete="off"></textarea>
                         </div>
                         <button type="submit" class="whatsapp-send-btn">
                             <i class="bi bi-send-fill" style="margin-left: 2px;"></i>
@@ -656,18 +666,6 @@
                     @csrf
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label fs-7 fw-semibold">Task Status <span class="text-danger">*</span></label>
-                            <select name="status" class="form-select form-select-sm fw-semibold" required>
-                                <option value="pending" {{ $task->status === 'pending' ? 'selected' : '' }}>Pending</option>
-                                <option value="in_progress" {{ $task->status === 'in_progress' ? 'selected' : '' }}>In Progress</option>
-                                <option value="review" {{ $task->status === 'review' ? 'selected' : '' }}>Review</option>
-                                <option value="rework" {{ $task->status === 'rework' ? 'selected' : '' }}>Rework</option>
-                                <option value="rejected" {{ $task->status === 'rejected' ? 'selected' : '' }}>Rejected</option>
-                                <option value="completed" {{ $task->status === 'completed' ? 'selected' : '' }}>Completed</option>
-                                <option value="cancelled" {{ $task->status === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
                             <label class="form-label fs-7 fw-semibold">Work Done Description <span class="text-danger">*</span></label>
                             <textarea name="note" class="form-control" rows="3" required placeholder="Describe what progress you made during this log..."></textarea>
                         </div>
@@ -687,7 +685,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
             <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title fw-bold text-dark" id="taskCompletionModalLabel">Submit Task Completion</h5>
+                <h5 class="modal-title fw-bold text-dark" id="taskCompletionModalLabel">Submit for Review</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="POST" action="{{ route('tasks.submit-completion', $task) }}">
@@ -698,14 +696,14 @@
                         <textarea name="completed_description" class="form-control" rows="4" required placeholder="Describe what you completed, any details of the changes made, etc."></textarea>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold text-dark">Page Link / Test URL <span class="text-danger">*</span></label>
-                        <input type="url" name="completed_link" class="form-control" required placeholder="https://example.com/test-page">
+                        <label class="form-label fw-semibold text-dark">Page Link / Test URL</label>
+                        <input type="url" name="completed_link" class="form-control" placeholder="https://example.com/test-page">
                         <div class="form-text text-muted fs-8">Provide the exact link where this change/feature can be verified.</div>
                     </div>
                 </div>
                 <div class="modal-footer border-0">
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary btn-sm px-4">Mark as Complete</button>
+                    <button type="submit" class="btn btn-primary btn-sm px-4">Submit for Review</button>
                 </div>
             </form>
         </div>
@@ -713,23 +711,7 @@
 </div>
 @endsection
 
-<!-- Comment Info Modal -->
-<div class="modal fade" id="commentInfoModal" tabindex="-1" aria-labelledby="commentInfoModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg text-start" style="border-radius: 16px;">
-            <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title fw-bold text-dark" id="commentInfoModalLabel">Message Info</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body pt-3">
-                <div class="text-muted mb-3 fs-7">People who viewed this message:</div>
-                <div id="comment-viewers-list" class="d-flex flex-column gap-2">
-                    <!-- Dynamic List of Viewers -->
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+
 
 <!-- Image Annotation Markup Modal -->
 <div class="modal fade" id="imageMarkupModal" data-bs-backdrop="static" tabindex="-1" aria-labelledby="imageMarkupModalLabel" aria-hidden="true">
@@ -856,9 +838,56 @@
 
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    if (this.value.trim().length > 0) {
+                    const imageVal = document.getElementById('chat-image-data').value;
+                    if (this.value.trim().length > 0 || imageVal) {
                         this.form.submit();
                     }
+                }
+            });
+
+            commentInput.addEventListener('paste', function(e) {
+                const items = (e.clipboardData || window.clipboardData || e.originalEvent.clipboardData).items;
+                for (let i = 0; i < items.length; i++) {
+                    if (items[i].type.indexOf('image') !== -1) {
+                        const file = items[i].getAsFile();
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            const base64 = event.target.result;
+                            document.getElementById('chat-image-data').value = base64;
+                            
+                            const preview = document.getElementById('chat-attachment-preview');
+                            if (preview) {
+                                preview.style.backgroundImage = `url(${base64})`;
+                                preview.classList.remove('d-none');
+                            }
+                        };
+                        reader.readAsDataURL(file);
+                        e.preventDefault();
+                        break;
+                    }
+                }
+            });
+
+            const removeBtn = document.getElementById('chat-attachment-remove');
+            if (removeBtn) {
+                removeBtn.addEventListener('click', function() {
+                    document.getElementById('chat-image-data').value = '';
+                    const preview = document.getElementById('chat-attachment-preview');
+                    if (preview) {
+                        preview.classList.add('d-none');
+                        preview.style.backgroundImage = '';
+                    }
+                });
+            }
+        }
+
+        const chatForm = document.getElementById('chat-form');
+        if (chatForm) {
+            chatForm.addEventListener('submit', function(e) {
+                const comment = document.getElementById('whatsapp-comment-input').value.trim();
+                const imageData = document.getElementById('chat-image-data').value;
+                if (!comment && !imageData) {
+                    e.preventDefault();
                 }
             });
         }
@@ -999,39 +1028,7 @@
             mentionStartIndex = -1;
         }
 
-        // Comment Info Modal Population
-        const commentInfoModal = document.getElementById('commentInfoModal');
-        if (commentInfoModal) {
-            commentInfoModal.addEventListener('show.bs.modal', function(event) {
-                const triggerButton = event.relatedTarget;
-                const viewers = JSON.parse(triggerButton.getAttribute('data-viewers') || '[]');
-                const listContainer = document.getElementById('comment-viewers-list');
-                
-                listContainer.innerHTML = '';
-                
-                if (viewers.length === 0) {
-                    listContainer.innerHTML = `
-                        <div class="text-center py-4 text-muted">
-                            <i class="bi bi-eye-slash fs-2 mb-2 d-block"></i>
-                            <span class="fs-7">No one has viewed this message yet.</span>
-                        </div>
-                    `;
-                } else {
-                    viewers.forEach(v => {
-                        const item = document.createElement('div');
-                        item.className = 'd-flex align-items-center justify-content-between py-2 border-bottom border-light';
-                        item.innerHTML = `
-                            <div class="d-flex align-items-center gap-2">
-                                <img src="${v.avatar_url}" class="avatar-circle" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
-                                <span class="fw-semibold text-dark fs-7">${v.name}</span>
-                            </div>
-                            <span class="text-muted fs-8">${v.viewed_at}</span>
-                        `;
-                        listContainer.appendChild(item);
-                    });
-                }
-            });
-        }
+
 
         // Image Viewer Modal setup
         const imageViewerModal = document.getElementById('imageViewerModal');

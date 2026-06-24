@@ -67,14 +67,25 @@ class LeadRoomImportTest extends TestCase
 
     public function test_admin_can_manage_rooms_and_assign_telecallers(): void
     {
+        $client = \App\Models\Client::create([
+            'company_name' => 'Acme Corp',
+            'contact_person' => 'John Client',
+            'email' => 'acme@example.com',
+            'phone' => '1234567890',
+            'status' => 'active',
+            'created_by' => $this->admin->id
+        ]);
+
         $response = $this->actingAs($this->admin)
             ->post(route('lead-rooms.store'), [
+                'client_id' => $client->id,
                 'name' => 'SaaS Campaign',
                 'description' => 'SaaS outbound leads'
             ]);
 
         $response->assertRedirect();
         $this->assertDatabaseHas('lead_rooms', [
+            'client_id' => $client->id,
             'name' => 'SaaS Campaign',
             'description' => 'SaaS outbound leads',
             'created_by' => $this->admin->id
@@ -161,7 +172,20 @@ class LeadRoomImportTest extends TestCase
 
     public function test_excel_import_flow_preview_and_submission(): void
     {
-        $room = LeadRoom::create(['name' => 'Import Room', 'created_by' => $this->admin->id]);
+        $client = \App\Models\Client::create([
+            'company_name' => 'Acme Corp',
+            'contact_person' => 'John Client',
+            'email' => 'acme@example.com',
+            'phone' => '1234567890',
+            'status' => 'active',
+            'created_by' => $this->admin->id
+        ]);
+
+        $room = LeadRoom::create([
+            'client_id' => $client->id,
+            'name' => 'Import Room',
+            'created_by' => $this->admin->id
+        ]);
 
         // Create mock excel file
         $spreadsheet = new Spreadsheet();
@@ -237,6 +261,7 @@ class LeadRoomImportTest extends TestCase
 
         // Check if database has the imported lead under the room
         $this->assertDatabaseHas('leads', [
+            'client_id' => $client->id,
             'client_name' => 'Valid Client',
             'client_phone' => '9998887776',
             'client_email' => 'valid@example.com',

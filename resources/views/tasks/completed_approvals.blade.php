@@ -33,7 +33,7 @@
                             <div class="fw-semibold">
                                 <a href="{{ route('tasks.show', $task) }}" class="text-decoration-none text-dark">{{ $task->title }}</a>
                             </div>
-                            <span class="badge bg-info-subtle text-info border border-info-subtle mt-1">Pending Approval</span>
+                            <span class="badge bg-info-subtle text-info border border-info-subtle mt-1">Pending Super Admin Approval</span>
                         </td>
                         <td class="fs-7 text-secondary">
                             {{ $task->project->name ?? '—' }}
@@ -69,11 +69,11 @@
                                     </a>
                                 @endif
                                 
-                                <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#approvalModal-{{ $task->id }}" onclick="toggleRejectSection({{ $task->id }}, false)" title="Approve Task">
+                                <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#approvalModal-{{ $task->id }}" onclick="toggleFormSection({{ $task->id }}, 'approve')" title="Approve Task">
                                     <i class="bi bi-check-lg me-1"></i> Approve
                                 </button>
 
-                                <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#approvalModal-{{ $task->id }}" onclick="toggleRejectSection({{ $task->id }}, true)" title="Reject Task">
+                                <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#approvalModal-{{ $task->id }}" onclick="toggleFormSection({{ $task->id }}, 'reject')" title="Reject Task">
                                     <i class="bi bi-arrow-counterclockwise me-1"></i> Reject
                                 </button>
                             </div>
@@ -111,6 +111,21 @@
                                                 @endif
                                             </div>
 
+                                            <!-- Hidden Approval Form Section -->
+                                            <div id="approveSection-{{ $task->id }}" class="d-none border-top pt-3 mt-3">
+                                                <form method="POST" action="{{ route('tasks.approve-completion', $task) }}">
+                                                    @csrf
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-semibold text-success">Approval Comments / Notes <span class="text-danger">*</span></label>
+                                                        <textarea name="comment" id="approveComment-{{ $task->id }}" class="form-control" rows="3" placeholder="Enter approval comments..."></textarea>
+                                                    </div>
+                                                    <div class="d-flex gap-2 justify-content-end">
+                                                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleFormSection({{ $task->id }}, 'none')">Back</button>
+                                                        <button type="submit" class="btn btn-success btn-sm px-4">Submit Approval</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+
                                             <!-- Hidden Rejection Form Section -->
                                             <div id="rejectSection-{{ $task->id }}" class="d-none border-top pt-3 mt-3">
                                                 <form method="POST" action="{{ route('tasks.reject-completion', $task) }}" enctype="multipart/form-data">
@@ -124,7 +139,7 @@
                                                         <input type="file" name="image" class="form-control" accept="image/*">
                                                     </div>
                                                     <div class="d-flex gap-2 justify-content-end">
-                                                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleRejectSection({{ $task->id }}, false)">Back</button>
+                                                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleFormSection({{ $task->id }}, 'none')">Back</button>
                                                         <button type="submit" class="btn btn-danger btn-sm px-4">Submit Rejection</button>
                                                     </div>
                                                 </form>
@@ -134,12 +149,8 @@
                                         <!-- Default Footer with Approve / Reject Options -->
                                         <div class="modal-footer border-0" id="defaultFooter-{{ $task->id }}">
                                             <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                                            <button type="button" class="btn btn-danger btn-sm" onclick="toggleRejectSection({{ $task->id }}, true)">Reject</button>
-                                            
-                                            <form method="POST" action="{{ route('tasks.approve-completion', $task) }}" class="d-inline">
-                                                @csrf
-                                                <button type="submit" class="btn btn-success btn-sm px-4">Approve</button>
-                                            </form>
+                                            <button type="button" class="btn btn-danger btn-sm" onclick="toggleFormSection({{ $task->id }}, 'reject')">Reject</button>
+                                            <button type="button" class="btn btn-success btn-sm px-4" onclick="toggleFormSection({{ $task->id }}, 'approve')">Approve</button>
                                         </div>
                                     </div>
                                 </div>
@@ -169,19 +180,33 @@
 
 @push('scripts')
 <script>
-function toggleRejectSection(taskId, show) {
-    const section = document.getElementById('rejectSection-' + taskId);
+function toggleFormSection(taskId, mode) {
+    const approveSection = document.getElementById('approveSection-' + taskId);
+    const rejectSection = document.getElementById('rejectSection-' + taskId);
     const footer = document.getElementById('defaultFooter-' + taskId);
-    const textarea = document.getElementById('rejectComment-' + taskId);
-    if (show) {
-        section.classList.remove('d-none');
+    const approveTextarea = document.getElementById('approveComment-' + taskId);
+    const rejectTextarea = document.getElementById('rejectComment-' + taskId);
+    
+    if (mode === 'approve') {
+        approveSection.classList.remove('d-none');
+        rejectSection.classList.add('d-none');
         footer.classList.add('d-none');
-        textarea.setAttribute('required', 'required');
-        textarea.focus();
+        approveTextarea.setAttribute('required', 'required');
+        rejectTextarea.removeAttribute('required');
+        approveTextarea.focus();
+    } else if (mode === 'reject') {
+        rejectSection.classList.remove('d-none');
+        approveSection.classList.add('d-none');
+        footer.classList.add('d-none');
+        rejectTextarea.setAttribute('required', 'required');
+        approveTextarea.removeAttribute('required');
+        rejectTextarea.focus();
     } else {
-        section.classList.add('d-none');
+        approveSection.classList.add('d-none');
+        rejectSection.classList.add('d-none');
         footer.classList.remove('d-none');
-        textarea.removeAttribute('required');
+        approveTextarea.removeAttribute('required');
+        rejectTextarea.removeAttribute('required');
     }
 }
 </script>

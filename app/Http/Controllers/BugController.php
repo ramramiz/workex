@@ -24,12 +24,18 @@ class BugController extends Controller
     }
     public function create()
     {
+        if (!auth()->user()->isLeaderOrAbove()) {
+            abort(403, 'Unauthorized action. Only Team Leaders and Admins can report bugs.');
+        }
         $projects = Project::whereNotIn('status', ['completed','cancelled'])->get();
         $developers = User::whereHas('role', fn($q) => $q->whereIn('slug', ['employee','team-leader']))->where('status','active')->get();
         return view('bugs.create', compact('projects', 'developers'));
     }
     public function store(Request $request)
     {
+        if (!auth()->user()->isLeaderOrAbove()) {
+            abort(403, 'Unauthorized action. Only Team Leaders and Admins can report bugs.');
+        }
         $request->validate([
             'title' => 'required|string|max:255',
             'project_id' => 'required|exists:projects,id',
@@ -103,12 +109,32 @@ class BugController extends Controller
             ]);
         }
 
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Bug reported!',
+                'bug' => $bug,
+                'task' => $task
+            ]);
+        }
+
         return redirect()->route('bugs.index')->with('success', 'Bug reported!');
     }
     public function show(Bug $bug) { $bug->load(['project', 'reportedBy', 'assignedTo', 'comments.user']); return view('bugs.show', compact('bug')); }
-    public function edit(Bug $bug) { $projects = Project::all(); $developers = User::whereHas('role', fn($q) => $q->whereIn('slug', ['employee','team-leader']))->get(); return view('bugs.edit', compact('bug', 'projects', 'developers')); }
+    public function edit(Bug $bug)
+    {
+        if (!auth()->user()->isLeaderOrAbove()) {
+            abort(403, 'Unauthorized action. Only Team Leaders and Admins can manage bugs.');
+        }
+        $projects = Project::all();
+        $developers = User::whereHas('role', fn($q) => $q->whereIn('slug', ['employee','team-leader']))->get();
+        return view('bugs.edit', compact('bug', 'projects', 'developers'));
+    }
     public function update(Request $request, Bug $bug)
     {
+        if (!auth()->user()->isLeaderOrAbove()) {
+            abort(403, 'Unauthorized action. Only Team Leaders and Admins can manage bugs.');
+        }
         $request->validate([
             'title' => 'required|string|max:255',
             'project_id' => 'required|exists:projects,id',
@@ -162,7 +188,14 @@ class BugController extends Controller
         
         return back()->with('success', 'Bug updated!');
     }
-    public function destroy(Bug $bug) { $bug->delete(); return redirect()->route('bugs.index')->with('success', 'Bug deleted.'); }
+    public function destroy(Bug $bug)
+    {
+        if (!auth()->user()->isLeaderOrAbove()) {
+            abort(403, 'Unauthorized action. Only Team Leaders and Admins can manage bugs.');
+        }
+        $bug->delete();
+        return redirect()->route('bugs.index')->with('success', 'Bug deleted.');
+    }
     public function addComment(Request $request, Bug $bug)
     {
         $request->validate(['comment' => 'required|string']);

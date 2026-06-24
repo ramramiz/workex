@@ -99,9 +99,24 @@ class User extends Authenticatable
         return $this->belongsTo(LeadRoomWorkSession::class, 'active_room_work_session_id');
     }
 
+    public function leadRoomWorkSessions()
+    {
+        return $this->hasMany(LeadRoomWorkSession::class, 'user_id');
+    }
+
     public function workSessions()
     {
         return $this->hasMany(WorkSession::class);
+    }
+
+    public function sentDirectMessages()
+    {
+        return $this->hasMany(DirectMessage::class, 'sender_id');
+    }
+
+    public function receivedDirectMessages()
+    {
+        return $this->hasMany(DirectMessage::class, 'receiver_id');
     }
 
     public function todayWorkSession()

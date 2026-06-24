@@ -19,6 +19,7 @@ class TaskApprovalWorkflowTest extends TestCase
     protected User $adminUser;
     protected User $developerHisham;
     protected User $leaderSouban;
+    protected User $regularLeader;
     protected Task $task;
 
     protected function setUp(): void
@@ -51,6 +52,13 @@ class TaskApprovalWorkflowTest extends TestCase
             'name' => 'Souban',
             'role_id' => $teamLeaderRole->id,
             'email' => 'souban.techsoul@gmail.com',
+        ]);
+
+        // Create Regular Team Leader (without global admin-like email bypass)
+        $this->regularLeader = User::factory()->create([
+            'name' => 'Regular TL',
+            'role_id' => $teamLeaderRole->id,
+            'email' => 'regular.leader@workmonitor.com',
         ]);
 
         // Seed Project & Task
@@ -100,14 +108,14 @@ class TaskApprovalWorkflowTest extends TestCase
         ]);
     }
 
-    public function test_admin_and_souban_can_access_completed_approvals()
+    public function test_admin_can_access_completed_approvals_but_team_leaders_cannot()
     {
-        // Souban accesses the approvals queue
+        // Souban accesses the approvals queue - should be blocked
         $response = $this->actingAs($this->leaderSouban)
             ->get(route('tasks.completed-approvals'));
-        $response->assertStatus(200);
+        $response->assertStatus(403);
 
-        // Admin accesses the approvals queue
+        // Admin accesses the approvals queue - should be allowed
         $response = $this->actingAs($this->adminUser)
             ->get(route('tasks.completed-approvals'));
         $response->assertStatus(200);
@@ -123,7 +131,9 @@ class TaskApprovalWorkflowTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->adminUser)
-            ->post(route('tasks.approve-completion', $this->task));
+            ->post(route('tasks.approve-completion', $this->task), [
+                'comment' => 'Final admin approval notes',
+            ]);
 
         $response->assertRedirect(route('tasks.completed-approvals'));
         
@@ -133,37 +143,6 @@ class TaskApprovalWorkflowTest extends TestCase
         ]);
 
         $this->assertNotNull($this->task->fresh()->completed_date);
-    }
-
-    public function test_souban_can_reject_completion_sending_back_to_pending()
-    {
-        // Submit first
-        $this->task->update([
-            'status' => 'review',
-            'completed_description' => 'Finished task',
-            'completed_link' => 'https://test.com',
-        ]);
-
-        $reworkData = [
-            'comment' => 'Colors on Firefox are not correct. Need adjustment.',
-        ];
-
-        $response = $this->actingAs($this->leaderSouban)
-            ->post(route('tasks.reject-completion', $this->task), $reworkData);
-
-        $response->assertRedirect(route('tasks.completed-approvals'));
-        
-        $this->assertDatabaseHas('tasks', [
-            'id' => $this->task->id,
-            'status' => 'rejected',
-        ]);
-
-        // Verify rejection comment is added to discussion thread
-        $this->assertDatabaseHas('task_comments', [
-            'task_id' => $this->task->id,
-            'user_id' => $this->leaderSouban->id,
-            'comment' => '❌ **Task Rejection Feedback:** Colors on Firefox are not correct. Need adjustment.',
-        ]);
     }
 
     public function test_changing_status_creates_chat_comment()
@@ -208,12 +187,14 @@ class TaskApprovalWorkflowTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->adminUser)
-            ->post(route('tasks.approve-completion', $this->task));
+            ->post(route('tasks.approve-completion', $this->task), [
+                'comment' => 'All looks good!',
+            ]);
 
         $this->assertDatabaseHas('task_comments', [
             'task_id' => $this->task->id,
             'user_id' => $this->adminUser->id,
-            'comment' => '✅ **Approved completion and closed task**',
+            'comment' => "✅ **Approved completion and closed task**\n\n**Notes:** All looks good!",
         ]);
     }
 
@@ -259,5 +240,48 @@ class TaskApprovalWorkflowTest extends TestCase
         $this->assertNotNull($comment);
         $this->assertNotNull($comment->image_path);
         \Illuminate\Support\Facades\Storage::disk('public')->assertExists($comment->image_path);
+    }
+
+    public function test_team_leader_cannot_access_completed_approvals_queue()
+    {
+        $response = $this->actingAs($this->regularLeader)
+            ->get(route('tasks.completed-approvals'));
+        $response->assertStatus(403);
+
+        $response2 = $this->actingAs($this->leaderSouban)
+            ->get(route('tasks.completed-approvals'));
+        $response2->assertStatus(403);
+    }
+
+    public function test_team_leader_cannot_approve_or_reject_completion()
+    {
+        $this->task->update([
+            'status' => 'review',
+            'completed_description' => 'Finished work',
+        ]);
+
+        $response = $this->actingAs($this->regularLeader)
+            ->post(route('tasks.approve-completion', $this->task), [
+                'comment' => 'TL trying to approve',
+            ]);
+        $response->assertStatus(403);
+
+        $response2 = $this->actingAs($this->leaderSouban)
+            ->post(route('tasks.approve-completion', $this->task), [
+                'comment' => 'Souban TL trying to approve',
+            ]);
+        $response2->assertStatus(403);
+
+        $response = $this->actingAs($this->regularLeader)
+            ->post(route('tasks.reject-completion', $this->task), [
+                'comment' => 'TL trying to reject',
+            ]);
+        $response->assertStatus(403);
+
+        $response2 = $this->actingAs($this->leaderSouban)
+            ->post(route('tasks.reject-completion', $this->task), [
+                'comment' => 'Souban TL trying to reject',
+            ]);
+        $response2->assertStatus(403);
     }
 }

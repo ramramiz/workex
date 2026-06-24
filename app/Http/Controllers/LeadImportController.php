@@ -107,8 +107,8 @@ class LeadImportController extends Controller
     {
         $this->checkAccess();
 
-        $rooms = LeadRoom::latest()->get();
-        return view('leads.import', compact('rooms'));
+        $clients = \App\Models\Client::with('rooms')->latest()->get();
+        return view('leads.import', compact('clients'));
     }
 
     public function preview(Request $request)
@@ -242,6 +242,7 @@ class LeadImportController extends Controller
             return redirect()->route('leads.import.form')->withErrors(['file' => 'Error parsing stored temporary file.']);
         }
 
+        $room = LeadRoom::findOrFail($request->lead_room_id);
         $leadsImported = 0;
 
         for ($i = 1; $i < count($rows); $i++) {
@@ -272,7 +273,8 @@ class LeadImportController extends Controller
             // Only import if mandatory fields are met
             if (!empty($name) && !empty($phone)) {
                 Lead::create([
-                    'lead_room_id' => $request->lead_room_id,
+                    'client_id' => $room->client_id,
+                    'lead_room_id' => $room->id,
                     'client_name' => $name,
                     'client_phone' => $phone,
                     'client_email' => empty($email) ? null : $email,
@@ -292,8 +294,6 @@ class LeadImportController extends Controller
 
         // Clean up temp file
         File::delete($tempFilePath);
-
-        $room = LeadRoom::find($request->lead_room_id);
 
         return redirect()->route('leads.index')->with('success', "Successfully imported {$leadsImported} leads to room \"{$room->name}\"!");
     }

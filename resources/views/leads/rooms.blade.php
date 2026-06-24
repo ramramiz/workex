@@ -32,6 +32,7 @@
             <thead>
                 <tr>
                     <th>Room Name</th>
+                    <th>Customer</th>
                     <th>Description</th>
                     <th>Created By</th>
                     <th class="text-center">Assigned Telecallers</th>
@@ -49,6 +50,14 @@
                                 </span>
                                 {{ $room->name }}
                             </div>
+                        </td>
+                        <td>
+                            @if($room->client)
+                                <span class="fw-semibold text-dark">{{ $room->client->company_name }}</span>
+                                <small class="text-muted d-block" style="font-size: 11px;">{{ $room->client->contact_person }}</small>
+                            @else
+                                <span class="text-muted">—</span>
+                            @endif
                         </td>
                         <td>
                             <span class="text-muted fs-7">{{ Str::limit($room->description ?? 'No description provided', 50) }}</span>
@@ -122,6 +131,17 @@
                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
                                     <div class="modal-body py-4">
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold">Customer (Client) <span class="text-danger">*</span></label>
+                                            <select name="client_id" class="form-select" required>
+                                                <option value="" disabled>Select Customer</option>
+                                                @foreach($clients as $client)
+                                                    <option value="{{ $client->id }}" {{ $room->client_id == $client->id ? 'selected' : '' }}>
+                                                        {{ $client->company_name }} ({{ $client->contact_person }})
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
                                         <div class="mb-3">
                                             <label class="form-label fw-semibold">Room Name <span class="text-danger">*</span></label>
                                             <input type="text" name="name" class="form-control" value="{{ old('name', $room->name) }}" required placeholder="e.g. Real Estate Leads">
@@ -202,6 +222,15 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body py-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Customer (Client) <span class="text-danger">*</span></label>
+                        <select name="client_id" class="form-select" required>
+                            <option value="" disabled selected>Select Customer</option>
+                            @foreach($clients as $client)
+                                <option value="{{ $client->id }}">{{ $client->company_name }} ({{ $client->contact_person }})</option>
+                            @endforeach
+                        </select>
+                    </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Room Name <span class="text-danger">*</span></label>
                         <input type="text" name="name" class="form-control" required placeholder="e.g. SaaS Lead Campaign">

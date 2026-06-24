@@ -19,7 +19,7 @@ class LeadRoomController extends Controller
     {
         $this->checkAccess();
 
-        $rooms = LeadRoom::with(['creator', 'users'])->withCount([
+        $rooms = LeadRoom::with(['creator', 'users', 'client'])->withCount([
             'leads',
             'leads as contacted_leads_count' => function ($query) {
                 $query->whereHas('calls', function ($q) {
@@ -33,8 +33,9 @@ class LeadRoomController extends Controller
         $telecallers = User::whereHas('role', fn($q) => $q->where('slug', 'telecaller'))
             ->where('status', 'active')
             ->get();
+        $clients = \App\Models\Client::latest()->get();
 
-        return view('leads.rooms', compact('rooms', 'telecallers'));
+        return view('leads.rooms', compact('rooms', 'telecallers', 'clients'));
     }
 
     public function store(Request $request)
@@ -42,11 +43,13 @@ class LeadRoomController extends Controller
         $this->checkAccess();
 
         $request->validate([
+            'client_id' => 'required|exists:clients,id',
             'name' => 'required|string|max:255|unique:lead_rooms,name',
             'description' => 'nullable|string',
         ]);
 
         LeadRoom::create([
+            'client_id' => $request->client_id,
             'name' => $request->name,
             'description' => $request->description,
             'created_by' => auth()->id(),
@@ -60,11 +63,13 @@ class LeadRoomController extends Controller
         $this->checkAccess();
 
         $request->validate([
+            'client_id' => 'required|exists:clients,id',
             'name' => 'required|string|max:255|unique:lead_rooms,name,' . $room->id,
             'description' => 'nullable|string',
         ]);
 
         $room->update([
+            'client_id' => $request->client_id,
             'name' => $request->name,
             'description' => $request->description,
         ]);

@@ -15,7 +15,7 @@
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="mb-0">Overview</h6>
-                @if(auth()->user()->isAdminOrAbove() || auth()->user()->isTeamLeader())
+                @if(auth()->user()->isLeaderOrAbove())
                     <a href="{{ route('projects.edit', $project) }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-pencil"></i> Edit</a>
                 @endif
             </div>
@@ -149,7 +149,7 @@
                     <div class="tab-pane fade show active" id="tasks" role="tabpanel">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h6 class="mb-0 fw-bold">Tasks List</h6>
-                            @if(auth()->user()->isAdminOrAbove() || auth()->user()->isTeamLeader())
+                            @if(auth()->user()->isLeaderOrAbove())
                                 <a href="{{ route('tasks.create', ['project_id' => $project->id]) }}" class="btn btn-primary btn-xs py-1 px-2 fs-7"><i class="bi bi-plus-lg"></i> Add Task</a>
                             @endif
                         </div>
@@ -311,7 +311,9 @@
                     <div class="tab-pane fade" id="bugs" role="tabpanel">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h6 class="mb-0 fw-bold">Open Bugs & Issues</h6>
-                            <a href="{{ route('bugs.create', ['project_id' => $project->id]) }}" class="btn btn-outline-danger btn-xs py-1 px-2 fs-7"><i class="bi bi-bug"></i> Report Bug</a>
+                            @if(auth()->user()->isLeaderOrAbove())
+                                <a href="{{ route('bugs.create', ['project_id' => $project->id]) }}" class="btn btn-outline-danger btn-xs py-1 px-2 fs-7"><i class="bi bi-bug"></i> Report Bug</a>
+                            @endif
                         </div>
                         <div class="table-responsive">
                             <table class="table table-sm align-middle">

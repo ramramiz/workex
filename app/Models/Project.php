@@ -11,7 +11,7 @@ class Project extends Model
     use SoftDeletes, BelongsToCompany;
 
     protected $fillable = [
-        'quotation_id', 'client_id', 'project_code', 'name', 'description',
+        'quotation_id', 'client_id', 'project_code', 'name', 'logo_path', 'description',
         'project_type', 'technologies', 'start_date', 'deadline', 'completed_date',
         'budget', 'project_value', 'advance_amount', 'balance_amount',
         'manager_id', 'team_leader_id', 'priority', 'status',

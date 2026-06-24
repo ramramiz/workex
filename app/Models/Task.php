@@ -16,6 +16,7 @@ class Task extends Model
         'priority', 'estimated_hours', 'actual_hours', 'start_date', 'deadline',
         'completed_date', 'status', 'progress_percentage', 'order', 'meeting_id',
         'completed_description', 'completed_link', 'company_id',
+        'team_leader_approved', 'team_leader_approved_by', 'team_leader_approved_at',
     ];
 
     protected $casts = [
@@ -24,13 +25,16 @@ class Task extends Model
         'completed_date' => 'date',
         'estimated_hours' => 'decimal:2',
         'actual_hours' => 'decimal:2',
+        'team_leader_approved' => 'boolean',
+        'team_leader_approved_at' => 'datetime',
     ];
 
     public function project() { return $this->belongsTo(Project::class); }
     public function meeting() { return $this->belongsTo(Meeting::class); }
+    public function teamLeaderApprovedBy() { return $this->belongsTo(User::class, 'team_leader_approved_by'); }
     public function assignee() { return $this->belongsTo(User::class, 'assigned_to'); }
     public function creator() { return $this->belongsTo(User::class, 'created_by'); }
-    public function comments() { return $this->hasMany(TaskComment::class)->whereNull('parent_id'); }
+    public function comments() { return $this->hasMany(TaskComment::class); }
     public function allComments() { return $this->hasMany(TaskComment::class); }
     public function files() { return $this->hasMany(TaskFile::class); }
     public function timeLogs() { return $this->hasMany(TaskTimeLog::class); }
@@ -58,6 +62,10 @@ class Task extends Model
 
     public function getAvatarUrlAttribute(): string
     {
+        if ($this->project && $this->project->logo_path) {
+            return asset('storage/' . $this->project->logo_path);
+        }
+
         if (str_starts_with($this->title, 'Room Calling: ')) {
             $roomName = substr($this->title, strlen('Room Calling: '));
             $colors = ['f43f5e', 'ec4899', 'd946ef', 'a855f7', '8b5cf6', '6366f1', '3b82f6', '0ea5e9', '06b6d4', '14b8a6', '10b981', '22c55e', '84cc16', 'eab308', 'f97316'];

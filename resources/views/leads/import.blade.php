@@ -52,11 +52,17 @@
                         <label class="form-label fw-semibold">Target Room <span class="text-danger">*</span></label>
                         <select name="lead_room_id" class="form-select @error('lead_room_id') is-invalid @enderror" required>
                             <option value="">-- Select Destination Room --</option>
-                            @foreach($rooms as $room)
-                                <option value="{{ $room->id }}" {{ old('lead_room_id') == $room->id ? 'selected' : '' }}>{{ $room->name }}</option>
+                            @foreach($clients as $client)
+                                @if($client->rooms && $client->rooms->count() > 0)
+                                    <optgroup label="{{ $client->company_name }}">
+                                        @foreach($client->rooms as $room)
+                                            <option value="{{ $room->id }}" {{ old('lead_room_id') == $room->id ? 'selected' : '' }}>{{ $room->name }}</option>
+                                        @endforeach
+                                    </optgroup>
+                                @endif
                             @endforeach
                         </select>
-                        <small class="text-muted">Leads from this spreadsheet will be assigned to this room.</small>
+                        <small class="text-muted">Select a calling room (listed under its respective customer/client) to import leads into.</small>
                         @error('lead_room_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 

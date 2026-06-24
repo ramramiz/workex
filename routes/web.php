@@ -238,6 +238,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/tasks/{task}/approve-completion', [TaskController::class, 'approveCompletion'])->name('tasks.approve-completion');
     Route::post('/tasks/{task}/reject-completion', [TaskController::class, 'rejectCompletion'])->name('tasks.reject-completion');
     Route::post('tasks/{task}/comments', [TaskController::class, 'addComment'])->name('tasks.comments.store');
+    Route::post('tasks/comments/{comment}/edit', [TaskController::class, 'editComment'])->name('tasks.comments.edit');
+    Route::post('tasks/comments/{comment}/toggle-pin', [TaskController::class, 'toggleCommentPin'])->name('tasks.comments.toggle-pin');
+    Route::post('tasks/comments/{comment}/toggle-important', [TaskController::class, 'toggleCommentImportant'])->name('tasks.comments.toggle-important');
     Route::post('tasks/{task}/files', [TaskController::class, 'uploadFile'])->name('tasks.files.store');
     Route::post('tasks/{task}/update-status', [TaskController::class, 'updateStatus'])->name('tasks.update-status');
 
@@ -285,8 +288,20 @@ Route::middleware(['auth'])->group(function () {
 
     // Unified Tasks Chat
     Route::get('chat', [ChatController::class, 'index'])->name('chat.index');
+    Route::get('chat/unified-list', [ChatController::class, 'getUnifiedList'])->name('chat.unified-list');
     Route::get('chat/unread-counts', [ChatController::class, 'getUnreadCounts'])->name('chat.unread-counts');
     Route::get('chat/tasks/{task}', [ChatController::class, 'show'])->name('chat.show');
+    Route::get('chat/employees/{employee}/tasks', [ChatController::class, 'getEmployeeTasks'])->name('chat.employees.tasks');
+
+    // Direct Message Chat
+    Route::get('direct-chat', [\App\Http\Controllers\DirectChatController::class, 'index'])->name('direct-chat.index');
+    Route::get('direct-chat/updates', [\App\Http\Controllers\DirectChatController::class, 'getUpdates'])->name('direct-chat.updates');
+    Route::get('direct-chat/messages/{user}', [\App\Http\Controllers\DirectChatController::class, 'show'])->name('direct-chat.show');
+    Route::post('direct-chat/messages/{user}', [\App\Http\Controllers\DirectChatController::class, 'send'])->name('direct-chat.send');
+    Route::post('direct-chat/read/{user}', [\App\Http\Controllers\DirectChatController::class, 'markAsRead'])->name('direct-chat.mark-read');
+    Route::post('direct-chat/messages/{message}/edit', [\App\Http\Controllers\DirectChatController::class, 'edit'])->name('direct-chat.messages.edit');
+    Route::post('direct-chat/messages/{message}/toggle-pin', [\App\Http\Controllers\DirectChatController::class, 'togglePin'])->name('direct-chat.messages.toggle-pin');
+    Route::post('direct-chat/messages/{message}/toggle-important', [\App\Http\Controllers\DirectChatController::class, 'toggleImportant'])->name('direct-chat.messages.toggle-important');
 
     // Custom Domain Mailbox
     Route::get('mailbox', [\App\Http\Controllers\MailboxController::class, 'index'])->name('mailbox.index');
@@ -338,6 +353,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('start-work/select-room', [\App\Http\Controllers\LeadRoomWorkController::class, 'selectRoomList'])->name('leads.start-work.select-room');
     Route::get('start-work/followups/select', [\App\Http\Controllers\LeadRoomWorkController::class, 'selectFollowupRoom'])->name('leads.start-work.select-followups');
     Route::get('start-work/followups/leads', [\App\Http\Controllers\LeadRoomWorkController::class, 'followupLeads'])->name('leads.start-work.followup-leads');
+    Route::get('start-work/interested/leads', [\App\Http\Controllers\LeadRoomWorkController::class, 'interestedLeads'])->name('leads.start-work.interested-leads');
+    Route::get('start-work/interested/leads/export', [\App\Http\Controllers\LeadRoomWorkController::class, 'exportInterestedLeads'])->name('leads.start-work.interested-leads.export');
+    Route::get('start-work/not-connected/leads', [\App\Http\Controllers\LeadRoomWorkController::class, 'notConnectedLeads'])->name('leads.start-work.not-connected-leads');
     Route::post('start-work/followups/pause', [\App\Http\Controllers\LeadRoomWorkController::class, 'pauseFollowupWork'])->name('leads.start-work.pause-followups');
     Route::post('start-work/followups/resume', [\App\Http\Controllers\LeadRoomWorkController::class, 'resumeFollowupWork'])->name('leads.start-work.resume-followups');
     Route::get('start-work/room/{room}/select', [\App\Http\Controllers\LeadRoomWorkController::class, 'selectRoom'])->name('leads.start-work.select-room-join');
@@ -348,6 +366,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('start-work/room/{room}/resume', [\App\Http\Controllers\LeadRoomWorkController::class, 'resumeWork'])->name('leads.start-work.resume');
     Route::post('start-work/stop', [\App\Http\Controllers\LeadRoomWorkController::class, 'stopWork'])->name('leads.start-work.stop');
     Route::get('start-work/room/{room}/summary/{session}', [\App\Http\Controllers\LeadRoomWorkController::class, 'summary'])->name('leads.start-work.summary');
+    Route::get('start-work/session/{session}/download-report', [\App\Http\Controllers\LeadRoomWorkController::class, 'downloadReport'])->name('leads.start-work.download-report');
     Route::post('start-work/current-call', [\App\Http\Controllers\LeadRoomWorkController::class, 'setCurrentCall'])->name('leads.start-work.set-current-call');
     Route::post('start-work/current-call/clear', [\App\Http\Controllers\LeadRoomWorkController::class, 'clearCurrentCall'])->name('leads.start-work.clear-current-call');
 

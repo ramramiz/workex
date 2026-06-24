@@ -11,7 +11,7 @@ class ChatController extends Controller
     {
         $user = auth()->user();
         
-        $tasks = Task::with(['project', 'assignee', 'comments', 'comments.views', 'timeLogs' => fn($q) => $q->where('status', 'running')])
+        $tasks = Task::with(['project', 'assignee', 'comments.user', 'comments.views', 'comments.parent.user', 'timeLogs' => fn($q) => $q->where('status', 'running')])
             ->where('status', '!=', 'completed')
             ->when(!$user->isLeaderOrAbove(), fn($q) => $q->where('assigned_to', $user->id))
             ->when($user->isTeamLeader(), function($q) {
@@ -36,8 +36,93 @@ class ChatController extends Controller
         $projects = \App\Models\Project::when(!$user->isAdminOrAbove(), fn($q) => $q->where('team_leader_id', $user->id))->get();
         $employees = \App\Models\User::whereHas('role', fn($q) => $q->whereIn('slug', ['employee', 'team-leader']))->where('status', 'active')->get();
             
+        // Get all active users in the same company, excluding current user for unified direct messaging
+        $users = \App\Models\User::where('company_id', $user->company_id)
+            ->where('id', '!=', $user->id)
+            ->where('status', 'active')
+            ->with(['role', 'employee.designation'])
+            ->get()
+            ->map(function ($u) use ($user) {
+                // Calculate unread count from this user
+                $u->unread_count = \App\Models\DirectMessage::where('sender_id', $u->id)
+                    ->where('receiver_id', $user->id)
+                    ->whereNull('read_at')
+                    ->count();
+
+                // Get last message in the thread
+                $u->last_message = \App\Models\DirectMessage::where(function ($q) use ($user, $u) {
+                        $q->where('sender_id', $user->id)->where('receiver_id', $u->id);
+                    })
+                    ->orWhere(function ($q) use ($user, $u) {
+                        $q->where('sender_id', $u->id)->where('receiver_id', $user->id);
+                    })
+                    ->latest()
+                    ->first();
+
+                return $u;
+            })
+            ->sortByDesc(function ($u) {
+                return $u->last_message ? $u->last_message->created_at->timestamp : 0;
+            });
+
         $noSidebar = true;
-        return view('chat.index', compact('tasks', 'projects', 'employees', 'noSidebar'));
+
+        $unifiedItems = collect();
+
+        foreach ($tasks as $t) {
+            $unreadCommentsCount = $t->comments->filter(function($comment) use ($user) {
+                return $comment->user_id !== $user->id && !$comment->views->contains('user_id', $user->id);
+            })->count();
+            
+            $lastComment = $t->comments->sortByDesc('created_at')->first();
+            $lastText = $lastComment ? $lastComment->comment : 'No messages yet';
+            $lastTime = $lastComment ? $lastComment->created_at : $t->updated_at;
+            
+            $unifiedItems->push((object)[
+                'type' => 'task',
+                'id' => $t->id,
+                'title' => $t->title,
+                'subtitle' => $t->project->name ?? 'No Project',
+                'avatar' => $t->avatar_url,
+                'unread_count' => $unreadCommentsCount,
+                'last_message' => $lastText,
+                'timestamp' => $lastTime->timestamp,
+                'time_formatted' => $lastTime->diffForHumans(null, true),
+                'priority' => $t->priority,
+                'priority_badge' => $t->priority_badge,
+                'is_working' => $t->timeLogs->isNotEmpty(),
+                'is_bug' => str_starts_with(strtolower($t->title), 'bug:'),
+                'is_room_calling' => str_starts_with(strtolower($t->title), 'room calling:'),
+                'task' => $t
+            ]);
+        }
+
+        foreach ($users as $u) {
+            $lastTime = $u->last_message ? $u->last_message->created_at : null;
+            $lastText = $u->last_message ? ($u->last_message->message ?? '[Image]') : 'No messages yet';
+            
+            $unifiedItems->push((object)[
+                'type' => 'direct',
+                'id' => $u->id,
+                'title' => $u->name,
+                'subtitle' => '',
+                'avatar' => $u->avatar_url,
+                'unread_count' => $u->unread_count,
+                'last_message' => $lastText,
+                'timestamp' => $lastTime ? $lastTime->timestamp : 0,
+                'time_formatted' => $lastTime ? $lastTime->diffForHumans(null, true) : '',
+                'is_online' => $u->is_working_today,
+                'user' => $u
+            ]);
+        }
+
+        $unifiedItems = $unifiedItems->sortByDesc('timestamp')->values();
+
+        $clients = \App\Models\Client::where('status', 'active')->get();
+        $teamLeaders = \App\Models\User::whereHas('role', fn($q) => $q->where('slug', 'team-leader'))->where('status', 'active')->get();
+        $projectTypes = \App\Models\Project::whereNotNull('type')->distinct()->pluck('type')->toArray();
+
+        return view('chat.index', compact('tasks', 'projects', 'employees', 'noSidebar', 'users', 'unifiedItems', 'clients', 'teamLeaders', 'projectTypes'));
     }
 
     public function show(Task $task)
@@ -79,7 +164,7 @@ class ChatController extends Controller
         $html = '';
         foreach ($feed as $item) {
             $isSent = $item->user_id === $user->id;
-            $formattedTime = $item->created_at->format('h:i A');
+            $formattedTime = $item->created_at->format('d M Y, h:i A');
             $html .= view('tasks.partials.feed_item', [
                 'item' => $item,
                 'isSent' => $isSent,
@@ -121,6 +206,7 @@ class ChatController extends Controller
             'assignee_name' => $task->assignee->name ?? 'Unassigned',
             'assignee_id' => $task->assigned_to,
             'assignee_avatar' => $task->avatar_url,
+            'assignee_real_avatar' => $task->assignee ? $task->assignee->avatar_url : 'https://ui-avatars.com/api/?name=Unassigned&background=cbd5e1&color=64748b',
             'task_url' => '/tasks/' . $task->id,
             'task_id' => $task->id,
             'store_url' => '/tasks/' . $task->id . '/comments',
@@ -170,9 +256,143 @@ class ChatController extends Controller
             ->groupBy('task_id')
             ->get()
             ->pluck('count', 'task_id');
+
+        $directUnreadCounts = \App\Models\DirectMessage::where('receiver_id', $user->id)
+            ->whereNull('read_at')
+            ->select('sender_id', \DB::raw('count(*) as count'))
+            ->groupBy('sender_id')
+            ->get()
+            ->pluck('count', 'sender_id');
+
+        $totalUnreadComments = $unreadComments->sum();
+        $totalUnreadDirect = $directUnreadCounts->sum();
             
         return response()->json([
-            'unread_counts' => $unreadComments
+            'unread_counts' => $unreadComments,
+            'direct_unread_counts' => $directUnreadCounts,
+            'total_unread' => $totalUnreadComments + $totalUnreadDirect
+        ]);
+    }
+
+    public function getUnifiedList()
+    {
+        $user = auth()->user();
+        
+        $tasks = Task::with(['project', 'assignee', 'comments', 'comments.views', 'timeLogs' => fn($q) => $q->where('status', 'running')])
+            ->where('status', '!=', 'completed')
+            ->when(!$user->isLeaderOrAbove(), fn($q) => $q->where('assigned_to', $user->id))
+            ->when($user->isTeamLeader(), function($q) {
+                $q->where(function($sq) {
+                    $sq->whereDoesntHave('assignee')
+                       ->orWhereHas('assignee.role', function($r) {
+                           $r->where('slug', '!=', 'telecaller');
+                       });
+                });
+            })
+            ->get();
+            
+        $users = \App\Models\User::where('company_id', $user->company_id)
+            ->where('id', '!=', $user->id)
+            ->where('status', 'active')
+            ->with(['role', 'employee.designation'])
+            ->get()
+            ->map(function ($u) use ($user) {
+                $u->unread_count = \App\Models\DirectMessage::where('sender_id', $u->id)
+                    ->where('receiver_id', $user->id)
+                    ->whereNull('read_at')
+                    ->count();
+
+                $u->last_message = \App\Models\DirectMessage::where(function ($q) use ($user, $u) {
+                        $q->where('sender_id', $user->id)->where('receiver_id', $u->id);
+                    })
+                    ->orWhere(function ($q) use ($user, $u) {
+                        $q->where('sender_id', $u->id)->where('receiver_id', $user->id);
+                    })
+                    ->latest()
+                    ->first();
+
+                return $u;
+            });
+            
+        $unifiedItems = [];
+        foreach ($tasks as $t) {
+            $unreadCommentsCount = $t->comments->filter(function($comment) use ($user) {
+                return $comment->user_id !== $user->id && !$comment->views->contains('user_id', $user->id);
+            })->count();
+            
+            $lastComment = $t->comments->sortByDesc('created_at')->first();
+            $lastText = $lastComment ? $lastComment->comment : 'No messages yet';
+            $lastTime = $lastComment ? $lastComment->created_at : $t->updated_at;
+            
+            $unifiedItems[] = [
+                'type' => 'task',
+                'id' => $t->id,
+                'title' => $t->title,
+                'subtitle' => $t->project->name ?? 'No Project',
+                'avatar' => $t->avatar_url,
+                'unread_count' => $unreadCommentsCount,
+                'last_message' => $lastText,
+                'timestamp' => $lastTime->timestamp,
+                'time_formatted' => $lastTime->diffForHumans(null, true),
+                'priority' => $t->priority,
+                'priority_badge' => $t->priority_badge,
+                'is_working' => $t->timeLogs->isNotEmpty(),
+                'is_bug' => str_starts_with(strtolower($t->title), 'bug:'),
+                'is_room_calling' => str_starts_with(strtolower($t->title), 'room calling:'),
+            ];
+        }
+        
+        foreach ($users as $u) {
+            $lastTime = $u->last_message ? $u->last_message->created_at : null;
+            $lastText = $u->last_message ? ($u->last_message->message ?? '[Image]') : 'No messages yet';
+            
+            $unifiedItems[] = [
+                'type' => 'direct',
+                'id' => $u->id,
+                'title' => $u->name,
+                'subtitle' => '',
+                'avatar' => $u->avatar_url,
+                'unread_count' => $u->unread_count,
+                'last_message' => $lastText,
+                'timestamp' => $lastTime ? $lastTime->timestamp : 0,
+                'time_formatted' => $lastTime ? $lastTime->diffForHumans(null, true) : '',
+                'is_online' => $u->is_working_today,
+            ];
+        }
+        
+        usort($unifiedItems, function($a, $b) {
+            return $b['timestamp'] <=> $a['timestamp'];
+        });
+        
+        return response()->json([
+            'success' => true,
+            'items' => $unifiedItems
+        ]);
+    }
+
+    public function getEmployeeTasks(\App\Models\User $employee)
+    {
+        $tasks = \App\Models\Task::with('project')
+            ->where('assigned_to', $employee->id)
+            ->where('status', '!=', 'completed')
+            ->orderBy('updated_at', 'desc')
+            ->get()
+            ->map(function($t) {
+                return [
+                    'id' => $t->id,
+                    'title' => $t->title,
+                    'project_name' => $t->project->name ?? 'No Project',
+                    'status' => ucfirst(str_replace('_', ' ', $t->status)),
+                    'priority' => ucfirst($t->priority),
+                    'deadline' => $t->deadline ? $t->deadline->format('M d, Y') : 'No deadline',
+                    'priority_badge' => $t->priority_badge
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'employee_name' => $employee->name,
+            'tasks' => $tasks
         ]);
     }
 }

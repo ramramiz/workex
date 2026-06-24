@@ -51,8 +51,8 @@
                     <h6 class="text-uppercase text-primary fs-7 mb-3 border-bottom pb-2">Contact Representative</h6>
                     <div class="row g-3 mb-4">
                         <div class="col-12 col-md-6">
-                            <label class="form-label">Contact Person Name</label>
-                            <input type="text" name="contact_person" class="form-control @error('contact_person') is-invalid @enderror" value="{{ old('contact_person', $client->contact_person) }}">
+                            <label class="form-label">Contact Person Name <span class="text-danger">*</span></label>
+                            <input type="text" name="contact_person" class="form-control @error('contact_person') is-invalid @enderror" value="{{ old('contact_person', $client->contact_person) }}" required>
                             @error('contact_person')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-12 col-md-6">

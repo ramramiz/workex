@@ -17,7 +17,7 @@
                 <h5 class="mb-0">Edit Project: {{ $project->name }}</h5>
             </div>
             <div class="card-body">
-                <form method="POST" action="{{ route('projects.update', $project) }}">
+                <form method="POST" action="{{ route('projects.update', $project) }}" enctype="multipart/form-data">
                     @csrf
                     @method('PUT')
 
@@ -30,11 +30,31 @@
                         </div>
                         <div class="col-12 col-md-3">
                             <label class="form-label">Project Type</label>
-                            <select name="project_type" class="form-select @error('project_type') is-invalid @enderror">
-                                <option value="web" {{ old('project_type', $project->project_type) === 'web' ? 'selected' : '' }}>Web Application</option>
-                                <option value="mobile" {{ old('project_type', $project->project_type) === 'mobile' ? 'selected' : '' }}>Mobile Application</option>
-                                <option value="desktop" {{ old('project_type', $project->project_type) === 'desktop' ? 'selected' : '' }}>Desktop Software</option>
-                                <option value="other" {{ old('project_type', $project->project_type) === 'other' ? 'selected' : '' }}>Other Services</option>
+                            <select name="project_type" id="project_type_select" class="form-select @error('project_type') is-invalid @enderror" required>
+                                <option value="" disabled>-- Choose Project Type --</option>
+                                <option value="new_type" class="text-primary fw-bold">+ Add New Type...</option>
+                                @php
+                                    $defaultTypes = [
+                                        'web' => 'Web Application',
+                                        'mobile' => 'Mobile Application',
+                                        'desktop' => 'Desktop Software',
+                                        'other' => 'Other Services'
+                                    ];
+                                    $allTypes = [];
+                                    foreach($defaultTypes as $val => $label) {
+                                        $allTypes[$val] = $label;
+                                    }
+                                    if (isset($projectTypes)) {
+                                        foreach($projectTypes as $type) {
+                                            if (!empty($type) && !isset($allTypes[$type])) {
+                                                $allTypes[$type] = ucwords(str_replace('_', ' ', $type));
+                                            }
+                                        }
+                                    }
+                                @endphp
+                                @foreach($allTypes as $val => $label)
+                                    <option value="{{ $val }}" {{ old('project_type', $project->project_type) === $val ? 'selected' : '' }}>{{ $label }}</option>
+                                @endforeach
                             </select>
                             @error('project_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
@@ -59,6 +79,18 @@
                             <label class="form-label">Project Description</label>
                             <textarea name="description" class="form-control @error('description') is-invalid @enderror" rows="3">{{ old('description', $project->description) }}</textarea>
                             @error('description')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Project Logo</label>
+                            <div class="d-flex align-items-center gap-3">
+                                @if($project->logo_path)
+                                    <div class="position-relative">
+                                        <img src="{{ asset('storage/' . $project->logo_path) }}" alt="{{ $project->name }} Logo" class="rounded border" style="width: 50px; height: 50px; object-fit: cover;">
+                                    </div>
+                                @endif
+                                <input type="file" name="logo" class="form-control @error('logo') is-invalid @enderror" accept="image/*">
+                            </div>
+                            @error('logo')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
                     </div>
 
@@ -239,6 +271,32 @@
         </div>
     </div>
 </div>
+
+<!-- Add Project Type Modal -->
+<div class="modal fade" id="addProjectTypeModal" tabindex="-1" aria-labelledby="addProjectTypeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addProjectTypeModalLabel"><i class="bi bi-tag me-2 text-primary"></i>Add Custom Project Type</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="quickProjectTypeForm">
+                @csrf
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Project Type Name <span class="text-danger">*</span></label>
+                        <input type="text" name="new_project_type" id="new_project_type" class="form-control" placeholder="e.g. API Integration" required>
+                        <div class="invalid-feedback" id="new_project_type_error"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="saveProjectTypeBtn">Add Type</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -250,6 +308,49 @@ document.addEventListener('DOMContentLoaded', function() {
 
     let lastClientVal = clientSelect.value;
     let lastTlVal = tlSelect.value;
+
+    const projectTypeSelect = document.getElementById('project_type_select');
+    let lastTypeVal = projectTypeSelect ? projectTypeSelect.value : '';
+
+    if (projectTypeSelect) {
+        projectTypeSelect.addEventListener('change', function() {
+            if (this.value === 'new_type') {
+                this.value = lastTypeVal; // Reset to previous selection
+                const addProjectTypeModal = new bootstrap.Modal(document.getElementById('addProjectTypeModal'));
+                addProjectTypeModal.show();
+            } else {
+                lastTypeVal = this.value;
+            }
+        });
+    }
+
+    const quickProjectTypeForm = document.getElementById('quickProjectTypeForm');
+    if (quickProjectTypeForm) {
+        quickProjectTypeForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            resetValidation(quickProjectTypeForm);
+            const newVal = document.getElementById('new_project_type').value.trim();
+            
+            if (newVal.length > 0) {
+                const select = document.getElementById('project_type_select');
+                if (select) {
+                    const newOpt = new Option(newVal, newVal, true, true);
+                    if (select.options.length > 2) {
+                        select.add(newOpt, select.options[2]);
+                    } else {
+                        select.add(newOpt);
+                    }
+                    select.value = newVal;
+                    lastTypeVal = newVal;
+                }
+                
+                const modalEl = document.getElementById('addProjectTypeModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+                quickProjectTypeForm.reset();
+            }
+        });
+    }
 
     // Monitor Client dropdown change
     clientSelect.addEventListener('change', function() {

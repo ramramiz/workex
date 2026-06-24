@@ -27,7 +27,7 @@ class BugUploadTest extends TestCase
         $this->seed(RoleSeeder::class);
         $this->seed(SettingsSeeder::class);
 
-        $employeeRole = Role::where('slug', 'employee')->first();
+        $employeeRole = Role::where('slug', 'admin')->first();
 
         // Create employee user
         $this->employeeUser = User::factory()->create([

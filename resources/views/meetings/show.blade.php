@@ -67,7 +67,7 @@
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Meeting Tasks</h5>
-                @if(auth()->user()->isAdminOrAbove() || auth()->user()->isTeamLeader())
+                @if(auth()->user()->isLeaderOrAbove())
                     <a href="{{ route('tasks.create', ['meeting_id' => $meeting->id]) }}" class="btn btn-primary btn-sm">
                         <i class="bi bi-plus-lg me-1"></i> Add Task
                     </a>
@@ -134,7 +134,7 @@
                                             <a href="{{ route('tasks.show', $task) }}" class="btn btn-outline-secondary btn-sm" title="View details">
                                                 <i class="bi bi-eye"></i>
                                             </a>
-                                            @if(auth()->user()->isAdminOrAbove() || auth()->user()->isTeamLeader())
+                                            @if(auth()->user()->isLeaderOrAbove())
                                                 <a href="{{ route('tasks.edit', $task) }}" class="btn btn-outline-primary btn-sm" title="Edit">
                                                     <i class="bi bi-pencil"></i>
                                                 </a>
@@ -147,7 +147,7 @@
                                     <td colspan="6" class="text-center py-5 text-muted">
                                         <i class="bi bi-check2-square" style="font-size: 32px;"></i>
                                         <div class="mt-2">No tasks assigned to this meeting yet.</div>
-                                        @if(auth()->user()->isAdminOrAbove() || auth()->user()->isTeamLeader())
+                                        @if(auth()->user()->isLeaderOrAbove())
                                             <div class="mt-3">
                                                 <a href="{{ route('tasks.create', ['meeting_id' => $meeting->id]) }}" class="btn btn-sm btn-primary">
                                                     Add First Task

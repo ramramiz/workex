@@ -106,9 +106,17 @@
                     @endif
                 </div>
 
-                <a href="{{ route('leads.start-work.index') }}" class="btn btn-outline-secondary w-100 fw-bold py-2.5 d-flex align-items-center justify-content-center gap-2" style="border-radius: 12px;">
-                    <i class="bi bi-arrow-left"></i> Back to Start Work Section
-                </a>
+                <div class="d-flex flex-column gap-2.5">
+                    @if(auth()->user()->isAdminOrAbove())
+                        <a href="{{ route('leads.start-work.download-report', $session->id) }}" class="btn btn-warning w-100 fw-bold py-2.5 text-dark d-flex align-items-center justify-content-center gap-2" style="border-radius: 12px; box-shadow: 0 4px 12px rgba(255, 193, 7, 0.25);">
+                            <i class="bi bi-file-earmark-pdf-fill fs-5"></i> Download PDF Report
+                        </a>
+                    @endif
+                    
+                    <a href="javascript:history.back()" class="btn btn-outline-secondary w-100 fw-bold py-2.5 d-flex align-items-center justify-content-center gap-2" style="border-radius: 12px;">
+                        <i class="bi bi-arrow-left"></i> Back
+                    </a>
+                </div>
             </div>
         </div>
     </div>

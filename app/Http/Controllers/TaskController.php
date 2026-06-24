@@ -32,6 +32,9 @@ class TaskController extends Controller
     public function create(Request $request)
     {
         $user = auth()->user();
+        if (!$user->isLeaderOrAbove()) {
+            abort(403, 'Unauthorized action. Only Team Leaders and Admins can create tasks.');
+        }
         $projects = Project::when(!$user->isAdminOrAbove(), fn($q) => $q->where('team_leader_id', $user->id))
             ->whereNotIn('status', ['completed', 'cancelled'])->get();
         $employees = User::whereHas('role', fn($q) => $q->whereIn('slug', ['employee', 'team-leader']))->where('status', 'active')->get();
@@ -43,6 +46,10 @@ class TaskController extends Controller
 
     public function store(Request $request)
     {
+        $user = auth()->user();
+        if (!$user->isLeaderOrAbove()) {
+            abort(403, 'Unauthorized action. Only Team Leaders and Admins can create tasks.');
+        }
         $request->validate([
             'title'        => 'required|string|max:255',
             'project_id'   => 'nullable|exists:projects,id',
@@ -90,6 +97,14 @@ class TaskController extends Controller
             ]);
         }
 
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Task created!',
+                'task' => $task
+            ]);
+        }
+
         if ($task->meeting_id) {
             return redirect()->route('meetings.show', $task->meeting_id)->with('success', 'Task created and added to meeting!');
         }
@@ -99,7 +114,7 @@ class TaskController extends Controller
 
     public function show(Task $task)
     {
-        $task->load(['project', 'meeting', 'assignee', 'creator', 'comments.user', 'comments.views.user', 'files', 'timeLogs.user']);
+        $task->load(['project', 'meeting', 'assignee', 'creator', 'comments.user', 'comments.views.user', 'comments.parent.user', 'files', 'timeLogs.user']);
         $totalMinutes = $task->timeLogs->sum('total_minutes');
 
         // Record views for all existing comments on this task for the logged-in user
@@ -132,6 +147,9 @@ class TaskController extends Controller
     public function edit(Task $task)
     {
         $user = auth()->user();
+        if (!$user->isLeaderOrAbove()) {
+            abort(403, 'Unauthorized action. Only Team Leaders and Admins can edit tasks.');
+        }
         $projects = Project::when(!$user->isAdminOrAbove(), fn($q) => $q->where('team_leader_id', $user->id))->get();
         $employees = User::whereHas('role', fn($q) => $q->whereIn('slug', ['employee', 'team-leader']))->where('status', 'active')->get();
         return view('tasks.edit', compact('task', 'projects', 'employees'));
@@ -139,6 +157,11 @@ class TaskController extends Controller
 
     public function update(Request $request, Task $task)
     {
+        $user = auth()->user();
+        if (!$user->isLeaderOrAbove()) {
+            abort(403, 'Unauthorized action. Only Team Leaders and Admins can edit tasks.');
+        }
+
         $request->validate([
             'title'        => 'required|string|max:255',
             'project_id'   => 'nullable|exists:projects,id',
@@ -150,6 +173,10 @@ class TaskController extends Controller
         $data['estimated_hours'] = $request->estimated_hours ?: 0;
         
         $oldStatus = $task->status;
+        if (isset($data['status']) && $data['status'] === 'completed' && $oldStatus !== 'completed') {
+            return back()->with('error', 'Task completion must be approved through the approvals queue.');
+        }
+
         $oldAssignedTo = $task->assigned_to;
         $task->update($data);
         $newStatus = $task->status;
@@ -220,6 +247,13 @@ class TaskController extends Controller
         $oldStatus = $task->status;
         $newStatus = $request->status;
 
+        if ($newStatus === 'completed') {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Task completion must be approved through the approvals queue.'], 403);
+            }
+            return back()->with('error', 'Task completion must be approved through the approvals queue.');
+        }
+
         if ($oldStatus !== $newStatus) {
             $task->update(['status' => $newStatus]);
 
@@ -253,6 +287,7 @@ class TaskController extends Controller
         $request->validate([
             'comment' => 'nullable|string|max:2000',
             'image_data' => 'nullable|string',
+            'parent_id' => 'nullable|exists:task_comments,id',
         ]);
         
         $commentText = $request->comment ?? '';
@@ -285,6 +320,7 @@ class TaskController extends Controller
             'user_id' => auth()->id(),
             'comment' => $commentText,
             'image_path' => $imagePath,
+            'parent_id' => $request->parent_id,
         ]);
 
         // Sync comment back to associated Bug if it exists
@@ -344,7 +380,8 @@ class TaskController extends Controller
     public function completedApprovals()
     {
         $user = auth()->user();
-        if (!$user->isAdminOrAbove() && $user->email !== 'souban.techsoul@gmail.com') {
+        $isGlobalApprover = $user->isAdminOrAbove();
+        if (!$isGlobalApprover) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -377,7 +414,7 @@ class TaskController extends Controller
     {
         $request->validate([
             'completed_description' => 'required|string',
-            'completed_link' => 'required|url',
+            'completed_link' => 'nullable|url',
         ]);
 
         $task->update([
@@ -386,10 +423,15 @@ class TaskController extends Controller
             'completed_link' => $request->completed_link,
         ]);
 
+        $commentMsg = "🚀 **Submitted task for completion review**\n\n**Description:** {$request->completed_description}";
+        if ($request->filled('completed_link')) {
+            $commentMsg .= "\n**Test URL:** [{$request->completed_link}]({$request->completed_link})";
+        }
+
         TaskComment::create([
             'task_id' => $task->id,
             'user_id' => auth()->id(),
-            'comment' => "🚀 **Submitted task for completion review**\n\n**Description:** {$request->completed_description}\n**Test URL:** [{$request->completed_link}]({$request->completed_link})",
+            'comment' => $commentMsg,
         ]);
 
         \App\Models\ActivityLog::log('task_completed_submitted', "Submitted task for completion review: {$task->title}", $task);
@@ -401,10 +443,16 @@ class TaskController extends Controller
         return redirect()->route('tasks.show', $task)->with('success', 'Task submitted for completion review!');
     }
 
-    public function approveCompletion(Task $task)
+    public function approveCompletion(Request $request, Task $task)
     {
         $user = auth()->user();
-        if (!$user->isAdminOrAbove() && $user->email !== 'souban.techsoul@gmail.com') {
+
+        $request->validate([
+            'comment' => 'required|string|max:1000',
+        ]);
+
+        $isGlobalApprover = $user->isAdminOrAbove();
+        if (!$isGlobalApprover) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -415,8 +463,8 @@ class TaskController extends Controller
 
         TaskComment::create([
             'task_id' => $task->id,
-            'user_id' => auth()->id(),
-            'comment' => "✅ **Approved completion and closed task**",
+            'user_id' => $user->id,
+            'comment' => "✅ **Approved completion and closed task**\n\n**Notes:** " . $request->comment,
         ]);
 
         \App\Models\ActivityLog::log('task_completed_approved', "Approved task completion: {$task->title}", $task);
@@ -427,7 +475,9 @@ class TaskController extends Controller
     public function rejectCompletion(Request $request, Task $task)
     {
         $user = auth()->user();
-        if (!$user->isAdminOrAbove() && $user->email !== 'souban.techsoul@gmail.com') {
+
+        $isGlobalApprover = $user->isAdminOrAbove();
+        if (!$isGlobalApprover) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -438,6 +488,9 @@ class TaskController extends Controller
 
         $task->update([
             'status' => 'rejected',
+            'team_leader_approved' => false,
+            'team_leader_approved_by' => null,
+            'team_leader_approved_at' => null,
         ]);
 
         $imagePath = null;
@@ -448,7 +501,7 @@ class TaskController extends Controller
         TaskComment::create([
             'task_id' => $task->id,
             'user_id' => auth()->id(),
-            'comment' => "❌ **Task Rejection Feedback:** " . $request->comment,
+            'comment' => "❌ **Task Rejection Feedback (Super Admin):** " . $request->comment,
             'image_path' => $imagePath,
         ]);
 
@@ -495,11 +548,12 @@ class TaskController extends Controller
         $sinceDate = \Carbon\Carbon::parse($since)->setTimezone(config('app.timezone'));
 
         $commentsQuery = $task->comments()
-            ->with(['user', 'views.user'])
-            ->where('created_at', '>=', $sinceDate->toDateTimeString());
+            ->with(['user', 'views.user', 'parent.user']);
 
         if ($lastCommentId) {
             $commentsQuery->where('id', '>', $lastCommentId);
+        } else {
+            $commentsQuery->where('created_at', '>=', $sinceDate->copy()->subSeconds(15)->toDateTimeString());
         }
 
         $newComments = $commentsQuery->get()
@@ -509,11 +563,12 @@ class TaskController extends Controller
             });
 
         $timeLogsQuery = $task->timeLogs()
-            ->with('user')
-            ->where('created_at', '>=', $sinceDate->toDateTimeString());
+            ->with('user');
 
         if ($lastTimelogId) {
             $timeLogsQuery->where('id', '>', $lastTimelogId);
+        } else {
+            $timeLogsQuery->where('created_at', '>=', $sinceDate->copy()->subSeconds(15)->toDateTimeString());
         }
 
         $newTimeLogs = $timeLogsQuery->get()
@@ -537,7 +592,7 @@ class TaskController extends Controller
         $html = '';
         foreach ($newFeed as $item) {
             $isSent = $item->user_id === auth()->id();
-            $formattedTime = $item->created_at->format('h:i A');
+            $formattedTime = $item->created_at->format('d M Y, h:i A');
             $html .= view('tasks.partials.feed_item', [
                 'item' => $item,
                 'isSent' => $isSent,
@@ -558,6 +613,59 @@ class TaskController extends Controller
             'last_timelog_id' => $latestTimelogId,
             'has_updates' => $newFeed->count() > 0,
             'play_sound' => $newFeed->contains(fn($item) => $item->user_id !== auth()->id())
+        ]);
+    }
+
+    public function editComment(Request $request, \App\Models\TaskComment $comment)
+    {
+        abort_if($comment->user_id !== auth()->id(), 403, 'Unauthorized.');
+        abort_if($comment->created_at->diffInMinutes(now()) >= 30, 400, 'Editing window expired.');
+
+        $request->validate([
+            'comment' => 'required|string',
+        ]);
+
+        $comment->comment = $request->comment;
+        $comment->is_edited = true;
+        $comment->save();
+
+        return response()->json([
+            'success' => true,
+            'comment' => $comment->comment,
+        ]);
+    }
+
+    public function toggleCommentPin(\App\Models\TaskComment $comment)
+    {
+        $user = auth()->user();
+        $task = $comment->task;
+        if (!$user->isLeaderOrAbove() && $task->assigned_to !== $user->id) {
+            abort(403, 'Unauthorized.');
+        }
+
+        $comment->is_pinned = !$comment->is_pinned;
+        $comment->save();
+
+        return response()->json([
+            'success' => true,
+            'is_pinned' => $comment->is_pinned,
+        ]);
+    }
+
+    public function toggleCommentImportant(\App\Models\TaskComment $comment)
+    {
+        $user = auth()->user();
+        $task = $comment->task;
+        if (!$user->isLeaderOrAbove() && $task->assigned_to !== $user->id) {
+            abort(403, 'Unauthorized.');
+        }
+
+        $comment->is_important = !$comment->is_important;
+        $comment->save();
+
+        return response()->json([
+            'success' => true,
+            'is_important' => $comment->is_important,
         ]);
     }
 }

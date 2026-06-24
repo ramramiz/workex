@@ -244,12 +244,17 @@ class WorkTimerController extends Controller
             'status'        => 'ended',
         ]);
 
-        // Update task status if provided
-        $task = $log->task;
-        $oldStatus = $task->status;
         $newStatus = $request->status;
+        $task = $log->task;
 
-        if ($newStatus && $oldStatus !== $newStatus) {
+        if ($newStatus && $task->status !== $newStatus) {
+            if ($newStatus === 'completed') {
+                $user = auth()->user();
+                $isGlobalApprover = $user->isAdminOrAbove();
+                if (!$isGlobalApprover) {
+                    return back()->with('error', 'Only admins or global approvers can mark a task as completed directly.');
+                }
+            }
             $task->update(['status' => $newStatus]);
 
             $statusLabels = [

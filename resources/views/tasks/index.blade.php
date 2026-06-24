@@ -11,7 +11,7 @@
 <div class="card">
     <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-3">
         <h5 class="mb-0">Task Board</h5>
-        @if(auth()->user()->isAdminOrAbove() || auth()->user()->isTeamLeader())
+        @if(auth()->user()->isLeaderOrAbove())
             <a href="{{ route('tasks.create') }}" class="btn btn-primary btn-sm">
                 <i class="bi bi-plus-lg me-1"></i> Add Task
             </a>
@@ -140,7 +140,7 @@
                                 <a href="{{ route('tasks.show', $task) }}" class="btn btn-outline-secondary btn-sm" title="View details">
                                     <i class="bi bi-eye"></i>
                                 </a>
-                                @if(auth()->user()->isAdminOrAbove() || auth()->user()->isTeamLeader())
+                                @if(auth()->user()->isLeaderOrAbove())
                                     <a href="{{ route('tasks.edit', $task) }}" class="btn btn-outline-primary btn-sm" title="Edit">
                                         <i class="bi bi-pencil"></i>
                                     </a>

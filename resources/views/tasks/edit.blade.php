@@ -71,7 +71,9 @@
                                 <option value="in_progress" {{ old('status', $task->status) === 'in_progress' ? 'selected' : '' }}>In Progress</option>
                                 <option value="review" {{ old('status', $task->status) === 'review' ? 'selected' : '' }}>Review</option>
                                 <option value="rework" {{ old('status', $task->status) === 'rework' ? 'selected' : '' }}>Rework</option>
-                                <option value="completed" {{ old('status', $task->status) === 'completed' ? 'selected' : '' }}>Completed</option>
+                                @if(auth()->user()->isAdminOrAbove() || old('status', $task->status) === 'completed')
+                                    <option value="completed" {{ old('status', $task->status) === 'completed' ? 'selected' : '' }}>Completed</option>
+                                @endif
                             </select>
                             @error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>

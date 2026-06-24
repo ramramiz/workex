@@ -7,7 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 class TaskComment extends Model
 {
     use \Illuminate\Database\Eloquent\SoftDeletes;
-    protected $fillable = ['task_id', 'user_id', 'comment', 'parent_id', 'image_path'];
+    protected $fillable = ['task_id', 'user_id', 'comment', 'parent_id', 'image_path', 'is_edited', 'is_pinned', 'is_important'];
+
+    protected $casts = [
+        'is_edited' => 'boolean',
+        'is_pinned' => 'boolean',
+        'is_important' => 'boolean',
+    ];
 
     public function task() { return $this->belongsTo(Task::class); }
     public function user() { return $this->belongsTo(User::class); }

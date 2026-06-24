@@ -43,6 +43,9 @@ class Lead extends Model
                 })->orWhere(function($sq) use ($user) {
                     $sq->whereNull('lead_room_id')->where('assigned_to', $user->id);
                 });
+            })->where(function($q) use ($user) {
+                $q->where('assigned_to', $user->id)
+                  ->orWhereNull('assigned_to');
             });
         }
         return $query;

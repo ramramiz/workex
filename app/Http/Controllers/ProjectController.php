@@ -30,13 +30,20 @@ class ProjectController extends Controller
 
     public function create()
     {
-        $clients     = Client::where('status', 'active')->get();
-        $teamLeaders = User::whereHas('role', fn($q) => $q->where('slug', 'team-leader'))->where('status', 'active')->get();
-        return view('projects.create', compact('clients', 'teamLeaders'));
+        if (!auth()->user()->isLeaderOrAbove()) {
+            abort(403, 'Unauthorized action.');
+        }
+        $clients      = Client::where('status', 'active')->get();
+        $teamLeaders  = User::whereHas('role', fn($q) => $q->where('slug', 'team-leader'))->where('status', 'active')->get();
+        $projectTypes = Project::whereNotNull('type')->distinct()->pluck('type')->toArray();
+        return view('projects.create', compact('clients', 'teamLeaders', 'projectTypes'));
     }
 
     public function store(Request $request)
     {
+        if (!auth()->user()->isLeaderOrAbove()) {
+            abort(403, 'Unauthorized action. Only Team Leaders and Admins can create projects.');
+        }
         $request->validate([
             'name'           => 'required|string|max:255',
             'client_id'      => 'nullable|exists:clients,id',
@@ -45,11 +52,19 @@ class ProjectController extends Controller
             'deadline'       => 'nullable|date|after_or_equal:start_date',
             'budget'         => 'nullable|numeric|min:0',
             'priority'       => 'required|in:low,medium,high,critical',
+            'logo'           => 'nullable|image|max:4096',
+            'project_type'   => 'nullable|string|max:255',
         ]);
+
+        $logoPath = null;
+        if ($request->hasFile('logo')) {
+            $logoPath = $request->file('logo')->store('project_logos', 'public');
+        }
 
         $project = Project::create([
             'project_code'    => 'PRJ-' . now()->format('Ymd') . '-' . str_pad(Project::count() + 1, 4, '0', STR_PAD_LEFT),
             'name'            => $request->name,
+            'logo_path'       => $logoPath,
             'description'     => $request->description,
             'client_id'       => $request->client_id,
             'team_leader_id'  => $request->team_leader_id,
@@ -70,6 +85,14 @@ class ProjectController extends Controller
 
         \App\Models\ActivityLog::log('project_created', "Created project: {$project->name}", $project);
 
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Project created!',
+                'project' => $project
+            ]);
+        }
+
         return redirect()->route('projects.show', $project)->with('success', 'Project created!');
     }
 
@@ -88,24 +111,35 @@ class ProjectController extends Controller
 
     public function edit(Project $project)
     {
-        $clients     = Client::where('status', 'active')->get();
-        $teamLeaders = User::whereHas('role', fn($q) => $q->where('slug', 'team-leader'))->where('status', 'active')->get();
-        $employees   = User::whereHas('role', fn($q) => $q->where('slug', 'employee'))->where('status', 'active')->get();
-        return view('projects.edit', compact('project', 'clients', 'teamLeaders', 'employees'));
+        $clients      = Client::where('status', 'active')->get();
+        $teamLeaders  = User::whereHas('role', fn($q) => $q->where('slug', 'team-leader'))->where('status', 'active')->get();
+        $employees    = User::whereHas('role', fn($q) => $q->where('slug', 'employee'))->where('status', 'active')->get();
+        $projectTypes = Project::whereNotNull('type')->distinct()->pluck('type')->toArray();
+        return view('projects.edit', compact('project', 'clients', 'teamLeaders', 'employees', 'projectTypes'));
     }
 
     public function update(Request $request, Project $project)
     {
         $request->validate([
-            'name'     => 'required|string|max:255',
-            'priority' => 'required|in:low,medium,high,critical',
-            'budget'   => 'nullable|numeric|min:0',
+            'name'         => 'required|string|max:255',
+            'priority'     => 'required|in:low,medium,high,critical',
+            'budget'       => 'nullable|numeric|min:0',
+            'logo'         => 'nullable|image|max:4096',
+            'project_type' => 'nullable|string|max:255',
         ]);
 
         $data = $request->only([
             'name', 'description', 'client_id', 'team_leader_id', 'start_date',
             'deadline', 'priority', 'status', 'project_type',
         ]);
+
+        if ($request->hasFile('logo')) {
+            // Delete old logo if exists
+            if ($project->logo_path) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($project->logo_path);
+            }
+            $data['logo_path'] = $request->file('logo')->store('project_logos', 'public');
+        }
 
         if ($request->has('budget')) {
             $data['project_value'] = $request->budget ?? 0;

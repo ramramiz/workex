@@ -62,7 +62,7 @@ class TaskViewButtonsTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertSee('Start Work');
-        $response->assertSee('Mark as Complete');
+        $response->assertSee('Submit for Review');
         $response->assertDontSee('End Work');
     }
 
@@ -127,7 +127,7 @@ class TaskViewButtonsTest extends TestCase
         $this->assertEquals('ended', $activeLog->fresh()->status);
     }
 
-    public function test_can_complete_task_from_task_view()
+    public function test_employee_cannot_complete_task_directly_from_task_view()
     {
         $response = $this->actingAs($this->employeeUser)
             ->post(route('tasks.update-status', $this->task), [
@@ -135,9 +135,29 @@ class TaskViewButtonsTest extends TestCase
             ]);
 
         $response->assertRedirect();
+        $response->assertSessionHas('error', 'Task completion must be approved through the approvals queue.');
 
-        // Verify task status is completed
-        $this->assertEquals('completed', $this->task->fresh()->status);
+        // Verify task status remains pending
+        $this->assertEquals('pending', $this->task->fresh()->status);
+    }
+
+    public function test_admin_cannot_complete_task_directly_from_task_view()
+    {
+        $adminRole = Role::where('slug', 'super-admin')->first();
+        $adminUser = User::factory()->create([
+            'role_id' => $adminRole->id,
+        ]);
+
+        $response = $this->actingAs($adminUser)
+            ->post(route('tasks.update-status', $this->task), [
+                'status' => 'completed',
+            ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('error', 'Task completion must be approved through the approvals queue.');
+
+        // Verify task status remains pending
+        $this->assertEquals('pending', $this->task->fresh()->status);
     }
 
     public function test_reactivates_ended_work_session_when_starting_task()

@@ -11,7 +11,7 @@
 <div class="card mb-4">
     <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-3">
         <h5 class="mb-0">All Projects</h5>
-        @if(auth()->user()->isAdminOrAbove())
+        @if(auth()->user()->isLeaderOrAbove())
             <a href="{{ route('projects.create') }}" class="btn btn-primary btn-sm">
                 <i class="bi bi-kanban me-1"></i> Add Project
             </a>

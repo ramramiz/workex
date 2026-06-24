@@ -8,7 +8,12 @@ use App\Traits\BelongsToCompany;
 class LeadRoom extends Model
 {
     use BelongsToCompany;
-    protected $fillable = ['name', 'description', 'created_by', 'company_id'];
+    protected $fillable = ['client_id', 'name', 'description', 'created_by', 'company_id'];
+
+    public function client()
+    {
+        return $this->belongsTo(Client::class, 'client_id');
+    }
 
     public function creator()
     {

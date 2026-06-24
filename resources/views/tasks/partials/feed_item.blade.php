@@ -1,14 +1,73 @@
 @php
     $isSent = $isSent ?? ($item->user_id === auth()->id());
-    $formattedTime = $formattedTime ?? $item->created_at->format('h:i A');
+    $formattedTime = $formattedTime ?? $item->created_at->format('d M Y, h:i A');
+    $itemDate = $item->created_at->format('d M Y');
+    $itemTime = $item->created_at->format('h:i A');
+    
+    // Viewers list for comment info modal
+    $viewers = $item->feed_type === 'comment' ? $item->views->map(function($v) {
+        return [
+            'name' => $v->user->name,
+            'avatar_url' => $v->user->avatar_url,
+            'viewed_at' => $v->viewed_at ? $v->viewed_at->format('d M Y, h:i A') : '—'
+        ];
+    })->toArray() : [];
 @endphp
 
-<div class="chat-row {{ $isSent ? 'sent' : 'received' }} mb-2" id="chat-row-{{ $item->feed_type }}-{{ $item->id }}">
+<div class="chat-row {{ $isSent ? 'sent' : 'received' }} mb-2" id="chat-row-{{ $item->feed_type }}-{{ $item->id }}" data-date="{{ $itemDate }}" data-time="{{ $itemTime }}">
     @if(!$isSent)
         <img src="{{ $item->user->avatar_url }}" alt="{{ $item->user->name }}" class="chat-avatar" title="{{ $item->user->name }}">
     @endif
 
+    @if($isSent && $item->feed_type === 'comment')
+        @php
+            $isEditable = $isSent && $item->created_at->diffInMinutes(now()) < 30;
+            $replySender = $isSent ? 'You' : $item->user->name;
+        @endphp
+        <div class="chat-bubble-actions dropdown">
+            <button class="chat-bubble-action-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Options">
+                <i class="bi bi-three-dots-vertical"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-start shadow-sm border border-light-subtle py-1" style="font-size: 13px; z-index: 1050;">
+                <li>
+                    <a class="dropdown-item d-flex align-items-center gap-2 py-1.5" href="javascript:void(0)" onclick="replyToComment('{{ $item->id }}', '{{ addslashes($replySender) }}')">
+                        <i class="bi bi-reply-fill text-muted"></i> Reply
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item d-flex align-items-center gap-2 py-1.5" href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#commentInfoModal" data-viewers="{{ json_encode($viewers) }}" data-sent-at="{{ $formattedTime }}">
+                        <i class="bi bi-info-circle text-muted"></i> Message Info
+                    </a>
+                </li>
+                @if($isEditable)
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center gap-2 py-1.5" href="javascript:void(0)" onclick="editComment('{{ $item->id }}', 'comment')">
+                            <i class="bi bi-pencil text-muted"></i> Edit Comment
+                        </a>
+                    </li>
+                @endif
+                <li>
+                    <a class="dropdown-item d-flex align-items-center gap-2 py-1.5 text-warning" href="javascript:void(0)" onclick="toggleMessageImportant('{{ $item->id }}', 'comment')">
+                        <i class="bi {{ $item->is_important ? 'bi-star-fill text-warning' : 'bi-star text-muted' }}"></i> {{ $item->is_important ? 'Unstar Message' : 'Star Important' }}
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item d-flex align-items-center gap-2 py-1.5 text-danger" href="javascript:void(0)" onclick="toggleMessagePin('{{ $item->id }}', 'comment')">
+                        <i class="bi {{ $item->is_pinned ? 'bi-pin-angle-fill text-danger' : 'bi-pin text-muted' }}"></i> {{ $item->is_pinned ? 'Unpin Message' : 'Pin Message' }}
+                    </a>
+                </li>
+            </ul>
+        </div>
+    @endif
+
     <div class="chat-bubble">
+        @if($item->feed_type === 'comment' && $item->parent_id && $item->parent)
+             <div class="reply-quote-box p-2 mb-2 rounded border-start border-4 border-primary bg-light-subtle" style="font-size: 11.5px; opacity: 0.85; background-color: rgba(0,0,0,0.03);">
+                 <div class="fw-bold text-primary mb-1">{{ $item->parent->user_id === auth()->id() ? 'You' : $item->parent->user->name }}</div>
+                 <div class="text-truncate text-muted text-dark" style="max-width: 90%; font-style: italic;">{{ $item->parent->comment }}</div>
+             </div>
+        @endif
+        
         <span class="chat-sender">{{ $isSent ? 'You' : $item->user->name }}</span>
 
         @if($item->feed_type === 'comment')
@@ -95,27 +154,58 @@
              </div>
          @endif
 
-         <div class="chat-meta">
-             @if($item->feed_type === 'comment')
-                 <a href="#" class="chat-info-trigger text-muted me-1" 
-                    data-bs-toggle="modal" 
-                    data-bs-target="#commentInfoModal" 
-                    data-viewers="{{ json_encode($item->views->map(function($v) {
-                        return [
-                            'name' => $v->user->name,
-                            'avatar_url' => $v->user->avatar_url,
-                            'viewed_at' => $v->viewed_at ? $v->viewed_at->format('d M Y, h:i A') : '—'
-                        ];
-                    })) }}">
-                     <i class="bi bi-info-circle"></i>
-                 </a>
-             @endif
-             <span>{{ $formattedTime }}</span>
-             @if($isSent)
-                 <i class="bi bi-check2-all"></i>
-             @endif
-         </div>
+          <div class="chat-meta d-flex align-items-center gap-1">
+              @if($item->feed_type === 'comment')
+                  @if($item->is_important)
+                      <i class="bi bi-star-fill text-warning me-1" style="font-size: 10px;" title="Starred"></i>
+                  @endif
+                  @if($item->is_pinned)
+                      <i class="bi bi-pin-angle-fill text-danger me-1" style="font-size: 10px;" title="Pinned"></i>
+                  @endif
+                  @if($item->is_edited)
+                      <span class="text-muted me-1" style="font-size: 9px; font-style: italic;">(edited)</span>
+                  @endif
+              @endif
+              <span>{{ $itemTime }}</span>
+              @if($isSent)
+                  <i class="bi bi-check2-all"></i>
+              @endif
+          </div>
     </div>
+
+    @if(!$isSent && $item->feed_type === 'comment')
+        @php
+            $isEditable = false;
+            $replySender = $item->user->name;
+        @endphp
+        <div class="chat-bubble-actions dropdown">
+            <button class="chat-bubble-action-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Options">
+                <i class="bi bi-three-dots-vertical"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm border border-light-subtle py-1" style="font-size: 13px; z-index: 1050;">
+                <li>
+                    <a class="dropdown-item d-flex align-items-center gap-2 py-1.5" href="javascript:void(0)" onclick="replyToComment('{{ $item->id }}', '{{ addslashes($replySender) }}')">
+                        <i class="bi bi-reply-fill text-muted"></i> Reply
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item d-flex align-items-center gap-2 py-1.5" href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#commentInfoModal" data-viewers="{{ json_encode($viewers) }}" data-sent-at="{{ $formattedTime }}">
+                        <i class="bi bi-info-circle text-muted"></i> Message Info
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item d-flex align-items-center gap-2 py-1.5 text-warning" href="javascript:void(0)" onclick="toggleMessageImportant('{{ $item->id }}', 'comment')">
+                        <i class="bi {{ $item->is_important ? 'bi-star-fill text-warning' : 'bi-star text-muted' }}"></i> {{ $item->is_important ? 'Unstar Message' : 'Star Important' }}
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item d-flex align-items-center gap-2 py-1.5 text-danger" href="javascript:void(0)" onclick="toggleMessagePin('{{ $item->id }}', 'comment')">
+                        <i class="bi {{ $item->is_pinned ? 'bi-pin-angle-fill text-danger' : 'bi-pin text-muted' }}"></i> {{ $item->is_pinned ? 'Unpin Message' : 'Pin Message' }}
+                    </a>
+                </li>
+            </ul>
+        </div>
+    @endif
 
     @if($isSent)
         <img src="{{ $item->user->avatar_url }}" alt="{{ $item->user->name }}" class="chat-avatar" title="{{ $item->user->name }}">

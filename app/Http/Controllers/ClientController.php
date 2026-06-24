@@ -17,7 +17,11 @@ class ClientController extends Controller
     public function create() { return view('clients.create'); }
     public function store(Request $request)
     {
-        $request->validate(['company_name' => 'required|string|max:255', 'email' => 'required|email|unique:clients,email']);
+        $request->validate([
+            'company_name' => 'required|string|max:255',
+            'contact_person' => 'required|string|max:255',
+            'email' => 'required|email|unique:clients,email'
+        ]);
         $client = Client::create($request->only(['company_name','contact_person','email','phone','mobile','address','city','state','country','pincode','gst_number','website','notes','status']));
         return redirect()->route('clients.show', $client)->with('success', 'Client added!');
     }
@@ -27,6 +31,11 @@ class ClientController extends Controller
     }
     public function edit(Client $client) { return view('clients.edit', compact('client')); }
     public function update(Request $request, Client $client) {
+        $request->validate([
+            'company_name' => 'required|string|max:255',
+            'contact_person' => 'required|string|max:255',
+            'email' => 'required|email|unique:clients,email,' . $client->id
+        ]);
         $client->update($request->only(['company_name','contact_person','email','phone','mobile','address','city','state','country','pincode','gst_number','website','notes','status']));
         return redirect()->route('clients.show', $client)->with('success', 'Client updated!');
     }

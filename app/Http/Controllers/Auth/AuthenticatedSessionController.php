@@ -93,7 +93,7 @@ class AuthenticatedSessionController extends Controller
                         
                         $request->session()->regenerate();
 
-                        return redirect()->intended(route('dashboard', absolute: false));
+                        return $this->redirectIntended();
                     }
                 }
 
@@ -172,7 +172,7 @@ class AuthenticatedSessionController extends Controller
 
             $request->session()->regenerate();
 
-            return redirect()->intended(route('dashboard', absolute: false));
+            return $this->redirectIntended();
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             // Failure - Increment attempts counter
@@ -213,6 +213,37 @@ class AuthenticatedSessionController extends Controller
 
             throw $e;
         }
+    }
+
+    /**
+     * Redirect to the intended URL, preventing AJAX endpoints.
+     */
+    protected function redirectIntended(): RedirectResponse
+    {
+        $intended = session()->get('url.intended');
+        if ($intended) {
+            $path = parse_url($intended, PHP_URL_PATH);
+            if ($path && (
+                str_contains($path, 'unread-count') ||
+                str_contains($path, 'unread-counts') ||
+                str_contains($path, 'unified-list') ||
+                str_contains($path, 'updates') ||
+                str_contains($path, 'live-status/data') ||
+                str_contains($path, 'grammar/correct') ||
+                str_contains($path, 'ai/correct') ||
+                str_contains($path, 'chat/tasks') ||
+                str_contains($path, 'chat/employees') ||
+                str_contains($path, 'direct-chat/messages') ||
+                str_contains($path, 'direct-chat/read') ||
+                str_contains($path, 'mailbox/official') ||
+                str_contains($path, 'mailbox/fetch-new') ||
+                str_contains($path, 'update-status')
+            )) {
+                session()->forget('url.intended');
+            }
+        }
+
+        return redirect()->intended(route('dashboard', absolute: false));
     }
 
     /**

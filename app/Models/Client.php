@@ -20,6 +20,11 @@ class Client extends Model
         return $this->hasMany(Project::class);
     }
 
+    public function rooms()
+    {
+        return $this->hasMany(LeadRoom::class, 'client_id');
+    }
+
     public function leads()
     {
         return $this->hasMany(Lead::class);

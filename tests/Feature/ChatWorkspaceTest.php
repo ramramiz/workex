@@ -346,4 +346,158 @@ class ChatWorkspaceTest extends TestCase
         ]);
         $this->assertStringContainsString('New updates', $response->json('html'));
     }
+
+    public function test_unified_list_endpoint()
+    {
+        $response = $this->actingAs($this->employee)
+            ->get(route('chat.unified-list'));
+
+        $response->assertStatus(200);
+        $response->assertJsonStructure([
+            'success',
+            'items' => [
+                '*' => [
+                    'type',
+                    'id',
+                    'title',
+                    'subtitle',
+                    'avatar',
+                    'unread_count',
+                    'last_message',
+                    'timestamp',
+                    'time_formatted',
+                ]
+            ]
+        ]);
+        $response->assertJsonFragment([
+            'type' => 'task',
+            'id' => $this->assignedTask->id,
+            'title' => $this->assignedTask->title,
+        ]);
+    }
+
+    public function test_sidebar_includes_header_new_chat_and_filter_elements()
+    {
+        $response = $this->actingAs($this->employee)
+            ->get(route('chat.index'));
+
+        $response->assertStatus(200);
+        // Assert container elements exist
+        $response->assertSee('id="sidebar-main-view"', false);
+        $response->assertSee('id="sidebar-new-chat-view"', false);
+        $response->assertSee('class="chat-filter-btn', false);
+        
+        // Assert filters exist
+        $response->assertSee('data-filter="unread"', false);
+        $response->assertSee('data-filter="bugs"', false);
+        $response->assertSee('data-filter="critical"', false);
+
+        // Assert dynamic data attributes are rendered on list items
+        $response->assertSee('data-unread-count="', false);
+        $response->assertSee('data-is-bug="', false);
+        $response->assertSee('data-priority="', false);
+    }
+
+    public function test_ajax_project_and_task_store_endpoints()
+    {
+        $adminRole = \App\Models\Role::where('slug', 'super-admin')->first();
+        $adminUser = \App\Models\User::factory()->create(['role_id' => $adminRole->id]);
+
+        // 1. Project Store AJAX test with custom type
+        $responseProject = $this->actingAs($adminUser)
+            ->postJson(route('projects.store'), [
+                'name' => 'AJAX Project Board',
+                'priority' => 'high',
+                'project_type' => 'Custom Type API',
+            ]);
+
+        $responseProject->assertStatus(200);
+        $responseProject->assertJson(['success' => true, 'message' => 'Project created!']);
+        $this->assertDatabaseHas('projects', ['name' => 'AJAX Project Board', 'type' => 'Custom Type API']);
+
+        // Check if custom type is returned in the view projectTypes array
+        $chatIndexResponse = $this->actingAs($adminUser)->get(route('chat.index'));
+        $chatIndexResponse->assertStatus(200);
+        $this->assertContains('Custom Type API', $chatIndexResponse->viewData('projectTypes'));
+
+        // 2. Task Store AJAX test
+        $responseTask = $this->actingAs($adminUser)
+            ->postJson(route('tasks.store'), [
+                'title' => 'AJAX Task Card',
+                'assigned_to' => $this->employee->id,
+                'priority' => 'critical',
+            ]);
+
+        $responseTask->assertStatus(200);
+        $responseTask->assertJson(['success' => true, 'message' => 'Task created!']);
+        $this->assertDatabaseHas('tasks', ['title' => 'AJAX Task Card']);
+    }
+
+    public function test_ajax_bug_store_endpoint()
+    {
+        $adminRole = \App\Models\Role::where('slug', 'super-admin')->first();
+        $adminUser = \App\Models\User::factory()->create(['role_id' => $adminRole->id]);
+
+        $project = \App\Models\Project::create([
+            'project_code' => 'PRJ-BUG-TEST',
+            'name' => 'Bug Test Project',
+            'priority' => 'high',
+        ]);
+
+        $responseBug = $this->actingAs($adminUser)
+            ->postJson(route('bugs.store'), [
+                'title' => 'AJAX Bug Title',
+                'project_id' => $project->id,
+                'priority' => 'critical',
+                'description' => 'Failing test description',
+                'assigned_to' => $this->employee->id,
+            ]);
+
+        $responseBug->assertStatus(200);
+        $responseBug->assertJson(['success' => true, 'message' => 'Bug reported!']);
+        $this->assertDatabaseHas('bugs', ['title' => 'AJAX Bug Title', 'project_id' => $project->id]);
+        $this->assertDatabaseHas('tasks', ['title' => 'Bug: AJAX Bug Title', 'project_id' => $project->id]);
+    }
+
+    public function test_employee_cannot_create_or_manage_projects_tasks_or_bugs()
+    {
+        $project = \App\Models\Project::create([
+            'project_code' => 'PRJ-RESTRICT',
+            'name' => 'Restricted Project',
+            'priority' => 'high',
+        ]);
+        
+        $bug = \App\Models\Bug::create([
+            'title' => 'Sample Bug',
+            'project_id' => $project->id,
+            'priority' => 'medium',
+            'description' => 'Bug details',
+            'reported_by' => $this->superAdmin->id,
+            'status' => 'open',
+        ]);
+
+        // 1. Employee cannot view create/edit bug pages, or store/update/delete bugs
+        $this->actingAs($this->employee)->get(route('bugs.create'))->assertStatus(403);
+        $this->actingAs($this->employee)->post(route('bugs.store'))->assertStatus(403);
+        $this->actingAs($this->employee)->get(route('bugs.edit', $bug))->assertStatus(403);
+        $this->actingAs($this->employee)->put(route('bugs.update', $bug))->assertStatus(403);
+        $this->actingAs($this->employee)->delete(route('bugs.destroy', $bug))->assertStatus(403);
+
+        // 2. Employee cannot view create project page or store projects
+        $this->actingAs($this->employee)->get(route('projects.create'))->assertStatus(403);
+        $this->actingAs($this->employee)->post(route('projects.store'))->assertStatus(403);
+
+        // 3. Employee cannot view create task page or store tasks
+        $this->actingAs($this->employee)->get(route('tasks.create'))->assertStatus(403);
+        $this->actingAs($this->employee)->post(route('tasks.store'))->assertStatus(403);
+
+        // 4. Employee views chat index and does not see action options in the sidebar
+        $response = $this->actingAs($this->employee)->get(route('chat.index'));
+        $response->assertStatus(200);
+        $response->assertDontSee('Add new project');
+        $response->assertDontSee('Add new task');
+        $response->assertDontSee('Register bug');
+        $response->assertSee('WorkeX Chat');
+        $response->assertSee('Select a task or contact on the left to start collaborating.');
+    }
 }

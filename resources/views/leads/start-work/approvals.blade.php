@@ -48,7 +48,7 @@
                             </div>
                         </td>
                         <td>
-                            <div class="fw-semibold text-dark">{{ $session->room->name }}</div>
+                            <div class="fw-semibold text-dark">{{ $session->room?->name ?? "Today's Follow-ups" }}</div>
                         </td>
                         <td>
                             @php
@@ -79,14 +79,20 @@
                             <span class="badge bg-success-subtle text-success px-2.5 py-1 border border-success-subtle rounded-pill fw-semibold">{{ $session->converted_count }}</span>
                         </td>
                         <td class="text-end">
-                            <div class="d-inline-flex gap-2">
-                                <form method="POST" action="{{ route('admin.telecaller-sessions.approve', $session) }}">
+                            <div class="d-inline-flex gap-2 align-items-center">
+                                <a href="{{ route('leads.start-work.summary', [$session->lead_room_id ?: 0, $session->id]) }}" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1">
+                                    <i class="bi bi-file-earmark-bar-graph"></i> View Report
+                                </a>
+                                <a href="{{ route('leads.start-work.download-report', $session->id) }}" class="btn btn-outline-success btn-sm d-flex align-items-center gap-1">
+                                    <i class="bi bi-file-earmark-pdf"></i> Download PDF
+                                </a>
+                                <form method="POST" action="{{ route('admin.telecaller-sessions.approve', $session) }}" class="mb-0">
                                     @csrf
                                     <button type="submit" class="btn btn-success btn-sm d-flex align-items-center gap-1">
                                         <i class="bi bi-check-lg"></i> Approve
                                     </button>
                                 </form>
-                                <form method="POST" action="{{ route('admin.telecaller-sessions.reject', $session) }}">
+                                <form method="POST" action="{{ route('admin.telecaller-sessions.reject', $session) }}" class="mb-0">
                                     @csrf
                                     <button type="submit" class="btn btn-outline-danger btn-sm d-flex align-items-center gap-1">
                                         <i class="bi bi-x-lg"></i> Reject

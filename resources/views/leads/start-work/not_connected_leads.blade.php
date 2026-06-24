@@ -1,60 +1,35 @@
 @extends('layouts.app')
 
-@section('title', 'Today Follow-ups - Leads list')
-@section('page-title', 'Today Follow-ups')
+@section('title', 'Not Connected Leads - Leads list')
+@section('page-title', 'Not Connected Leads')
 
 @section('breadcrumb')
     <li class="breadcrumb-item"><a href="{{ route('leads.start-work.index') }}">Start Work</a></li>
-    <li class="breadcrumb-item active">Today Follow-ups</li>
+    <li class="breadcrumb-item active">Not Connected Leads</li>
 @endsection
 
 @section('content')
 
 
-<div class="card mb-4 border border-danger shadow-sm" style="border-radius: 16px;">
-    <div class="card-header bg-danger-subtle py-3 d-flex align-items-center justify-content-between flex-wrap gap-3" style="background: rgba(220, 53, 69, 0.08) !important; border-bottom: 1px solid rgba(220, 53, 69, 0.2) !important;">
+<div class="card mb-4 border border-warning shadow-sm" style="border-radius: 16px;">
+    <div class="card-header bg-warning-subtle py-3 d-flex align-items-center justify-content-between flex-wrap gap-3" style="background: rgba(255, 193, 7, 0.08) !important; border-bottom: 1px solid rgba(255, 193, 7, 0.2) !important;">
         <div class="d-flex align-items-center gap-3">
-            <div class="bg-danger text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                <i class="bi bi-bell-fill fs-5 animate-pulse"></i>
+            <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                <i class="bi bi-telephone-x-fill fs-5"></i>
             </div>
             <div>
-                <h5 class="mb-0 fw-bold text-dark">Today's Follow-ups</h5>
-                <span class="text-secondary fs-8">Calling scheduled follow-ups across all rooms</span>
+                <h5 class="mb-0 fw-bold text-dark">Not Connected Leads</h5>
+                <span class="text-secondary fs-8">Calling unconnected/busy leads across all rooms</span>
             </div>
         </div>
 
         <div class="d-flex align-items-center gap-3">
             <!-- Timer Display -->
-            @if(session('active_room_work') && session('active_room_work')['room_id'] === 'followups')
-                @if((session('active_room_work')['status'] ?? '') === 'active')
-                    <div class="d-flex align-items-center gap-2 bg-danger-subtle text-danger px-3 py-1.5 rounded-pill border border-danger-subtle" id="leads-timer-badge">
-                        <span class="status-dot working animate-pulse" style="background: #dc3545; width: 8px; height: 8px; border-radius: 50%; display: inline-block;"></span>
-                        <span class="fw-semibold font-monospace" id="leads-timer-counter">00:00:00</span>
-                    </div>
-                @else
-                    <div class="d-flex align-items-center gap-2 bg-secondary-subtle text-secondary-emphasis px-3 py-1.5 rounded-pill border border-secondary" id="leads-timer-badge">
-                        <span class="status-dot paused" style="background: #6b7280; width: 8px; height: 8px; border-radius: 50%; display: inline-block;"></span>
-                        <span class="fw-semibold font-monospace" id="leads-timer-counter">00:00:00</span>
-                        <span class="badge bg-secondary text-white font-monospace ms-1" style="font-size: 10px; padding: 2px 6px;">Paused</span>
-                    </div>
-                @endif
-            @endif
-
-            <!-- Pause / Resume Work Form -->
-            @if($session && $session->status === 'active')
-                <form method="POST" action="{{ route('leads.start-work.pause-followups') }}">
-                    @csrf
-                    <button type="submit" class="btn btn-danger btn-sm fw-bold d-flex align-items-center gap-2 px-3 py-1.5 text-white" style="border-radius: 20px;">
-                        <i class="bi bi-pause-circle-fill"></i> Pause Work
-                    </button>
-                </form>
-            @elseif($session && $session->status === 'paused')
-                <form method="POST" action="{{ route('leads.start-work.resume-followups') }}">
-                    @csrf
-                    <button type="submit" class="btn btn-success btn-sm fw-bold d-flex align-items-center gap-2 px-3 py-1.5 text-white" style="border-radius: 20px;">
-                        <i class="bi bi-play-circle-fill"></i> Resume Work
-                    </button>
-                </form>
+            @if(session('active_room_work') && session('active_room_work')['room_id'])
+                <div class="d-flex align-items-center gap-2 bg-warning-subtle text-warning-emphasis px-3 py-1.5 rounded-pill border border-warning-subtle" id="leads-timer-badge">
+                    <span class="status-dot working animate-pulse" style="background: #d97706; width: 8px; height: 8px; border-radius: 50%; display: inline-block;"></span>
+                    <span class="fw-semibold font-monospace" id="leads-timer-counter">00:00:00</span>
+                </div>
             @endif
 
             <!-- Change Room Button -->
@@ -72,8 +47,8 @@
     <!-- Info Banner -->
     <div class="px-4 py-3 bg-light border-bottom d-flex align-items-center justify-content-between flex-wrap gap-3" style="background-color: #f8f9fa !important;">
         <div class="d-flex align-items-center gap-2">
-            <span class="badge bg-danger text-white rounded-pill px-3 py-1.5" style="font-size: 13px;">
-                {{ $totalFollowUps }} Total Follow-ups today
+            <span class="badge bg-warning text-dark rounded-pill px-3 py-1.5" style="font-size: 13px;">
+                {{ $totalLeads }} Total Unconnected leads
             </span>
         </div>
         
@@ -103,12 +78,12 @@
                     @php
                         $isFirstUncalled = $loop->first;
                     @endphp
-                    <tr @if($isFirstUncalled) style="background: rgba(220, 53, 69, 0.04); border-left: 4px solid #dc3545 !important;" @endif>
+                    <tr @if($isFirstUncalled) style="background: rgba(255, 193, 7, 0.03); border-left: 4px solid #ffc107 !important;" @endif>
                         <td>
                             <div class="d-flex align-items-center flex-wrap gap-2">
                                 <div class="fw-semibold text-dark">{{ $lead->client_name }}</div>
                                 @if($isFirstUncalled)
-                                    <span class="badge bg-danger text-white fw-extrabold" style="font-size: 10px; letter-spacing: 0.05em; padding: 3px 8px; border-radius: 4px;">
+                                    <span class="badge bg-warning text-dark fw-extrabold" style="font-size: 10px; letter-spacing: 0.05em; padding: 3px 8px; border-radius: 4px;">
                                         <i class="bi bi-star-fill me-1 animate-pulse"></i> NEXT CALL
                                     </span>
                                 @endif
@@ -176,12 +151,11 @@
                                     </a>
                                 @else
                                     @if($isFirstUncalled)
-                                        <button type="button" class="btn btn-danger btn-sm d-flex align-items-center gap-1.5 fw-bold text-white shadow-sm" style="border-radius: 4px;" title="Log Call" 
+                                        <button type="button" class="btn btn-warning btn-sm d-flex align-items-center gap-1.5 fw-bold text-dark shadow-sm" style="border-radius: 4px;" title="Log Call" 
                                             data-bs-toggle="modal" data-bs-target="#logCallModal" 
                                             data-bs-action="{{ route('leads.calls.store', $lead) }}"
                                             data-bs-client-name="{{ $lead->client_name }}"
-                                            data-bs-client-phone="{{ $lead->client_phone ?? '—' }}"
-                                            data-bs-is-followup="1">
+                                            data-bs-client-phone="{{ $lead->client_phone ?? '—' }}">
                                             <i class="bi bi-telephone-outbound-fill"></i> Start Next Call
                                         </button>
                                     @else
@@ -189,8 +163,7 @@
                                             data-bs-toggle="modal" data-bs-target="#logCallModal" 
                                             data-bs-action="{{ route('leads.calls.store', $lead) }}"
                                             data-bs-client-name="{{ $lead->client_name }}"
-                                            data-bs-client-phone="{{ $lead->client_phone ?? '—' }}"
-                                            data-bs-is-followup="1">
+                                            data-bs-client-phone="{{ $lead->client_phone ?? '—' }}">
                                             <i class="bi bi-telephone-outbound"></i> Log Call
                                         </button>
                                     @endif
@@ -205,8 +178,8 @@
                 @empty
                     <tr>
                         <td colspan="6" class="text-center py-5 text-muted">
-                            <i class="bi bi-calendar-check text-secondary opacity-50" style="font-size: 32px;"></i>
-                            <div class="mt-2">No follow-ups scheduled for today!</div>
+                            <i class="bi bi-telephone-x text-secondary opacity-50" style="font-size: 32px;"></i>
+                            <div class="mt-2">No unconnected leads found!</div>
                         </td>
                     </tr>
                 @endforelse
@@ -250,13 +223,14 @@
         </div>
     </div>
 </div>
+@endsection
 
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const counterEl = document.getElementById('leads-timer-counter');
         
-        @if(session('active_room_work') && session('active_room_work')['room_id'] === 'followups')
+        @if(session('active_room_work'))
             const status = "{{ session('active_room_work')['status'] ?? '' }}";
             const accumulatedSeconds = parseInt("{{ session('active_room_work')['accumulated_seconds'] ?? 0 }}");
             const startTimeStr = "{{ session('active_room_work')['started_at'] ?? '' }}";
@@ -326,4 +300,3 @@
     }
 </style>
 @endpush
-@endsection

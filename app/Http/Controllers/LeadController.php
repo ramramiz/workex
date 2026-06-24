@@ -7,6 +7,7 @@ use App\Models\Lead;
 use App\Models\Client;
 use App\Models\LeadFollowUp;
 use App\Models\User;
+use App\Models\LeadCall;
 
 class LeadController extends Controller
 {
@@ -30,16 +31,110 @@ class LeadController extends Controller
             return redirect()->route('leads.start-work.index');
         }
 
-        $leads = Lead::with(['assignedTo', 'createdBy', 'client'])
-            ->forUser($user)
-            ->when($request->room_id, fn($q) => $q->where('lead_room_id', $request->room_id))
-            ->when($request->status, fn($q) => $q->where('status', $request->status))
-            ->when($request->search, fn($q) => $q->where('client_name', 'like', "%{$request->search}%")->orWhere('requirement', 'like', "%{$request->search}%"))
-            ->latest()->paginate(15);
+        // Global stats counts for top cards
+        $todayFollowUpsCount = Lead::whereDate('follow_up_date', today())->count();
+        $totalInterestedCount = Lead::where('status', 'interested')->count();
+        $notConnectedCallsCount = LeadCall::whereDate('created_at', today())
+            ->whereIn('status', ['Not Connected', 'Busy', 'Switched Off'])
+            ->count();
 
-        $rooms = \App\Models\LeadRoom::latest()->get();
+        // 1. If viewing a specific room
+        if ($request->has('room_id') && !empty($request->room_id)) {
+            $room = \App\Models\LeadRoom::with('client')->findOrFail($request->room_id);
+            $tab = $request->query('tab', 'today_follow_up');
 
-        return view('leads.index', compact('leads', 'rooms'));
+            $todayFollowUpCount = $room->leads()->whereDate('follow_up_date', today())->count();
+            $interestedCount = $room->leads()->where('status', 'interested')->count();
+            $notConnectedCount = $room->leads()->whereHas('latestCall', function($q) {
+                $q->whereIn('status', ['Not Connected', 'Busy', 'Switched Off']);
+            })->count();
+            $allContactsCount = $room->leads()->count();
+
+            if ($tab === 'interested') {
+                $leads = $room->leads()->where('status', 'interested')->latest()->paginate(15);
+            } elseif ($tab === 'not_connected') {
+                $leads = $room->leads()->whereHas('latestCall', function($q) {
+                    $q->whereIn('status', ['Not Connected', 'Busy', 'Switched Off']);
+                })->latest()->paginate(15);
+            } elseif ($tab === 'all_contacts') {
+                $leads = $room->leads()->latest()->paginate(15);
+            } else {
+                $tab = 'today_follow_up';
+                $leads = $room->leads()->whereDate('follow_up_date', today())->latest()->paginate(15);
+            }
+
+            return view('leads.index', compact(
+                'room',
+                'leads',
+                'tab',
+                'todayFollowUpCount',
+                'interestedCount',
+                'notConnectedCount',
+                'allContactsCount',
+                'todayFollowUpsCount',
+                'totalInterestedCount',
+                'notConnectedCallsCount'
+            ));
+        }
+
+        // 2. If viewing a global category list (from top stats cards)
+        if ($request->has('type') && !empty($request->type)) {
+            $type = $request->type;
+            if ($type === 'today_follow_up') {
+                $leads = Lead::with(['assignedTo', 'createdBy', 'client', 'room'])
+                    ->whereDate('follow_up_date', today())
+                    ->latest()->paginate(15);
+                $title = "Today's Follow-up Leads";
+            } elseif ($type === 'interested') {
+                $leads = Lead::with(['assignedTo', 'createdBy', 'client', 'room'])
+                    ->where('status', 'interested')
+                    ->latest()->paginate(15);
+                $title = "Interested Leads";
+            } elseif ($type === 'not_connected') {
+                $leads = Lead::with(['assignedTo', 'createdBy', 'client', 'room'])
+                    ->whereHas('latestCall', function($q) {
+                        $q->whereIn('status', ['Not Connected', 'Busy', 'Switched Off']);
+                    })
+                    ->latest()->paginate(15);
+                $title = "Not Connected Leads";
+            } else {
+                return redirect()->route('leads.index');
+            }
+
+            return view('leads.index', compact(
+                'leads',
+                'type',
+                'title',
+                'todayFollowUpsCount',
+                'totalInterestedCount',
+                'notConnectedCallsCount'
+            ));
+        }
+
+        // 3. Default: Grouped Customers and Rooms Selection OR Telecallers list
+        if ($request->query('view') === 'telecaller') {
+            $telecallers = \App\Models\User::whereHas('role', fn($q) => $q->where('slug', 'telecaller'))
+                ->where('status', 'active')
+                ->with(['leadRoomWorkSessions' => fn($q) => $q->with('room')->latest()])
+                ->latest()
+                ->get();
+
+            return view('leads.index', compact(
+                'telecallers',
+                'todayFollowUpsCount',
+                'totalInterestedCount',
+                'notConnectedCallsCount'
+            ));
+        }
+
+        $rooms = \App\Models\LeadRoom::with('client')->withCount('leads')->latest()->get();
+
+        return view('leads.index', compact(
+            'rooms',
+            'todayFollowUpsCount',
+            'totalInterestedCount',
+            'notConnectedCallsCount'
+        ));
     }
 
     public function create()

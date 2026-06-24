@@ -18,6 +18,33 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\RestrictToRoomWork::class,
         ]);
+        $middleware->redirectGuestsTo(function (\Illuminate\Http\Request $request) {
+            if ($request->expectsJson() || 
+                $request->ajax() || 
+                $request->isXmlHttpRequest() ||
+                $request->headers->get('Sec-Fetch-Dest') === 'empty' ||
+                $request->method() !== 'GET' ||
+                $request->is(
+                    '*/unread-count',
+                    '*/unread-counts',
+                    '*/unified-list',
+                    '*/updates',
+                    'live-status/data',
+                    'grammar/correct',
+                    'ai/correct',
+                    'chat/tasks/*',
+                    'chat/employees/*',
+                    'direct-chat/messages/*',
+                    'direct-chat/read/*',
+                    'mailbox/fetch-new',
+                    'tasks/*/update-status',
+                    'bugs/*/update-status'
+                )
+            ) {
+                abort(401);
+            }
+            return route('login');
+        });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

@@ -536,7 +536,7 @@ class TelecallerWorkflowTest extends TestCase
         $response->assertSessionHasErrors(['lead_status']);
     }
 
-    public function test_telecaller_leads_view_uncalled_and_called_pills(): void
+    public function test_telecaller_leads_view_tabs(): void
     {
         $room = \App\Models\LeadRoom::create([
             'name' => 'Assigned Room 2',
@@ -551,49 +551,49 @@ class TelecallerWorkflowTest extends TestCase
 
         // Create 2 leads in this room
         $lead1 = Lead::create([
-            'client_name' => 'Client Uncalled',
+            'client_name' => 'Client Followup Today',
             'requirement' => 'Design',
             'assigned_to' => $this->telecaller1->id,
             'lead_room_id' => $room->id,
             'created_by' => $this->admin->id,
             'source' => 'direct',
-            'status' => 'new'
+            'status' => 'new',
+            'follow_up_date' => today()
         ]);
 
         $lead2 = Lead::create([
-            'client_name' => 'Client Called',
+            'client_name' => 'Client Interested',
             'requirement' => 'Design 2',
             'assigned_to' => $this->telecaller1->id,
             'lead_room_id' => $room->id,
             'created_by' => $this->admin->id,
             'source' => 'direct',
-            'status' => 'new'
+            'status' => 'interested'
         ]);
 
-        // Log call on lead2
-        LeadCall::create([
-            'lead_id' => $lead2->id,
-            'telecaller_id' => $this->telecaller1->id,
-            'call_date_time' => now(),
-            'status' => 'Connected',
-            'remarks' => 'called lead2'
-        ]);
-
-        // Fetch uncalled tab (default)
+        // Fetch today_follow_up tab (default)
         $response = $this->actingAs($this->telecaller1)
-            ->get(route('leads.start-work.leads', ['room' => $room->id, 'tab' => 'uncalled']));
+            ->get(route('leads.start-work.leads', ['room' => $room->id, 'tab' => 'today_follow_up']));
         
         $response->assertStatus(200);
-        $response->assertSee('Client Uncalled');
-        $response->assertDontSee('Client Called');
+        $response->assertSee('Client Followup Today');
+        $response->assertDontSee('Client Interested');
 
-        // Fetch called tab
+        // Fetch interested tab
         $response = $this->actingAs($this->telecaller1)
-            ->get(route('leads.start-work.leads', ['room' => $room->id, 'tab' => 'called']));
+            ->get(route('leads.start-work.leads', ['room' => $room->id, 'tab' => 'interested']));
         
         $response->assertStatus(200);
-        $response->assertSee('Client Called');
-        $response->assertDontSee('Client Uncalled');
+        $response->assertSee('Client Interested');
+        $response->assertDontSee('Client Followup Today');
+
+        // Fetch all_contacts tab
+        $response = $this->actingAs($this->telecaller1)
+            ->get(route('leads.start-work.leads', ['room' => $room->id, 'tab' => 'all_contacts']));
+        
+        $response->assertStatus(200);
+        $response->assertSee('Client Followup Today');
+        $response->assertSee('Client Interested');
     }
 
     public function test_telecaller_leads_view_not_connected_pill(): void
@@ -658,22 +658,6 @@ class TelecallerWorkflowTest extends TestCase
             'remarks' => 'called lead3'
         ]);
 
-        // Fetch uncalled tab (default)
-        $response = $this->actingAs($this->telecaller1)
-            ->get(route('leads.start-work.leads', ['room' => $room->id, 'tab' => 'uncalled']));
-        $response->assertStatus(200);
-        $response->assertSee('Client Uncalled');
-        $response->assertDontSee('Client Connected');
-        $response->assertDontSee('Client Not Connected');
-
-        // Fetch called tab
-        $response = $this->actingAs($this->telecaller1)
-            ->get(route('leads.start-work.leads', ['room' => $room->id, 'tab' => 'called']));
-        $response->assertStatus(200);
-        $response->assertSee('Client Connected');
-        $response->assertDontSee('Client Uncalled');
-        $response->assertDontSee('Client Not Connected');
-
         // Fetch not_connected tab
         $response = $this->actingAs($this->telecaller1)
             ->get(route('leads.start-work.leads', ['room' => $room->id, 'tab' => 'not_connected']));
@@ -681,6 +665,14 @@ class TelecallerWorkflowTest extends TestCase
         $response->assertSee('Client Not Connected');
         $response->assertDontSee('Client Uncalled');
         $response->assertDontSee('Client Connected');
+
+        // Fetch all_contacts tab
+        $response = $this->actingAs($this->telecaller1)
+            ->get(route('leads.start-work.leads', ['room' => $room->id, 'tab' => 'all_contacts']));
+        $response->assertStatus(200);
+        $response->assertSee('Client Uncalled');
+        $response->assertSee('Client Connected');
+        $response->assertSee('Client Not Connected');
     }
 
     public function test_telecaller_leads_view_interested_and_today_follow_up_pills(): void
@@ -1177,7 +1169,7 @@ class TelecallerWorkflowTest extends TestCase
         $response = $this->actingAs($this->telecaller1)->get(route('leads.start-work.select-room'));
         $response->assertStatus(200);
         $response->assertSee('Room Alpha');
-        $response->assertSee("Today's Follow-ups", false);
+        $response->assertSee("Today's Follow-up", false);
 
         // Select the room
         $this->actingAs($this->telecaller1)->get(route('leads.start-work.select-room-join', $room));
@@ -1253,8 +1245,7 @@ class TelecallerWorkflowTest extends TestCase
         // Visit select-room page and check if it has the Today's Follow-ups virtual card
         $response = $this->actingAs($this->telecaller1)->get(route('leads.start-work.select-room'));
         $response->assertStatus(200);
-        $response->assertSee("Today's Follow-ups", false);
-        $response->assertSee("1 Scheduled");
+        $response->assertSee("Today's Follow-up", false);
 
         // Join virtual room
         $response = $this->actingAs($this->telecaller1)->get(route('leads.start-work.select-followups'));
@@ -1304,6 +1295,353 @@ class TelecallerWorkflowTest extends TestCase
         $response->assertStatus(200);
         $response->assertSee('Total Calls Logged');
         $response->assertSee('N/A'); // Room is N/A for followups virtual room
+    }
+
+    public function test_telecaller_can_export_interested_leads_to_xls(): void
+    {
+        $room = \App\Models\LeadRoom::create([
+            'name' => 'Room Alpha',
+            'description' => 'Test room',
+            'created_by' => $this->admin->id
+        ]);
+        $room->users()->attach($this->telecaller1->id);
+
+        // Lead with 91 prefix
+        Lead::create([
+            'client_name' => 'John Doe',
+            'requirement' => 'Sales',
+            'client_phone' => '919876543210',
+            'client_email' => 'john@example.com',
+            'assigned_to' => $this->telecaller1->id,
+            'lead_room_id' => $room->id,
+            'created_by' => $this->admin->id,
+            'source' => 'direct',
+            'status' => 'interested'
+        ]);
+
+        // Lead without 91 prefix
+        Lead::create([
+            'client_name' => 'Jane Smith',
+            'requirement' => 'Support',
+            'client_phone' => '8887776665',
+            'client_email' => 'jane@example.com',
+            'assigned_to' => $this->telecaller1->id,
+            'lead_room_id' => $room->id,
+            'created_by' => $this->admin->id,
+            'source' => 'direct',
+            'status' => 'interested'
+        ]);
+
+        // Lead with country code with plus
+        Lead::create([
+            'client_name' => 'Bob Marley',
+            'requirement' => 'Music',
+            'client_phone' => '+919999999999',
+            'client_email' => 'bob@example.com',
+            'assigned_to' => $this->telecaller1->id,
+            'lead_room_id' => $room->id,
+            'created_by' => $this->admin->id,
+            'source' => 'direct',
+            'status' => 'interested'
+        ]);
+
+        // Start day session
+        $this->actingAs($this->telecaller1)->post(route('leads.start-work.start-session'));
+
+        // Visit export route
+        $response = $this->actingAs($this->telecaller1)->get(route('leads.start-work.interested-leads.export'));
+        
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Type', 'application/vnd.ms-excel');
+        
+        // Let's capture the streamed response content
+        ob_start();
+        $response->sendContent();
+        $content = ob_get_clean();
+
+        // The content should be a valid binary file, but we can verify that we can load it using PhpSpreadsheet
+        $tempFile = tempnam(sys_get_temp_dir(), 'xls');
+        file_put_contents($tempFile, $content);
+
+        $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xls();
+        $spreadsheet = $reader->load($tempFile);
+        $sheet = $spreadsheet->getActiveSheet();
+
+        // Check headers
+        $this->assertEquals('Phone Number', $sheet->getCell('A1')->getValue());
+        $this->assertEquals('Name', $sheet->getCell('B1')->getValue());
+        $this->assertEquals('Email', $sheet->getCell('C1')->getValue());
+
+        // Check first lead (919876543210 -> 9876543210)
+        $this->assertEquals('9876543210', $sheet->getCell('A2')->getValue());
+        $this->assertEquals('John Doe', $sheet->getCell('B2')->getValue());
+        $this->assertEquals('john@example.com', $sheet->getCell('C2')->getValue());
+
+        // Check second lead (8887776665 -> 8887776665)
+        $this->assertEquals('8887776665', $sheet->getCell('A3')->getValue());
+        $this->assertEquals('Jane Smith', $sheet->getCell('B3')->getValue());
+        $this->assertEquals('jane@example.com', $sheet->getCell('C3')->getValue());
+
+        // Check third lead (+919999999999 -> 9999999999)
+        $this->assertEquals('9999999999', $sheet->getCell('A4')->getValue());
+        $this->assertEquals('Bob Marley', $sheet->getCell('B4')->getValue());
+        $this->assertEquals('bob@example.com', $sheet->getCell('C4')->getValue());
+
+        unlink($tempFile);
+    }
+
+    public function test_admin_leads_view_rooms_by_customer_workflow(): void
+    {
+        $client = \App\Models\Client::create([
+            'company_name' => 'BigCorp',
+            'contact_person' => 'CEO',
+            'email' => 'ceo@bigcorp.com',
+            'phone' => '1234567890',
+            'status' => 'active'
+        ]);
+
+        $room = \App\Models\LeadRoom::create([
+            'name' => 'General Calling Room',
+            'description' => 'Test admin room',
+            'client_id' => $client->id,
+            'created_by' => $this->admin->id
+        ]);
+
+        // Create a lead in this room
+        $lead = Lead::create([
+            'client_name' => 'Lead under BigCorp',
+            'requirement' => 'Web App',
+            'client_phone' => '9876543210',
+            'client_email' => 'lead@bigcorp.com',
+            'lead_room_id' => $room->id,
+            'created_by' => $this->admin->id,
+            'source' => 'direct',
+            'status' => 'interested'
+        ]);
+
+        // 1. Visit /leads without parameters (Default View)
+        $response = $this->actingAs($this->admin)->get(route('leads.index'));
+        $response->assertStatus(200);
+        $response->assertSee('BigCorp');
+        $response->assertSee('General Calling Room');
+        // Flat leads list should NOT be shown yet (since no room is selected)
+        $response->assertDontSee('Lead under BigCorp');
+
+        // 2. Visit /leads?room_id=X (Room View)
+        $response = $this->actingAs($this->admin)->get(route('leads.index', ['room_id' => $room->id, 'tab' => 'interested']));
+        $response->assertStatus(200);
+        $response->assertSee('Lead under BigCorp');
+        $response->assertSee('Today Follow-ups');
+        $response->assertSee('Interested');
+        $response->assertSee('Not Connected Leads');
+        $response->assertSee('All Contacts');
+
+        // 3. Visit /leads?type=interested (Global Filter View)
+        $response = $this->actingAs($this->admin)->get(route('leads.index', ['type' => 'interested']));
+        $response->assertStatus(200);
+        $response->assertSee('Lead under BigCorp');
+        $response->assertSee('Interested Leads');
+    }
+
+    public function test_admin_leads_view_telecallers_workflow(): void
+    {
+        $room = \App\Models\LeadRoom::create([
+            'name' => 'General Calling Room',
+            'description' => 'Test room',
+            'created_by' => $this->admin->id
+        ]);
+        $room->users()->attach($this->telecaller1->id);
+
+        // Create a session for this telecaller
+        $session = \App\Models\LeadRoomWorkSession::create([
+            'user_id' => $this->telecaller1->id,
+            'lead_room_id' => $room->id,
+            'started_at' => now()->subHour(),
+            'ended_at' => now(),
+            'total_seconds' => 3600,
+            'calls_count' => 10,
+            'converted_count' => 1,
+            'status' => 'approved',
+        ]);
+
+        // Visit /leads?view=telecaller
+        $response = $this->actingAs($this->admin)->get(route('leads.index', ['view' => 'telecaller']));
+        $response->assertStatus(200);
+        $response->assertSee($this->telecaller1->name);
+        $response->assertSee('General Calling Room');
+        $response->assertSee('10 calls');
+        $response->assertSee('1 converted');
+        $response->assertSee('View Report');
+    }
+
+    public function test_telecaller_report_pdf_download_permissions(): void
+    {
+        $room = \App\Models\LeadRoom::create([
+            'name' => 'General Calling Room',
+            'description' => 'Test room',
+            'created_by' => $this->admin->id
+        ]);
+        $room->users()->attach($this->telecaller1->id);
+
+        $session = \App\Models\LeadRoomWorkSession::create([
+            'user_id' => $this->telecaller1->id,
+            'lead_room_id' => $room->id,
+            'started_at' => now()->subHour(),
+            'ended_at' => now(),
+            'total_seconds' => 3600,
+            'calls_count' => 5,
+            'converted_count' => 0,
+            'status' => 'pending',
+        ]);
+
+        // 1. Admin downloads PDF report - should succeed
+        $response = $this->actingAs($this->admin)->get(route('leads.start-work.download-report', $session));
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Type', 'application/pdf');
+
+        // 2. Telecaller attempts to download PDF report (even their own) - should fail with 403 Forbidden
+        $response = $this->actingAs($this->telecaller1)->get(route('leads.start-work.download-report', $session));
+        $response->assertStatus(403);
+    }
+
+    public function test_telecaller_room_selection_renders_direct_rooms_and_defaults_to_uncalled_leads(): void
+    {
+        $client = \App\Models\Client::create([
+            'company_name' => 'CustomClientCorp',
+            'contact_person' => 'John Client',
+            'email' => 'john@client.com',
+            'phone' => '1112223333',
+            'status' => 'active'
+        ]);
+
+        $room = \App\Models\LeadRoom::create([
+            'name' => 'Calling Room Direct',
+            'description' => 'Test room direct',
+            'client_id' => $client->id,
+            'created_by' => $this->admin->id
+        ]);
+        $room->users()->attach($this->telecaller1->id);
+
+        $leadUncalled = Lead::create([
+            'client_name' => 'Uncalled Lead Person',
+            'requirement' => 'Design',
+            'assigned_to' => $this->telecaller1->id,
+            'lead_room_id' => $room->id,
+            'created_by' => $this->admin->id,
+            'source' => 'direct',
+            'status' => 'new'
+        ]);
+
+        $leadCalled = Lead::create([
+            'client_name' => 'Already Called Lead Person',
+            'requirement' => 'Design',
+            'assigned_to' => $this->telecaller1->id,
+            'lead_room_id' => $room->id,
+            'created_by' => $this->admin->id,
+            'source' => 'direct',
+            'status' => 'new'
+        ]);
+
+        LeadCall::create([
+            'lead_id' => $leadCalled->id,
+            'telecaller_id' => $this->telecaller1->id,
+            'call_date_time' => now(),
+            'status' => 'Connected',
+            'remarks' => 'called lead'
+        ]);
+
+        // Start session
+        $this->actingAs($this->telecaller1)->post(route('leads.start-work.start-session'));
+
+        // Visit select-room page
+        $response = $this->actingAs($this->telecaller1)->get(route('leads.start-work.select-room'));
+        $response->assertStatus(200);
+        $response->assertSee('Calling Room Direct');
+        $response->assertSee('CustomClientCorp');
+        // Ensure there is NO accordion collapse client targets
+        $response->assertDontSee('collapseClient_');
+
+        // Select the room
+        $response = $this->actingAs($this->telecaller1)->get(route('leads.start-work.select-room-join', $room));
+        $response->assertRedirect(route('leads.start-work.leads', $room));
+
+        // Open leads page and check if it defaults to Next Call (uncalled)
+        $response = $this->actingAs($this->telecaller1)->get(route('leads.start-work.leads', $room));
+        $response->assertStatus(200);
+        $response->assertSee('Next Call');
+        $response->assertSee('Uncalled Lead Person');
+        $response->assertDontSee('Already Called Lead Person');
+        
+        // Assert "NEXT CALL" badge is displayed
+        $response->assertSee('NEXT CALL');
+        $response->assertSee('Start Next Call');
+    }
+
+    public function test_telecaller_not_connected_leads_count_matches_today_calls_logged(): void
+    {
+        $room = \App\Models\LeadRoom::create([
+            'name' => 'Calling Room Direct',
+            'description' => 'Test room direct',
+            'created_by' => $this->admin->id
+        ]);
+        $room->users()->attach($this->telecaller1->id);
+
+        $lead1 = Lead::create([
+            'client_name' => 'Lead Called Today Not Connected',
+            'requirement' => 'Design',
+            'assigned_to' => $this->telecaller1->id,
+            'lead_room_id' => $room->id,
+            'created_by' => $this->admin->id,
+            'source' => 'direct',
+            'status' => 'new'
+        ]);
+
+        $lead2 = Lead::create([
+            'client_name' => 'Lead Called Yesterday Not Connected',
+            'requirement' => 'Design',
+            'assigned_to' => $this->telecaller1->id,
+            'lead_room_id' => $room->id,
+            'created_by' => $this->admin->id,
+            'source' => 'direct',
+            'status' => 'new'
+        ]);
+
+        // Log call yesterday on lead2
+        $callYesterday = new LeadCall([
+            'lead_id' => $lead2->id,
+            'telecaller_id' => $this->telecaller1->id,
+            'call_date_time' => now()->subDay(),
+            'status' => 'Busy',
+            'remarks' => 'called yesterday',
+        ]);
+        $callYesterday->created_at = now()->subDay();
+        $callYesterday->save();
+
+        // Log call today on lead1
+        $callToday = new LeadCall([
+            'lead_id' => $lead1->id,
+            'telecaller_id' => $this->telecaller1->id,
+            'call_date_time' => now(),
+            'status' => 'Busy',
+            'remarks' => 'called today',
+        ]);
+        $callToday->created_at = now();
+        $callToday->save();
+
+        // Start session
+        $this->actingAs($this->telecaller1)->post(route('leads.start-work.start-session'));
+
+        // Visit select-room page and check if not connected calls today count is 1 (lead1 called today, not lead2)
+        $response = $this->actingAs($this->telecaller1)->get(route('leads.start-work.select-room'));
+        $response->assertStatus(200);
+        $response->assertViewHas('notConnectedCalls', 1);
+
+        // Visit not connected leads page and verify only lead1 is listed, count is 1
+        $response = $this->actingAs($this->telecaller1)->get(route('leads.start-work.not-connected-leads'));
+        $response->assertStatus(200);
+        $response->assertViewHas('totalLeads', 1);
+        $response->assertSee('Lead Called Today Not Connected');
+        $response->assertDontSee('Lead Called Yesterday Not Connected');
     }
 }
 
