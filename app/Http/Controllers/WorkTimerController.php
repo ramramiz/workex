@@ -73,14 +73,14 @@ class WorkTimerController extends Controller
             'status'      => 'active',
         ]);
 
-        // Mark attendance
+        // Mark attendance - initial start day registers record with login_time as null
         Attendance::updateOrCreate(
             ['user_id' => $user->id, 'date' => $today],
             [
-                'login_time'   => now(),
+                'login_time'   => null,
                 'type'         => 'office',
                 'status'       => 'present',
-                'late_minutes' => $this->calcLateMinutes(),
+                'late_minutes' => 0,
             ]
         );
 
@@ -186,6 +186,11 @@ class WorkTimerController extends Controller
                 'login_time'   => now(),
                 'type'         => 'office',
                 'status'       => 'present',
+                'late_minutes' => $this->calcLateMinutes(),
+            ]);
+        } elseif (is_null($attendance->login_time)) {
+            $attendance->update([
+                'login_time'   => now(),
                 'late_minutes' => $this->calcLateMinutes(),
             ]);
         }

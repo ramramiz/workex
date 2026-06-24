@@ -16,8 +16,32 @@ class SettingController extends Controller
 
     public function update(Request $request)
     {
+        // Handle company logo upload
+        if ($request->hasFile('company_logo')) {
+            $request->validate([
+                'company_logo' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            ]);
+            $path = $request->file('company_logo')->store('logos', 'public');
+            Setting::set('company_logo', $path);
+        }
+
+        // Handle weekly off days checklist
+        if ($request->has('week_off_days_present')) {
+            $weekOffDays = $request->has('week_off_days')
+                ? implode(',', $request->input('week_off_days'))
+                : '';
+            Setting::set('week_off_days', $weekOffDays);
+        }
+
+        // Exclude fields from the general settings update loop
+        $excludeFields = [
+            '_token', '_method', 'company_logo', 'week_off_days', 'week_off_days_present',
+            'company_name', 'company_email', 'company_auth_person_name',
+            'company_auth_person_email', 'company_phone', 'company_address', 'company_gst'
+        ];
+
         // Update global settings
-        foreach ($request->except(['_token', '_method']) as $key => $value) {
+        foreach ($request->except($excludeFields) as $key => $value) {
             Setting::set($key, $value);
         }
 
@@ -40,3 +64,4 @@ class SettingController extends Controller
         return back()->with('success', 'Settings saved successfully!');
     }
 }
+

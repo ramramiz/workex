@@ -2,6 +2,9 @@
     <a href="{{ route('settings.index') }}" class="list-group-item list-group-item-action {{ request()->routeIs('settings.index') ? 'active' : '' }} d-flex align-items-center gap-2">
         <i class="bi bi-sliders"></i> General Settings
     </a>
+    <a href="{{ route('settings.holidays.index') }}" class="list-group-item list-group-item-action {{ request()->routeIs('settings.holidays*') ? 'active' : '' }} d-flex align-items-center gap-2">
+        <i class="bi bi-calendar-check"></i> Holiday Marking
+    </a>
     <a href="{{ route('departments.index') }}" class="list-group-item list-group-item-action {{ request()->routeIs('departments*') ? 'active' : '' }} d-flex align-items-center gap-2">
         <i class="bi bi-diagram-3"></i> Departments
     </a>

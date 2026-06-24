@@ -25,6 +25,8 @@ class SettingsSeeder extends Seeder
             ['key' => 'work_hours_per_day', 'value' => '8',                     'group' => 'work',      'label' => 'Work Hours Per Day',    'type' => 'text'],
             ['key' => 'late_threshold',     'value' => '15',                    'group' => 'work',      'label' => 'Late Threshold (mins)', 'type' => 'text'],
             ['key' => 'working_days',       'value' => 'mon,tue,wed,thu,fri',   'group' => 'work',      'label' => 'Working Days',          'type' => 'text'],
+            ['key' => 'week_start_day',     'value' => 'mon',                   'group' => 'work',      'label' => 'Week Starting Day',     'type' => 'text'],
+            ['key' => 'week_off_days',      'value' => 'sun',                   'group' => 'work',      'label' => 'Weekly Off Days',       'type' => 'text'],
             // Tax
             ['key' => 'invoice_tax',        'value' => '18',                    'group' => 'invoice',   'label' => 'Default Tax %',         'type' => 'text'],
             ['key' => 'invoice_prefix',     'value' => 'INV',                   'group' => 'invoice',   'label' => 'Invoice Prefix',        'type' => 'text'],

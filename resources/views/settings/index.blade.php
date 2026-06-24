@@ -39,7 +39,7 @@
                 </ul>
             </div>
             <div class="card-body">
-                <form method="POST" action="{{ route('settings.update') }}">
+                <form method="POST" action="{{ route('settings.update') }}" enctype="multipart/form-data">
                     @csrf
                     <div class="tab-content" id="settingsTabsContent">
                         <!-- Company Settings -->
@@ -62,6 +62,15 @@
                                         <label class="form-label fw-medium">{{ $s->label }}</label>
                                         @if($s->type === 'textarea')
                                             <textarea name="{{ $s->key }}" class="form-control" rows="3">{{ $val }}</textarea>
+                                        @elseif($s->type === 'file')
+                                            <div class="d-flex align-items-center gap-3">
+                                                @if($val)
+                                                    <div class="border rounded p-1 bg-white d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; overflow: hidden; flex-shrink: 0;">
+                                                        <img src="{{ asset('storage/' . $val) }}" alt="Logo" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                                                    </div>
+                                                @endif
+                                                <input type="file" name="{{ $s->key }}" class="form-control" accept="image/*">
+                                            </div>
                                         @else
                                             <input type="text" name="{{ $s->key }}" class="form-control" value="{{ $val }}">
                                         @endif
@@ -73,10 +82,47 @@
                         <!-- Work Settings -->
                         <div class="tab-pane fade" id="work" role="tabpanel">
                             <div class="row g-3">
+                                <input type="hidden" name="week_off_days_present" value="1">
                                 @foreach($settings['work'] ?? [] as $s)
+                                    @if($s->key === 'working_days') @continue @endif
                                     <div class="col-12 col-md-6">
                                         <label class="form-label fw-medium">{{ $s->label }}</label>
-                                        <input type="text" name="{{ $s->key }}" class="form-control" value="{{ $s->value }}">
+                                        @if($s->key === 'work_start_time' || $s->key === 'work_end_time')
+                                            <input type="time" name="{{ $s->key }}" class="form-control" value="{{ $s->value }}">
+                                        @elseif($s->key === 'week_start_day')
+                                            <select name="{{ $s->key }}" class="form-select">
+                                                <option value="mon" {{ $s->value === 'mon' ? 'selected' : '' }}>Monday</option>
+                                                <option value="tue" {{ $s->value === 'tue' ? 'selected' : '' }}>Tuesday</option>
+                                                <option value="wed" {{ $s->value === 'wed' ? 'selected' : '' }}>Wednesday</option>
+                                                <option value="thu" {{ $s->value === 'thu' ? 'selected' : '' }}>Thursday</option>
+                                                <option value="fri" {{ $s->value === 'fri' ? 'selected' : '' }}>Friday</option>
+                                                <option value="sat" {{ $s->value === 'sat' ? 'selected' : '' }}>Saturday</option>
+                                                <option value="sun" {{ $s->value === 'sun' ? 'selected' : '' }}>Sunday</option>
+                                            </select>
+                                        @elseif($s->key === 'week_off_days')
+                                            @php
+                                                $selectedOffs = explode(',', $s->value ?? 'sun');
+                                                $daysList = [
+                                                    'mon' => 'Monday',
+                                                    'tue' => 'Tuesday',
+                                                    'wed' => 'Wednesday',
+                                                    'thu' => 'Thursday',
+                                                    'fri' => 'Friday',
+                                                    'sat' => 'Saturday',
+                                                    'sun' => 'Sunday'
+                                                ];
+                                            @endphp
+                                            <div class="d-flex flex-wrap gap-2 mt-1">
+                                                @foreach($daysList as $dayKey => $dayName)
+                                                    <div class="form-check form-check-inline border rounded p-2 px-3 bg-light" style="margin-right: 0;">
+                                                        <input class="form-check-input ms-0 me-2" type="checkbox" name="week_off_days[]" value="{{ $dayKey }}" id="off-{{ $dayKey }}" {{ in_array($dayKey, $selectedOffs) ? 'checked' : '' }}>
+                                                        <label class="form-check-label fw-medium" for="off-{{ $dayKey }}">{{ $dayName }}</label>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        @else
+                                            <input type="text" name="{{ $s->key }}" class="form-control" value="{{ $s->value }}">
+                                        @endif
                                     </div>
                                 @endforeach
                             </div>

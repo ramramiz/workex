@@ -113,8 +113,20 @@
                                 <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Late</span>
                             @elseif($rec->status === 'on_leave')
                                 <span class="badge bg-info-subtle text-info border border-info-subtle">On Leave</span>
+                            @elseif($rec->status === 'holiday')
+                                <span class="badge bg-success text-white border border-success"><i class="bi bi-pin-angle-fill me-1"></i>Holiday</span>
+                            @elseif($rec->status === 'weekly_off')
+                                <span class="badge bg-secondary text-white border border-secondary">Weekly Off</span>
+                            @elseif($rec->status === 'pending')
+                                <span class="badge bg-light text-muted border border-secondary-subtle">Not Started</span>
                             @else
                                 <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Half Day</span>
+                            @endif
+
+                            @if($rec->status === 'holiday' && !empty($rec->notes))
+                                <div class="text-success small fw-bold mt-1" style="font-size: 0.75rem;">{{ $rec->notes }}</div>
+                            @elseif(!empty($rec->notes) && $rec->status !== 'weekly_off' && $rec->notes !== 'Absent')
+                                <div class="text-muted small mt-1" style="font-size: 0.75rem;">{{ $rec->notes }}</div>
                             @endif
                         </td>
                         @if(auth()->user()->isAdminOrAbove() || auth()->user()->isHR())

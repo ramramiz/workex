@@ -329,6 +329,14 @@ Route::middleware(['auth'])->group(function () {
     // Settings
     Route::get('settings', [SettingController::class, 'index'])->name('settings.index');
     Route::post('settings', [SettingController::class, 'update'])->name('settings.update');
+    Route::resource('settings/holidays', \App\Http\Controllers\HolidayController::class)->names([
+        'index' => 'settings.holidays.index',
+        'create' => 'settings.holidays.create',
+        'store' => 'settings.holidays.store',
+        'edit' => 'settings.holidays.edit',
+        'update' => 'settings.holidays.update',
+        'destroy' => 'settings.holidays.destroy',
+    ])->except(['show']);
     Route::post('settings/users/quick-store-team-leader', [UserController::class, 'quickStoreTeamLeader'])->name('users.quick-store-team-leader');
     Route::resource('settings/users', UserController::class)->names([
         'index' => 'users.index', 'create' => 'users.create', 'store' => 'users.store',

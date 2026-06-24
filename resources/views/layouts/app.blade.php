@@ -791,9 +791,19 @@
 <!-- SIDEBAR -->
 <aside id="sidebar">
     <a href="{{ route('dashboard') }}" class="sidebar-brand">
-        <div class="brand-icon"><i class="bi bi-lightning-charge-fill"></i></div>
+        @php
+            $companyLogo = \App\Models\Setting::get('company_logo');
+            $companyName = \App\Models\Setting::get('company_name', 'WorkeX');
+        @endphp
+        @if($companyLogo)
+            <div class="brand-logo-container d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; overflow: hidden; border-radius: 10px; flex-shrink: 0; background: white;">
+                <img src="{{ asset('storage/' . $companyLogo) }}" alt="Logo" style="max-width: 100%; max-height: 100%; object-fit: contain; padding: 2px;">
+            </div>
+        @else
+            <div class="brand-icon"><i class="bi bi-lightning-charge-fill"></i></div>
+        @endif
         <div class="brand-text d-flex flex-column" style="line-height: 1.1;">
-            <div>Work<span>eX</span></div>
+            <div>{!! str_replace('eX', '<span>eX</span>', e($companyName)) !!}</div>
             <span style="font-size: 9px; font-weight: 500; color: #94a3b8; letter-spacing: 0.05em; margin-top: 2px;">By Techsoul</span>
         </div>
     </a>
