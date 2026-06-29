@@ -10,7 +10,7 @@ class Leave extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'user_id', 'leave_type', 'from_date', 'to_date', 'total_days', 'reason',
+        'user_id', 'leave_type', 'half_day_session', 'from_date', 'to_date', 'total_days', 'reason',
         'status', 'team_leader_id', 'team_leader_status', 'team_leader_comment', 'team_leader_at',
         'hr_id', 'hr_status', 'hr_comment', 'hr_at', 'attachments',
     ];

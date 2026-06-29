@@ -96,15 +96,17 @@
                                 <a href="{{ route('leaves.show', $leave) }}" class="btn btn-outline-secondary btn-sm" title="View details">
                                     <i class="bi bi-eye"></i>
                                 </a>
-                                @if($leave->status === 'pending' && $leave->user_id === auth()->id())
-                                    <a href="{{ route('leaves.edit', $leave) }}" class="btn btn-outline-primary btn-sm" title="Edit">
-                                        <i class="bi bi-pencil"></i>
-                                    </a>
-                                    <form method="POST" action="{{ route('leaves.destroy', $leave) }}" class="d-inline" onsubmit="return confirm('Are you sure you want to cancel this request?');">
+                                @if($leave->user_id === auth()->id())
+                                    @if($leave->status === 'pending')
+                                        <a href="{{ route('leaves.edit', $leave) }}" class="btn btn-outline-primary btn-sm" title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                    @endif
+                                    <form method="POST" action="{{ route('leaves.destroy', $leave) }}" class="d-inline" onsubmit="return confirm('Are you sure you want to revoke and delete this leave request?');">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Cancel">
-                                            <i class="bi bi-x-circle"></i>
+                                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Revoke">
+                                            <i class="bi bi-trash"></i>
                                         </button>
                                     </form>
                                 @endif

@@ -1,23 +1,29 @@
 <?php
-
+ 
 namespace App\Http\Controllers;
-
+ 
 use Illuminate\Http\Request;
 use App\Models\Attendance;
 use App\Models\User;
+use App\Models\Holiday;
+use App\Models\Setting;
 use Carbon\Carbon;
-
+ 
 class AttendanceController extends Controller
 {
     public function index(Request $request)
     {
         $user = auth()->user();
+        if (!$user->hasPermission('attendance.view-own') && !$user->hasPermission('attendance.view-all')) {
+            abort(403, 'Unauthorized');
+        }
+
         $month = (int) ($request->month ?? now()->month);
         $year  = (int) ($request->year  ?? now()->year);
 
         // Determine if we are filtering by a single user
         $targetUserId = null;
-        if ($user->isLeaderOrAbove() || $user->isHR()) {
+        if ($user->hasPermission('attendance.view-all')) {
             $employees = User::whereHas('role', fn($q) => $q->whereIn('slug', ['employee','team-leader']))->where('status','active')->get();
             if ($request->user_id) {
                 $targetUserId = (int) $request->user_id;
@@ -130,10 +136,30 @@ class AttendanceController extends Controller
 
         return view('attendance.index', compact('records', 'month', 'year', 'employees'));
     }
-    public function show(Attendance $attendance) { return view('attendance.show', compact('attendance')); }
-    public function edit(Attendance $attendance) { return view('attendance.edit', compact('attendance')); }
+    public function show(Attendance $attendance)
+    {
+        $user = auth()->user();
+        if (!$user->hasPermission('attendance.view-all')) {
+            if (!$user->hasPermission('attendance.view-own') || $attendance->user_id !== $user->id) {
+                abort(403, 'Unauthorized');
+            }
+        }
+        return view('attendance.show', compact('attendance'));
+    }
+
+    public function edit(Attendance $attendance)
+    {
+        if (!auth()->user()->hasPermission('attendance.edit')) {
+            abort(403, 'Unauthorized');
+        }
+        return view('attendance.edit', compact('attendance'));
+    }
+
     public function update(Request $request, Attendance $attendance)
     {
+        if (!auth()->user()->hasPermission('attendance.edit')) {
+            abort(403, 'Unauthorized');
+        }
         $attendance->update($request->only(['login_time','logout_time','status','notes']));
         if ($attendance->logout_time && $attendance->login_time) {
             $mins = Carbon::parse($attendance->login_time)->diffInMinutes(Carbon::parse($attendance->logout_time));
@@ -141,8 +167,12 @@ class AttendanceController extends Controller
         }
         return back()->with('success', 'Attendance updated!');
     }
+
     public function report(Request $request)
     {
+        if (!auth()->user()->hasPermission('attendance.view-all')) {
+            abort(403, 'Unauthorized');
+        }
         $month = $request->month ?? now()->month;
         $year  = $request->year  ?? now()->year;
         $records = Attendance::with('user')->whereMonth('date', $month)->whereYear('date', $year)->get()->groupBy('user_id');

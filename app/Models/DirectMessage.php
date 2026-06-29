@@ -10,7 +10,7 @@ class DirectMessage extends Model
     use BelongsToCompany;
 
     protected $fillable = [
-        'sender_id', 'receiver_id', 'message', 'image_path', 'read_at', 'company_id', 'parent_id', 'is_edited', 'is_pinned', 'is_important'
+        'sender_id', 'receiver_id', 'message', 'image_path', 'file_path', 'file_name', 'read_at', 'company_id', 'parent_id', 'is_edited', 'is_pinned', 'is_important'
     ];
 
     protected $casts = [

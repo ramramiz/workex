@@ -28,6 +28,7 @@ use App\Http\Controllers\ChatController;
 use App\Http\Controllers\LeadCallController;
 use App\Http\Controllers\LeadAppointmentController;
 use App\Http\Controllers\PerformanceReportController;
+use App\Http\Controllers\SalaryDisbursalController;
 
 Route::get('/', function () {
     return auth()->check() ? redirect()->route('dashboard') : redirect()->route('login');
@@ -181,6 +182,13 @@ Route::middleware(['auth'])->group(function () {
     // Employees
     Route::resource('employees', EmployeeController::class);
     Route::post('employees/{employee}/toggle-status', [EmployeeController::class, 'toggleStatus'])->name('employees.toggle-status');
+    Route::get('employees/{employee}/permissions', [EmployeeController::class, 'getPermissions'])->name('employees.permissions.get');
+    Route::post('employees/{employee}/permissions', [EmployeeController::class, 'updatePermissions'])->name('employees.permissions.update');
+
+    // Employee Session Management
+    Route::get('users/{user}/sessions', [\App\Http\Controllers\UserSessionController::class, 'index'])->name('users.sessions.index');
+    Route::delete('users/{user}/sessions/{sessionId}', [\App\Http\Controllers\UserSessionController::class, 'destroy'])->name('users.sessions.destroy');
+    Route::delete('users/{user}/sessions', [\App\Http\Controllers\UserSessionController::class, 'destroyAll'])->name('users.sessions.destroy-all');
 
     // Departments & Designations
     Route::resource('departments', \App\Http\Controllers\DepartmentController::class)->except(['show']);
@@ -216,24 +224,41 @@ Route::middleware(['auth'])->group(function () {
     Route::get('quotations/{quotation}/pdf', [QuotationController::class, 'pdf'])->name('quotations.pdf');
     Route::post('quotations/{quotation}/convert-to-project', [QuotationController::class, 'convertToProject'])->name('quotations.convert');
 
-    // Projects
-    Route::resource('projects', ProjectController::class);
-    Route::post('projects/{project}/update-status', [ProjectController::class, 'updateStatus'])->name('projects.update-status');
-    Route::post('projects/{project}/team', [ProjectController::class, 'updateTeam'])->name('projects.team.update');
+    // Projects, Meetings, Daily Reports, Attendance, and Bug Listings restricted to non-employees
+    Route::middleware(['role:super-admin,admin,team-leader,hr,accounts'])->group(function () {
+        // Projects
+        Route::resource('projects', ProjectController::class);
+        Route::post('projects/{project}/update-status', [ProjectController::class, 'updateStatus'])->name('projects.update-status');
+        Route::post('projects/{project}/team', [ProjectController::class, 'updateTeam'])->name('projects.team.update');
 
+        // Meetings
+        Route::resource('meetings', MeetingController::class);
 
-    // Task Completion & Approvals (Static routes first)
+        // Daily Reports
+        Route::resource('daily-reports', DailyReportController::class);
+        Route::post('daily-reports/{report}/approve', [DailyReportController::class, 'approve'])->name('daily-reports.approve');
+        Route::post('daily-reports/{report}/reject', [DailyReportController::class, 'reject'])->name('daily-reports.reject');
+
+        // Bugs listing & actions (except creation/comments)
+        Route::get('bugs', [BugController::class, 'index'])->name('bugs.index');
+        Route::get('bugs/create', [BugController::class, 'create'])->name('bugs.create');
+        Route::get('bugs/{bug}', [BugController::class, 'show'])->name('bugs.show');
+        Route::get('bugs/{bug}/edit', [BugController::class, 'edit'])->name('bugs.edit');
+        Route::put('bugs/{bug}', [BugController::class, 'update'])->name('bugs.update');
+        Route::patch('bugs/{bug}', [BugController::class, 'update'])->name('bugs.update');
+        Route::delete('bugs/{bug}', [BugController::class, 'destroy'])->name('bugs.destroy');
+        Route::post('bugs/{bug}/update-status', [BugController::class, 'updateStatus'])->name('bugs.update-status');
+    });
+
+    // Publicly accessible Bug creation/comment endpoints for all authenticated users
+    Route::post('bugs', [BugController::class, 'store'])->name('bugs.store');
+    Route::post('bugs/{bug}/comments', [BugController::class, 'addComment'])->name('bugs.comments.store');
+
+    // Restored Tasks Routes
     Route::get('/tasks/approved', [TaskController::class, 'approvedTasks'])->name('tasks.approved');
     Route::get('/tasks/completed-approvals', [TaskController::class, 'completedApprovals'])->name('tasks.completed-approvals');
-
-    // Tasks
     Route::get('tasks/{task}/feed-updates', [TaskController::class, 'getFeedUpdates'])->name('tasks.feed-updates');
     Route::resource('tasks', TaskController::class);
-
-    // Meetings
-    Route::resource('meetings', MeetingController::class);
-
-    // Task Completion & Approvals Actions
     Route::post('/tasks/{task}/submit-completion', [TaskController::class, 'submitCompletion'])->name('tasks.submit-completion');
     Route::post('/tasks/{task}/approve-completion', [TaskController::class, 'approveCompletion'])->name('tasks.approve-completion');
     Route::post('/tasks/{task}/reject-completion', [TaskController::class, 'rejectCompletion'])->name('tasks.reject-completion');
@@ -244,25 +269,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('tasks/{task}/files', [TaskController::class, 'uploadFile'])->name('tasks.files.store');
     Route::post('tasks/{task}/update-status', [TaskController::class, 'updateStatus'])->name('tasks.update-status');
 
-    // Daily Reports
-    Route::resource('daily-reports', DailyReportController::class);
-    Route::post('daily-reports/{report}/approve', [DailyReportController::class, 'approve'])->name('daily-reports.approve');
-    Route::post('daily-reports/{report}/reject', [DailyReportController::class, 'reject'])->name('daily-reports.reject');
-
-    // Attendance
-    Route::resource('attendance', AttendanceController::class)->only(['index', 'show', 'edit', 'update']);
-    Route::get('attendance/report', [AttendanceController::class, 'report'])->name('attendance.report');
-
-    // Leaves
+    // Restored Leaves Routes
     Route::resource('leaves', LeaveController::class)->parameters(['leaves' => 'leave']);
     Route::post('leaves/{leave}/approve-tl', [LeaveController::class, 'approveTL'])->name('leaves.approve-tl');
     Route::post('leaves/{leave}/approve-hr', [LeaveController::class, 'approveHR'])->name('leaves.approve-hr');
     Route::post('leaves/{leave}/reject', [LeaveController::class, 'reject'])->name('leaves.reject');
-
-    // Bugs
-    Route::resource('bugs', BugController::class);
-    Route::post('bugs/{bug}/comments', [BugController::class, 'addComment'])->name('bugs.comments.store');
-    Route::post('bugs/{bug}/update-status', [BugController::class, 'updateStatus'])->name('bugs.update-status');
 
     // Invoices
     Route::resource('invoices', InvoiceController::class);
@@ -358,6 +369,8 @@ Route::middleware(['auth'])->group(function () {
     // Telecaller Start Today Work Section
     Route::get('start-work', [\App\Http\Controllers\LeadRoomWorkController::class, 'index'])->name('leads.start-work.index');
     Route::post('start-work/start', [\App\Http\Controllers\LeadRoomWorkController::class, 'startWorkSession'])->name('leads.start-work.start-session');
+    Route::get('start-work/select-customer', [\App\Http\Controllers\LeadRoomWorkController::class, 'selectCustomerForm'])->name('leads.start-work.select-customer');
+    Route::post('start-work/select-customer', [\App\Http\Controllers\LeadRoomWorkController::class, 'updateCustomer'])->name('leads.start-work.update-customer');
     Route::get('start-work/select-room', [\App\Http\Controllers\LeadRoomWorkController::class, 'selectRoomList'])->name('leads.start-work.select-room');
     Route::get('start-work/followups/select', [\App\Http\Controllers\LeadRoomWorkController::class, 'selectFollowupRoom'])->name('leads.start-work.select-followups');
     Route::get('start-work/followups/leads', [\App\Http\Controllers\LeadRoomWorkController::class, 'followupLeads'])->name('leads.start-work.followup-leads');
@@ -383,7 +396,26 @@ Route::middleware(['auth'])->group(function () {
         Route::get('admin/telecaller-sessions', [\App\Http\Controllers\LeadRoomWorkController::class, 'adminIndex'])->name('admin.telecaller-sessions.index');
         Route::post('admin/telecaller-sessions/{session}/approve', [\App\Http\Controllers\LeadRoomWorkController::class, 'adminApprove'])->name('admin.telecaller-sessions.approve');
         Route::post('admin/telecaller-sessions/{session}/reject', [\App\Http\Controllers\LeadRoomWorkController::class, 'adminReject'])->name('admin.telecaller-sessions.reject');
+        
+        // Super Admin Global Alerts
+        Route::get('admin/alerts', [\App\Http\Controllers\Admin\AppAlertController::class, 'index'])->name('admin.alerts.index');
+        Route::get('admin/alerts/create', [\App\Http\Controllers\Admin\AppAlertController::class, 'create'])->name('admin.alerts.create');
+        Route::post('admin/alerts', [\App\Http\Controllers\Admin\AppAlertController::class, 'store'])->name('admin.alerts.store');
+        Route::delete('admin/alerts/{alert}', [\App\Http\Controllers\Admin\AppAlertController::class, 'destroy'])->name('admin.alerts.destroy');
     });
+
+    // Verification Captcha and Confirmation for Users
+    Route::get('alerts/check-active', [\App\Http\Controllers\Admin\AppAlertController::class, 'checkActive'])->name('alerts.check-active');
+    Route::get('alerts/captcha-code', [\App\Http\Controllers\Admin\AppAlertController::class, 'captchaCode'])->name('alerts.captcha-code');
+    Route::post('alerts/confirm', [\App\Http\Controllers\Admin\AppAlertController::class, 'confirm'])->name('alerts.confirm');
+
+    // Payroll Management
+    Route::middleware(['role:super-admin,admin'])->group(function () {
+        Route::get('admin/payroll', [SalaryDisbursalController::class, 'index'])->name('admin.payroll.index');
+        Route::get('admin/payroll/disburse', [SalaryDisbursalController::class, 'create'])->name('admin.payroll.create');
+        Route::post('admin/payroll/disburse', [SalaryDisbursalController::class, 'store'])->name('admin.payroll.store');
+    });
+    Route::get('admin/payroll/{slip}/payslip', [SalaryDisbursalController::class, 'show'])->name('admin.payroll.show');
 
     // Reseller Management
     Route::middleware(['role:reseller'])->group(function () {
@@ -393,5 +425,16 @@ Route::middleware(['auth'])->group(function () {
         Route::get('reseller/companies/{company}/edit', [\App\Http\Controllers\ResellerController::class, 'edit'])->name('reseller.companies.edit');
         Route::put('reseller/companies/{company}', [\App\Http\Controllers\ResellerController::class, 'update'])->name('reseller.companies.update');
         Route::post('reseller/companies/{company}/toggle-status', [\App\Http\Controllers\ResellerController::class, 'toggleStatus'])->name('reseller.companies.toggle-status');
+    });
+
+    // Attendance management (permission-based)
+    Route::middleware(['permission:attendance.view-own|attendance.view-all'])->group(function () {
+        Route::resource('attendance', AttendanceController::class)->only(['index', 'show']);
+    });
+    Route::middleware(['permission:attendance.view-all'])->group(function () {
+        Route::get('attendance/report', [AttendanceController::class, 'report'])->name('attendance.report');
+    });
+    Route::middleware(['permission:attendance.edit'])->group(function () {
+        Route::resource('attendance', AttendanceController::class)->only(['edit', 'update']);
     });
 });

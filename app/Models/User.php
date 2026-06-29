@@ -14,7 +14,7 @@ class User extends Authenticatable
     use HasFactory, Notifiable, BelongsToCompany;
 
     protected $fillable = [
-        'name', 'email', 'password', 'role_id', 'status', 'avatar',
+        'name', 'email', 'password', 'role_id', 'has_custom_permissions', 'status', 'avatar',
         'last_login_at', 'last_login_ip', 'email_verified_at',
         'mailbox_imap_enabled', 'mailbox_imap_host', 'mailbox_imap_port',
         'mailbox_imap_encryption', 'mailbox_imap_username', 'mailbox_imap_password',
@@ -160,6 +160,30 @@ class User extends Authenticatable
     public function unreadNotifications()
     {
         return $this->hasMany(AppNotification::class)->whereNull('read_at');
+    }
+
+    public function permissions()
+    {
+        return $this->belongsToMany(Permission::class, 'user_permissions');
+    }
+
+    public function hasPermission(string $slug): bool
+    {
+        // Super Admin bypasses all checks
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
+        if ($this->has_custom_permissions) {
+            return $this->permissions()->where('slug', $slug)->exists();
+        }
+
+        // Fallback to role permissions
+        if ($this->role && $this->role->hasPermission($slug)) {
+            return true;
+        }
+
+        return false;
     }
 
     // Role helpers

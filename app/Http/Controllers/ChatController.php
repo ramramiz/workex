@@ -76,7 +76,7 @@ class ChatController extends Controller
             
             $lastComment = $t->comments->sortByDesc('created_at')->first();
             $lastText = $lastComment ? $lastComment->comment : 'No messages yet';
-            $lastTime = $lastComment ? $lastComment->created_at : $t->updated_at;
+            $lastTime = $lastComment ? $lastComment->created_at : $t->created_at;
             
             $unifiedItems->push((object)[
                 'type' => 'task',
@@ -99,7 +99,7 @@ class ChatController extends Controller
 
         foreach ($users as $u) {
             $lastTime = $u->last_message ? $u->last_message->created_at : null;
-            $lastText = $u->last_message ? ($u->last_message->message ?? '[Image]') : 'No messages yet';
+            $lastText = $u->last_message ? ($u->last_message->message ?? ($u->last_message->file_path ? '[Document]' : '[Image]')) : 'No messages yet';
             
             $unifiedItems->push((object)[
                 'type' => 'direct',
@@ -225,6 +225,13 @@ class ChatController extends Controller
             'creator_avatar' => $task->creator ? $task->creator->avatar_url : 'https://ui-avatars.com/api/?name=System',
             'status_text' => ucfirst(str_replace('_', ' ', $task->status)),
             'created_at' => $task->created_at->format('M d, Y h:i A'),
+            'attachments' => $task->files->map(fn($f) => [
+                'id'       => $f->id,
+                'name'     => basename($f->file_path),
+                'url'      => asset('storage/' . $f->file_path),
+                'is_image' => in_array(strtolower(pathinfo($f->file_path, PATHINFO_EXTENSION)), ['jpg','jpeg','png','gif','webp']),
+                'ext'      => strtolower(pathinfo($f->file_path, PATHINFO_EXTENSION)),
+            ])->toArray(),
         ]);
     }
 
@@ -322,7 +329,7 @@ class ChatController extends Controller
             
             $lastComment = $t->comments->sortByDesc('created_at')->first();
             $lastText = $lastComment ? $lastComment->comment : 'No messages yet';
-            $lastTime = $lastComment ? $lastComment->created_at : $t->updated_at;
+            $lastTime = $lastComment ? $lastComment->created_at : $t->created_at;
             
             $unifiedItems[] = [
                 'type' => 'task',
@@ -344,7 +351,7 @@ class ChatController extends Controller
         
         foreach ($users as $u) {
             $lastTime = $u->last_message ? $u->last_message->created_at : null;
-            $lastText = $u->last_message ? ($u->last_message->message ?? '[Image]') : 'No messages yet';
+            $lastText = $u->last_message ? ($u->last_message->message ?? ($u->last_message->file_path ? '[Document]' : '[Image]')) : 'No messages yet';
             
             $unifiedItems[] = [
                 'type' => 'direct',

@@ -96,7 +96,46 @@ class EmployeeController extends Controller
     public function show(Employee $employee)
     {
         $employee->load(['user.role', 'department', 'designation', 'teamLeader', 'user.workSessions', 'user.leaves', 'user.dailyReports']);
-        return view('employees.show', compact('employee'));
+        
+        $user = $employee->user;
+        $month = now()->month;
+        $year = now()->year;
+
+        $presentDays = \App\Models\Attendance::where('user_id', $user->id)
+            ->whereMonth('date', $month)->whereYear('date', $year)
+            ->whereIn('status', ['present', 'office'])
+            ->count();
+
+        $lateDays = \App\Models\Attendance::where('user_id', $user->id)
+            ->whereMonth('date', $month)->whereYear('date', $year)
+            ->where('status', 'late')
+            ->count();
+
+        $absentDays = \App\Models\Attendance::where('user_id', $user->id)
+            ->whereMonth('date', $month)->whereYear('date', $year)
+            ->where('status', 'absent')
+            ->count();
+
+        $halfDays = \App\Models\Attendance::where('user_id', $user->id)
+            ->whereMonth('date', $month)->whereYear('date', $year)
+            ->where('status', 'half_day')
+            ->count();
+
+        $approvedLeaves = \App\Models\Leave::where('user_id', $user->id)
+            ->whereMonth('from_date', $month)->whereYear('from_date', $year)
+            ->where('status', 'hr_approved')
+            ->count();
+
+        $totalMinutesWorked = \App\Models\Attendance::where('user_id', $user->id)
+            ->whereMonth('date', $month)->whereYear('date', $year)
+            ->sum('total_minutes');
+        $totalHoursWorked = round($totalMinutesWorked / 60, 1);
+
+        $myPayslips = \App\Models\SalaryDisbursal::where('employee_id', $employee->id)->orderBy('year', 'desc')->orderBy('month', 'desc')->take(5)->get();
+
+        return view('employees.show', compact(
+            'employee', 'presentDays', 'lateDays', 'absentDays', 'halfDays', 'approvedLeaves', 'totalHoursWorked', 'myPayslips'
+        ));
     }
 
     public function edit(Employee $employee)
@@ -161,5 +200,71 @@ class EmployeeController extends Controller
         $employee->update(['status' => $newStatus]);
         $employee->user->update(['status' => $newStatus]);
         return back()->with('success', 'Employee status updated!');
+    }
+
+    public function getPermissions(Employee $employee)
+    {
+        if (!auth()->user()->isSuperAdmin()) {
+            abort(403);
+        }
+
+        $user = $employee->user;
+        $roles = Role::with('permissions:id')->get(['id', 'name']);
+        
+        $allPermissions = \App\Models\Permission::all();
+        $userDirectPermissionIds = $user->permissions()->pluck('permissions.id')->toArray();
+        $rolePermissionIds = $user->role ? $user->role->permissions()->pluck('permissions.id')->toArray() : [];
+
+        $grouped = [];
+        foreach ($allPermissions as $permission) {
+            $module = $permission->module ?? 'Other';
+            if (!isset($grouped[$module])) {
+                $grouped[$module] = [];
+            }
+            
+            $checked = $user->has_custom_permissions
+                ? in_array($permission->id, $userDirectPermissionIds)
+                : in_array($permission->id, $rolePermissionIds);
+
+            $grouped[$module][] = [
+                'id' => $permission->id,
+                'name' => $permission->name,
+                'slug' => $permission->slug,
+                'checked' => $checked
+            ];
+        }
+
+        return response()->json([
+            'roles' => $roles,
+            'current_role_id' => $user->role_id,
+            'permissions' => $grouped
+        ])->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    }
+
+    public function updatePermissions(Request $request, Employee $employee)
+    {
+        if (!auth()->user()->isSuperAdmin()) {
+            abort(403);
+        }
+
+        $user = $employee->user;
+
+        $request->validate([
+            'role_id' => 'required|exists:roles,id',
+            'permissions' => 'nullable|array',
+            'permissions.*' => 'exists:permissions,id'
+        ]);
+
+        $user->update([
+            'role_id' => $request->role_id,
+            'has_custom_permissions' => true
+        ]);
+
+        $user->permissions()->sync($request->permissions ?? []);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Roles and permissions updated successfully!'
+        ]);
     }
 }

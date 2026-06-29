@@ -4,16 +4,24 @@
 @section('page-title', 'Select Work Room')
 
 @section('breadcrumb')
+    <li class="breadcrumb-item"><a href="{{ route('leads.start-work.select-customer') }}">Select Customer</a></li>
     <li class="breadcrumb-item active">Select Room</li>
 @endsection
 
 @section('content')
 <div class="row justify-content-center">
+        <!-- Change Customer Action -->
+        <div class="d-flex justify-content-end mb-3 mt-n2">
+            <a href="{{ route('leads.start-work.select-customer') }}" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1.5" style="border-radius: 8px;">
+                <i class="bi bi-arrow-left"></i> Change Customer
+            </a>
+        </div>
+
         <!-- Top Menu Stats Cards -->
         <div class="row g-3 mb-5 justify-content-center">
             <!-- Today's Follow-up -->
             <div class="col-12 col-md-4">
-                <a href="{{ route('leads.start-work.select-followups') }}" class="text-decoration-none">
+                <a href="{{ route('leads.start-work.select-followups', ['client_id' => $selectedClientId]) }}" class="text-decoration-none">
                     <div class="card h-100 border shadow-sm hover-stat-card" style="border-radius: 16px; background: #fff; border-color: rgba(239, 68, 68, 0.25) !important; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);">
                         <div class="card-body p-4 d-flex align-items-center gap-3">
                             <div class="bg-danger-subtle text-danger rounded-circle d-flex align-items-center justify-content-center" style="width: 52px; height: 52px; min-width: 52px;">
@@ -30,7 +38,7 @@
             
             <!-- Interested Leads -->
             <div class="col-12 col-md-4">
-                <a href="{{ route('leads.start-work.interested-leads') }}" class="text-decoration-none">
+                <a href="{{ route('leads.start-work.interested-leads', ['client_id' => $selectedClientId]) }}" class="text-decoration-none">
                     <div class="card h-100 border shadow-sm hover-stat-card" style="border-radius: 16px; background: #fff; border-color: rgba(16, 185, 129, 0.25) !important; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);">
                         <div class="card-body p-4 d-flex align-items-center gap-3">
                             <div class="bg-success-subtle text-success rounded-circle d-flex align-items-center justify-content-center" style="width: 52px; height: 52px; min-width: 52px;">
@@ -47,7 +55,7 @@
  
             <!-- Not Connected Calls -->
             <div class="col-12 col-md-4">
-                <a href="{{ route('leads.start-work.not-connected-leads') }}" class="text-decoration-none">
+                <a href="{{ route('leads.start-work.not-connected-leads', ['client_id' => $selectedClientId]) }}" class="text-decoration-none">
                     <div class="card h-100 border shadow-sm hover-stat-card" style="border-radius: 16px; background: #fff; border-color: rgba(245, 158, 11, 0.25) !important; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);">
                         <div class="card-body p-4 d-flex align-items-center gap-3">
                             <div class="bg-warning-subtle text-warning-emphasis rounded-circle d-flex align-items-center justify-content-center" style="width: 52px; height: 52px; min-width: 52px; background-color: #fef3c7 !important; color: #d97706 !important;">

@@ -21,7 +21,16 @@ class CheckPermission
             return $next($request);
         }
 
-        if (!$user->role || !$user->role->hasPermission($permission)) {
+        $permissions = explode('|', $permission);
+        $hasAny = false;
+        foreach ($permissions as $perm) {
+            if ($user->hasPermission(trim($perm))) {
+                $hasAny = true;
+                break;
+            }
+        }
+
+        if (!$hasAny) {
             if ($request->expectsJson()) {
                 return response()->json(['message' => 'Unauthorized.'], 403);
             }

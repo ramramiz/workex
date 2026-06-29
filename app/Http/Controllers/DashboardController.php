@@ -12,6 +12,7 @@ use App\Models\Invoice;
 use App\Models\Leave;
 use App\Models\Attendance;
 use App\Models\Bug;
+use App\Models\SalaryDisbursal;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -123,7 +124,22 @@ class DashboardController extends Controller
             ->whereBetween('deadline', [$today, $today->copy()->addDays(7)])
             ->with('project')->orderBy('deadline')->get();
 
-        return view('dashboard.employee', compact('user', 'todaySession', 'myTasks', 'completedToday', 'todayReport', 'upcomingDeadlines'));
+        // 1. All Leave Requests
+        $leaveRequests = Leave::where('user_id', $user->id)
+            ->latest()
+            ->get();
+
+        // 2. Approved leaves (active/upcoming) show until leave day ending (to_date >= today)
+        $activeApprovedLeaves = Leave::where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->whereDate('to_date', '>=', $today)
+            ->orderBy('from_date', 'asc')
+            ->get();
+
+        return view('dashboard.employee', compact(
+            'user', 'todaySession', 'myTasks', 'completedToday', 'todayReport', 'upcomingDeadlines',
+            'leaveRequests', 'activeApprovedLeaves'
+        ));
     }
 
     private function hrDashboard($user)

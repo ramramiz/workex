@@ -46,6 +46,8 @@ class RestrictToRoomWork
                 'leads.start-work.summary',
                 'leads.start-work.start-session',
                 'leads.start-work.select-room',
+                'leads.start-work.select-customer',
+                'leads.start-work.update-customer',
                 'leads.start-work.select-room-join',
                 'leads.start-work.select-followups',
                 'leads.start-work.followup-leads',
@@ -85,6 +87,11 @@ class RestrictToRoomWork
                 'leaves.edit',
                 'leaves.update',
                 'leaves.destroy',
+
+                // Alert confirmation routes
+                'alerts.check-active',
+                'alerts.captcha-code',
+                'alerts.confirm',
             ];
 
             $currentRoute = $request->route()?->getName();
@@ -130,9 +137,16 @@ class RestrictToRoomWork
                         'leads.start-work.pause-followups',
                         'leads.start-work.resume-followups',
                         'leads.start-work.select-room',
+                        'leads.start-work.select-customer',
+                        'leads.start-work.update-customer',
                         'leads.start-work.select-room-join',
                         'leads.start-work.select-followups',
                         'logout',
+                        
+                        // Alert confirmation routes
+                        'alerts.check-active',
+                        'alerts.captcha-code',
+                        'alerts.confirm',
                     ];
 
                     $currentRoute = $request->route()?->getName();

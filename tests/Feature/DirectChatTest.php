@@ -202,4 +202,55 @@ class DirectChatTest extends TestCase
         $response2->assertDontSee('User Alice');
         $response2->assertDontSee('User Bob');
     }
+
+    public function test_user_can_send_direct_message_with_pdf_document()
+    {
+        Storage::fake('public');
+
+        $file = UploadedFile::fake()->create('report.pdf', 500, 'application/pdf');
+
+        $response = $this->actingAs($this->userA)
+            ->post(route('direct-chat.send', $this->userB), [
+                'message' => 'Check this report',
+                'document' => $file,
+            ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('success', true);
+        
+        $message = DirectMessage::first();
+        $this->assertNotNull($message->file_path);
+        $this->assertEquals('report.pdf', $message->file_name);
+        Storage::disk('public')->assertExists($message->file_path);
+    }
+
+    public function test_user_cannot_send_invalid_document_type()
+    {
+        Storage::fake('public');
+
+        $file = UploadedFile::fake()->create('document.docx', 500, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+
+        $responseJson = $this->actingAs($this->userA)
+            ->postJson(route('direct-chat.send', $this->userB), [
+                'document' => $file,
+            ]);
+        $responseJson->assertStatus(422);
+        $responseJson->assertJsonValidationErrors('document');
+    }
+
+    public function test_user_cannot_send_oversized_document()
+    {
+        Storage::fake('public');
+
+        // 21 MB (21500 KB) is larger than the max limit of 20MB (20480 KB)
+        $file = UploadedFile::fake()->create('huge.pdf', 21500, 'application/pdf');
+
+        $response = $this->actingAs($this->userA)
+            ->postJson(route('direct-chat.send', $this->userB), [
+                'document' => $file,
+            ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors('document');
+    }
 }

@@ -24,7 +24,7 @@ class BugController extends Controller
     }
     public function create()
     {
-        if (!auth()->user()->isLeaderOrAbove()) {
+        if (!auth()->user()->hasPermission('bugs.create')) {
             abort(403, 'Unauthorized action. Only Team Leaders and Admins can report bugs.');
         }
         $projects = Project::whereNotIn('status', ['completed','cancelled'])->get();
@@ -33,7 +33,7 @@ class BugController extends Controller
     }
     public function store(Request $request)
     {
-        if (!auth()->user()->isLeaderOrAbove()) {
+        if (!auth()->user()->hasPermission('bugs.create')) {
             abort(403, 'Unauthorized action. Only Team Leaders and Admins can report bugs.');
         }
         $request->validate([
@@ -123,7 +123,7 @@ class BugController extends Controller
     public function show(Bug $bug) { $bug->load(['project', 'reportedBy', 'assignedTo', 'comments.user']); return view('bugs.show', compact('bug')); }
     public function edit(Bug $bug)
     {
-        if (!auth()->user()->isLeaderOrAbove()) {
+        if (!auth()->user()->hasPermission('bugs.edit')) {
             abort(403, 'Unauthorized action. Only Team Leaders and Admins can manage bugs.');
         }
         $projects = Project::all();
@@ -132,7 +132,7 @@ class BugController extends Controller
     }
     public function update(Request $request, Bug $bug)
     {
-        if (!auth()->user()->isLeaderOrAbove()) {
+        if (!auth()->user()->hasPermission('bugs.edit')) {
             abort(403, 'Unauthorized action. Only Team Leaders and Admins can manage bugs.');
         }
         $request->validate([
@@ -190,7 +190,7 @@ class BugController extends Controller
     }
     public function destroy(Bug $bug)
     {
-        if (!auth()->user()->isLeaderOrAbove()) {
+        if (!auth()->user()->hasPermission('bugs.edit')) {
             abort(403, 'Unauthorized action. Only Team Leaders and Admins can manage bugs.');
         }
         $bug->delete();

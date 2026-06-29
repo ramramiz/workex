@@ -447,7 +447,7 @@
 
             <!-- Footer / Input Form -->
             <div class="chat-footer">
-                <!-- Image Attachment Preview Card -->
+                <!-- Image/PDF Attachment Preview Card -->
                 <div id="attachment-preview-container" class="d-none">
                     <div class="attachment-preview" id="attachment-preview">
                         <button type="button" class="remove-btn" id="btn-remove-attachment"><i class="bi bi-x"></i></button>
@@ -456,11 +456,11 @@
 
                 <form id="direct-chat-form" onsubmit="sendMessage(event)">
                     <input type="hidden" id="chat-image-data" name="image_data">
-                    <input type="file" id="direct-image-input" name="image" accept="image/*" class="d-none" onchange="handleImageFileSelect(event)">
+                    <input type="file" id="direct-image-input" name="document" accept="image/*,application/pdf" class="d-none" onchange="handleImageFileSelect(event)">
                     
                     <div class="chat-input-container">
-                        <button type="button" class="chat-action-btn" onclick="document.getElementById('direct-image-input').click()" title="Attach Image">
-                            <i class="bi bi-image"></i>
+                        <button type="button" class="chat-action-btn" onclick="document.getElementById('direct-image-input').click()" title="Attach Image/PDF">
+                            <i class="bi bi-paperclip"></i>
                         </button>
                         
                         <textarea id="chat-message-input" class="chat-textarea" rows="1" placeholder="Type a message..." autocomplete="off"></textarea>
@@ -627,16 +627,30 @@
     function handleImageFileSelect(event) {
         const file = event.target.files[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const base64 = e.target.result;
-                document.getElementById('chat-image-data').value = base64;
-                
-                const preview = document.getElementById('attachment-preview');
-                preview.style.backgroundImage = `url(${base64})`;
+            const preview = document.getElementById('attachment-preview');
+            if (file.type === 'application/pdf') {
+                document.getElementById('chat-image-data').value = '';
+                preview.style.backgroundImage = 'none';
+                preview.innerHTML = `
+                    <div class="d-flex flex-column align-items-center justify-content-center h-100 text-center p-2 bg-light rounded border border-light-subtle" style="width: 100%; height: 100%;">
+                        <i class="bi bi-file-earmark-pdf-fill text-danger fs-4"></i>
+                        <span class="text-xs text-truncate w-100 mt-1" style="font-size: 8px; max-width: 60px; color: #000;" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>
+                    </div>
+                    <button type="button" class="remove-btn" id="btn-remove-attachment" onclick="clearAttachment()"><i class="bi bi-x"></i></button>
+                `;
                 document.getElementById('attachment-preview-container').classList.remove('d-none');
-            };
-            reader.readAsDataURL(file);
+            } else if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const base64 = e.target.result;
+                    document.getElementById('chat-image-data').value = base64;
+                    
+                    preview.style.backgroundImage = `url(${base64})`;
+                    preview.innerHTML = `<button type="button" class="remove-btn" id="btn-remove-attachment" onclick="clearAttachment()"><i class="bi bi-x"></i></button>`;
+                    document.getElementById('attachment-preview-container').classList.remove('d-none');
+                };
+                reader.readAsDataURL(file);
+            }
         }
     }
 
@@ -645,6 +659,7 @@
         document.getElementById('direct-image-input').value = '';
         const preview = document.getElementById('attachment-preview');
         preview.style.backgroundImage = '';
+        preview.innerHTML = `<button type="button" class="remove-btn" id="btn-remove-attachment" onclick="clearAttachment()"><i class="bi bi-x"></i></button>`;
         document.getElementById('attachment-preview-container').classList.add('d-none');
     }
 
@@ -666,6 +681,23 @@
             imgHtml = `<img src="${msg.image_url}" class="chat-image-preview" onclick="openLightbox('${msg.image_url}')">`;
         }
 
+        let fileHtml = '';
+        if (msg.file_url) {
+            fileHtml = `
+                <div class="chat-file-attachment p-2 mb-2 rounded border border-light-subtle bg-light d-flex align-items-center gap-2" style="max-width: 280px; font-size: 13px;">
+                    <i class="bi bi-file-earmark-pdf-fill text-danger fs-4 flex-shrink-0"></i>
+                    <div class="flex-grow-1 text-truncate" style="max-width: 180px;">
+                        <a href="${msg.file_url}" target="_blank" class="text-decoration-none text-dark fw-semibold" title="${escapeHtml(msg.file_name)}">
+                            ${escapeHtml(msg.file_name)}
+                        </a>
+                    </div>
+                    <a href="${msg.file_url}" target="_blank" download="${escapeHtml(msg.file_name)}" class="btn btn-link text-muted p-1 ms-auto" title="Download">
+                        <i class="bi bi-download"></i>
+                    </a>
+                </div>
+            `;
+        }
+
         let textHtml = '';
         if (msg.message) {
             textHtml = `<div class="chat-text">${escapeHtml(msg.message)}</div>`;
@@ -674,6 +706,7 @@
         msgRow.innerHTML = `
             <div class="chat-bubble">
                 ${imgHtml}
+                ${fileHtml}
                 ${textHtml}
                 <div class="chat-meta">
                     <span>${msg.formatted_time}</span>
@@ -691,20 +724,29 @@
         const messageInput = document.getElementById('chat-message-input');
         const messageText = messageInput.value.trim();
         const imageData = document.getElementById('chat-image-data').value;
+        const fileInput = document.getElementById('direct-image-input');
+        const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
         const contactId = activeContactId;
 
-        if (!messageText && !imageData) return;
+        if (!messageText && !imageData && !hasFile) return;
         if (!contactId) return;
-
-        // Reset form inputs immediately for user responsiveness
-        messageInput.value = '';
-        messageInput.style.height = 'auto';
-        clearAttachment();
 
         const formData = new FormData();
         formData.append('_token', '{{ csrf_token() }}');
         if (messageText) formData.append('message', messageText);
         if (imageData) formData.append('image_data', imageData);
+        
+        if (hasFile) {
+            const file = fileInput.files[0];
+            if (file && file.type === 'application/pdf') {
+                formData.append('document', file);
+            }
+        }
+
+        // Reset form inputs immediately for user responsiveness
+        messageInput.value = '';
+        messageInput.style.height = 'auto';
+        clearAttachment();
 
         fetch(`/direct-chat/messages/${contactId}`, {
             method: 'POST',
@@ -713,7 +755,21 @@
                 'X-Requested-With': 'XMLHttpRequest'
             }
         })
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) {
+                return res.json().then(errData => {
+                    let errMsg = errData.message || 'Failed to send message.';
+                    if (errData.errors) {
+                        const firstKey = Object.keys(errData.errors)[0];
+                        if (firstKey && errData.errors[firstKey].length > 0) {
+                            errMsg = errData.errors[firstKey][0];
+                        }
+                    }
+                    throw new Error(errMsg);
+                });
+            }
+            return res.json();
+        })
         .then(data => {
             if (data.success) {
                 appendMessageHtml(data.message);
@@ -722,15 +778,15 @@
                 // Update sidebar list info
                 const lastMsgDiv = document.getElementById(`last-msg-${contactId}`);
                 if (lastMsgDiv) {
-                    lastMsgDiv.textContent = data.message.message || '[Image]';
+                    lastMsgDiv.textContent = data.message.message || (data.message.file_url ? '[Document]' : '[Image]');
                 }
             } else {
                 alert(data.message || 'Failed to send message.');
             }
         })
         .catch(err => {
-            console.error(err);
-            alert('Failed to send message.');
+            alert(err.message || 'Error sending message.');
+            console.error('Error sending message:', err);
         });
     }
 
@@ -770,6 +826,8 @@
                                             receiver_id: {{ auth()->id() }},
                                             message: msg.message,
                                             image_url: msg.image_url,
+                                            file_url: msg.file_url,
+                                            file_name: msg.file_name,
                                             formatted_time: msg.formatted_time,
                                             is_sent: false
                                         });
@@ -815,7 +873,7 @@
                             data.new_messages.forEach(msg => {
                                 const lastMsgDiv = document.getElementById(`last-msg-${msg.sender_id}`);
                                 if (lastMsgDiv) {
-                                    lastMsgDiv.textContent = msg.message || '[Image]';
+                                    lastMsgDiv.textContent = msg.message || (msg.file_url ? '[Document]' : '[Image]');
                                     lastMsgDiv.classList.add('fw-bold');
                                 }
                             });

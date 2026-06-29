@@ -32,7 +32,7 @@ class TaskController extends Controller
     public function create(Request $request)
     {
         $user = auth()->user();
-        if (!$user->isLeaderOrAbove()) {
+        if (!$user->hasPermission('tasks.create')) {
             abort(403, 'Unauthorized action. Only Team Leaders and Admins can create tasks.');
         }
         $projects = Project::when(!$user->isAdminOrAbove(), fn($q) => $q->where('team_leader_id', $user->id))
@@ -47,7 +47,7 @@ class TaskController extends Controller
     public function store(Request $request)
     {
         $user = auth()->user();
-        if (!$user->isLeaderOrAbove()) {
+        if (!$user->hasPermission('tasks.create')) {
             abort(403, 'Unauthorized action. Only Team Leaders and Admins can create tasks.');
         }
         $request->validate([
@@ -147,7 +147,7 @@ class TaskController extends Controller
     public function edit(Task $task)
     {
         $user = auth()->user();
-        if (!$user->isLeaderOrAbove()) {
+        if (!$user->hasPermission('tasks.edit')) {
             abort(403, 'Unauthorized action. Only Team Leaders and Admins can edit tasks.');
         }
         $projects = Project::when(!$user->isAdminOrAbove(), fn($q) => $q->where('team_leader_id', $user->id))->get();
@@ -158,7 +158,7 @@ class TaskController extends Controller
     public function update(Request $request, Task $task)
     {
         $user = auth()->user();
-        if (!$user->isLeaderOrAbove()) {
+        if (!$user->hasPermission('tasks.edit')) {
             abort(403, 'Unauthorized action. Only Team Leaders and Admins can edit tasks.');
         }
 
@@ -427,12 +427,25 @@ class TaskController extends Controller
         if ($request->filled('completed_link')) {
             $commentMsg .= "\n**Test URL:** [{$request->completed_link}]({$request->completed_link})";
         }
+        $commentMsg .= "\n\n@Admin, please review and approve my work.";
 
         TaskComment::create([
             'task_id' => $task->id,
             'user_id' => auth()->id(),
             'comment' => $commentMsg,
         ]);
+
+        // Send notifications to all Admin and Super Admin users
+        $admins = \App\Models\User::whereHas('role', fn($q) => $q->whereIn('slug', ['admin', 'super-admin']))->get();
+        foreach ($admins as $admin) {
+            \App\Models\AppNotification::create([
+                'user_id' => $admin->id,
+                'type'    => 'task_review',
+                'title'   => 'Task Review Request',
+                'message' => auth()->user()->name . ' requested approval for task: "' . $task->title . '"',
+                'url'     => route('tasks.show', $task),
+            ]);
+        }
 
         \App\Models\ActivityLog::log('task_completed_submitted', "Submitted task for completion review: {$task->title}", $task);
 
@@ -468,6 +481,13 @@ class TaskController extends Controller
         ]);
 
         \App\Models\ActivityLog::log('task_completed_approved', "Approved task completion: {$task->title}", $task);
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Task completion approved and task closed!'
+            ]);
+        }
 
         return redirect()->route('tasks.completed-approvals')->with('success', 'Task completion approved and task closed!');
     }
@@ -516,6 +536,13 @@ class TaskController extends Controller
         }
 
         \App\Models\ActivityLog::log('task_completed_rejected', "Rejected task completion: {$task->title}", $task);
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Task completion rejected and sent back for rework!'
+            ]);
+        }
 
         return redirect()->route('tasks.completed-approvals')->with('success', 'Task completion rejected and sent back for rework!');
     }

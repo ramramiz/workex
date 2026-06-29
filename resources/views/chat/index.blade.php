@@ -1116,7 +1116,7 @@
                     <button class="chat-filter-btn active" data-filter="all" onclick="filterChats('all')">All</button>
                     <button class="chat-filter-btn" data-filter="unread" onclick="filterChats('unread')">Unread</button>
                     <button class="chat-filter-btn" data-filter="bugs" onclick="filterChats('bugs')">Bugs</button>
-                    <button class="chat-filter-btn" data-filter="critical" onclick="filterChats('critical')">Critical</button>
+                    <button class="chat-filter-btn" data-filter="review" onclick="filterChats('review')">Review</button>
                 </div>
 
                 <!-- Unified Chat List -->
@@ -1134,6 +1134,7 @@
                                data-unread-count="{{ $item->unread_count }}"
                                data-is-bug="{{ $item->is_bug ? '1' : '0' }}"
                                data-priority="{{ $t->priority }}"
+                               data-status="{{ $t->status }}"
                                onclick="selectTask({{ $t->id }})">
                                 <div class="position-relative" style="margin-left: 5px;">
                                     <img src="{{ $t->avatar_url }}" alt="" class="avatar-circle">
@@ -1143,7 +1144,17 @@
                                     <span class="position-absolute top-0 start-0 badge bg-{{ $badgeClass }} {{ $badgeClass === 'warning' ? 'text-dark' : 'text-white' }} rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 18px; height: 18px; border: 2px solid var(--card-bg); font-size: 8px; font-weight: 800; transform: translate(-30%, -30%); z-index: 10;" title="Priority: {{ ucfirst($t->priority) }}">
                                         {{ strtoupper(substr($t->priority, 0, 1)) }}
                                     </span>
-                                    @if(str_starts_with(strtolower($t->title), 'bug:'))
+                                    @if($t->status === 'review')
+                                        @if(auth()->user()->isAdminOrAbove())
+                                            <span class="position-absolute bottom-0 end-0 bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center shadow-sm border" style="width: 18px; height: 18px; border-color: var(--card-bg) !important; font-size: 10px; z-index: 11;" title="Action Required: Review & Approve">
+                                                <i class="bi bi-exclamation-circle-fill"></i>
+                                            </span>
+                                        @else
+                                            <span class="position-absolute bottom-0 end-0 bg-info text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm border" style="width: 18px; height: 18px; border-color: var(--card-bg) !important; font-size: 9px; z-index: 11;" title="Pending Review Approval">
+                                                <i class="bi bi-hourglass-split"></i>
+                                            </span>
+                                        @endif
+                                    @elseif(str_starts_with(strtolower($t->title), 'bug:'))
                                         <span class="position-absolute bottom-0 end-0 bg-danger text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 18px; height: 18px; border: 2px solid var(--card-bg); font-size: 10px;" title="Bug">
                                             <i class="bi bi-bug-fill"></i>
                                         </span>
@@ -1377,7 +1388,7 @@
                         </div>
                         <div class="chat-header-info">
                             <h6 class="chat-header-title mb-0">
-                                <a href="javascript:void(0);" id="chat-active-title" onclick="toggleInfoSidebar(event)" class="text-decoration-none text-dark fw-bold">Task Title</a>
+                                <a href="javascript:void(0);" id="chat-active-title" onclick="toggleInfoSidebar(event)" class="text-decoration-none text-dark fw-bold" title="Click to view task details">Task Title</a>
                             </h6>
                             <div class="chat-header-subtitle d-flex align-items-center gap-1 flex-wrap">
                                 <span id="chat-active-project" class="text-primary fw-medium">Project Name</span>
@@ -1434,10 +1445,16 @@
                 </div>
 
                 <!-- Chat Body (Messages) -->
-                <div class="chat-body chat-container p-4">
+                <div class="chat-body chat-container p-4" id="chat-body-wrap">
                     <div class="chat-body-container" id="chat-messages-container">
                         <!-- Rendered via AJAX -->
                     </div>
+                </div>
+
+                <!-- Task Detail Inline View (hidden by default, shown on header click) -->
+                <div id="chat-task-detail-view" style="display:none; flex: 1; overflow-y:auto;
+                     background:#f8fafc; padding:28px 24px;">
+                    <!-- content injected by JS -->
                 </div>
 
                 <!-- Input box -->
@@ -1450,10 +1467,10 @@
                     <input type="hidden" name="image_data" id="chat-image-data">
 
                     <!-- Attachment trigger -->
-                    <label for="chat-image-input" class="btn btn-link text-muted p-0 m-0 d-flex align-items-center justify-content-center" style="font-size: 20px; width: 36px; height: 36px; cursor: pointer;" title="Attach Image">
+                    <label for="chat-image-input" class="btn btn-link text-muted p-0 m-0 d-flex align-items-center justify-content-center" style="font-size: 20px; width: 36px; height: 36px; cursor: pointer;" title="Attach Image/PDF">
                         <i class="bi bi-paperclip"></i>
                     </label>
-                    <input type="file" id="chat-image-input" accept="image/*" style="display: none;">
+                    <input type="file" id="chat-image-input" name="document" accept="image/*,application/pdf" style="display: none;">
 
                     <div class="whatsapp-input-container flex-column align-items-start py-2">
                         <!-- Attachment Preview -->
@@ -1926,6 +1943,19 @@
                         </div>
                     </div>
                 </div>
+
+                <hr class="my-4 border-light">
+
+                {{-- Attachments Section --}}
+                <div id="info-task-attachments-section">
+                    <span class="fw-bold text-muted uppercase-title mb-3 d-block">Attachments</span>
+                    <div id="info-task-attachments-list">
+                        <div class="text-muted fs-8 text-center py-3" id="info-task-no-attachments">
+                            <i class="bi bi-paperclip" style="font-size:24px; opacity:.4;"></i>
+                            <div class="mt-1">No attachments</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -2271,6 +2301,31 @@
         </div>
     </div>
 </div>
+<div class="modal fade" id="leaveActionModal" tabindex="-1" aria-labelledby="leaveActionModalLabel" aria-hidden="true" style="z-index: 1080;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark" id="leaveActionModalLabel">Approve Leave Request</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="leaveActionForm">
+                <div class="modal-body pt-3">
+                    <input type="hidden" id="leave_action_id">
+                    <input type="hidden" id="leave_action_type">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-dark" id="leaveActionCommentLabel">Approval Comments</label>
+                        <textarea id="leave_action_comment" class="form-control" rows="3" placeholder="Enter comments here..."></textarea>
+                        <div class="invalid-feedback" id="leave_action_error"></div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm" id="leaveActionConfirmBtn">Confirm</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -2283,6 +2338,7 @@
     let activeStoreUrl = '';
     let currentTaskData = null;
     const isLeaderOrAbove = {{ (auth()->user()->isSuperAdmin() || auth()->user()->isTeamLeader()) ? 'true' : 'false' }};
+    window.currentUserRole = "{{ auth()->user()->role->slug }}";
 
     // Unified Direct Chat variables
     let activeChatType = 'task'; // 'task' or 'direct'
@@ -2529,17 +2585,44 @@
             imgHtml = `<img src="${msg.image_url}" class="chat-image-preview rounded-3 mb-2" style="max-width: 250px; cursor: pointer;" onclick="openImageViewer('${msg.image_url}')">`;
         }
 
+        let fileHtml = '';
+        if (msg.file_url) {
+            fileHtml = `
+                <div class="chat-file-attachment p-2 mb-2 rounded border border-light-subtle bg-light d-flex align-items-center gap-2" style="max-width: 280px; font-size: 13px;">
+                    <i class="bi bi-file-earmark-pdf-fill text-danger fs-4 flex-shrink-0"></i>
+                    <div class="flex-grow-1 text-truncate" style="max-width: 180px;">
+                        <a href="${msg.file_url}" target="_blank" class="text-decoration-none text-dark fw-semibold" title="${escapeHtml(msg.file_name)}">
+                            ${escapeHtml(msg.file_name)}
+                        </a>
+                    </div>
+                    <a href="${msg.file_url}" target="_blank" download="${escapeHtml(msg.file_name)}" class="btn btn-link text-muted p-1 ms-auto" title="Download">
+                        <i class="bi bi-download"></i>
+                    </a>
+                </div>
+            `;
+        }
+
         let textHtml = '';
         if (msg.message) {
-            textHtml = `<div class="chat-text">${escapeHtml(msg.message)}</div>`;
+            textHtml = `<div class="chat-text">${formatMessageText(msg.message, msg)}</div>`;
         }
 
         let replyHtml = '';
         if (msg.reply_to_message) {
+            let quoteText = '';
+            if (msg.reply_to_message.message) {
+                quoteText = escapeHtml(msg.reply_to_message.message);
+            } else if (msg.reply_to_message.file_url) {
+                quoteText = '[Document]';
+            } else if (msg.reply_to_message.image_url) {
+                quoteText = '[Image]';
+            } else {
+                quoteText = '[Attachment]';
+            }
             replyHtml = `
                 <div class="reply-quote-box p-2 mb-2 rounded border-start border-4 border-primary bg-light-subtle" style="font-size: 11px; opacity: 0.85; background-color: rgba(0, 0, 0, 0.03);">
                     <div class="fw-bold text-primary mb-1">${escapeHtml(msg.reply_to_message.sender_name)}</div>
-                    <div class="text-truncate text-muted text-dark" style="max-width: 90%;">${escapeHtml(msg.reply_to_message.message || '[Image]')}</div>
+                    <div class="text-truncate text-muted text-dark" style="max-width: 90%;">${quoteText}</div>
                 </div>
             `;
         }
@@ -2548,7 +2631,7 @@
         const targetAvatar = window.activeDirectUserAvatar || '';
         const viewersData = JSON.stringify(msg.seen_by || []);
 
-        const escapedMsgText = (msg.message || '[Image]').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, '\\n');
+        const escapedMsgText = (msg.message || (msg.file_url ? '[Document]' : '[Image]')).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, '\\n');
         const contactName = msg.is_sent ? 'You' : targetUser;
 
         const actionsHtml = `
@@ -2608,6 +2691,7 @@
                 <div class="chat-bubble">
                     ${replyHtml}
                     ${imgHtml}
+                    ${fileHtml}
                     ${textHtml}
                     ${metaHtml}
                 </div>
@@ -2617,6 +2701,7 @@
                 <div class="chat-bubble">
                     ${replyHtml}
                     ${imgHtml}
+                    ${fileHtml}
                     ${textHtml}
                     ${metaHtml}
                 </div>
@@ -2647,6 +2732,248 @@
         };
         return text.replace(/[&<>"']/g, function(m) { return map[m]; });
     }
+
+    function formatMessageText(text, msg) {
+        if (!text) return '';
+        
+        let formatted = text;
+        
+        // Check if it's a leave request message
+        if (formatted.includes('submitted a leave request') || formatted.includes('leave request for')) {
+            // Extract leave ID
+            const leaveIdMatch = formatted.match(/\/leaves\/(\d+)/);
+            const leaveId = leaveIdMatch ? leaveIdMatch[1] : null;
+
+            // Let's parse details
+            let type = '';
+            let duration = '';
+            let reason = '';
+            let extra = '';
+
+            const typeMatch = formatted.match(/\*Type:\*\s*([^\n\*]+)/i) || formatted.match(/Type:\s*([^\n\*]+)/i);
+            const durationMatch = formatted.match(/\*Duration:\*\s*([^\n\*]+)/i) || formatted.match(/Duration:\s*([^\n\*]+)/i);
+            const reasonMatch = formatted.match(/\*Reason:\*\s*([^\n\*]+)/i) || formatted.match(/Reason:\s*([^\n\*]+)/i);
+            const commentMatch = formatted.match(/\*Comment:\*\s*([^\n\*]+)/i) || formatted.match(/Comment:\s*([^\n\*]+)/i) || formatted.match(/\*Reason:\*\s*([^\n\*]+)/i);
+
+            if (typeMatch) type = typeMatch[1].trim();
+            if (durationMatch) duration = durationMatch[1].trim();
+            if (reasonMatch) reason = reasonMatch[1].trim();
+            if (commentMatch) extra = commentMatch[1].trim();
+
+            // Render a beautiful, premium HTML card!
+            let cardHtml = `
+                <div class="card border border-light-subtle shadow-sm my-2 overflow-hidden" style="max-width: 320px; border-radius: 12px; background: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03) !important;">
+                    <div class="card-header bg-light border-bottom border-light-subtle py-2 px-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 24px; height: 24px;">
+                                <i class="bi bi-calendar-event" style="font-size: 11px;"></i>
+                            </div>
+                            <div class="fw-semibold text-dark fs-7" style="font-size: 13px;">Leave Request</div>
+                        </div>
+                    </div>
+                    <div class="card-body p-3 text-dark fs-7" style="line-height: 1.4; font-size: 12px;">
+                        <div class="mb-2">
+                            <span class="text-muted d-block" style="font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Type</span>
+                            <span class="fw-semibold text-dark">${type || 'Leave'}</span>
+                        </div>
+                        <div class="mb-2">
+                            <span class="text-muted d-block" style="font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Duration</span>
+                            <span class="fw-semibold text-dark">${duration || 'N/A'}</span>
+                        </div>
+                        ${reason ? `
+                        <div class="mb-2">
+                            <span class="text-muted d-block" style="font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Reason</span>
+                            <span class="text-dark">${reason}</span>
+                        </div>
+                        ` : ''}
+                        ${extra && extra !== reason ? `
+                        <div class="mb-2">
+                            <span class="text-muted d-block" style="font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Comment/Reason</span>
+                            <span class="text-dark">${extra}</span>
+                        </div>
+                        ` : ''}
+            `;
+
+            // If we have a leave ID and the current user is NOT the sender of the message, and has role permissions
+            const canApproveReject = !msg.is_sent && (window.currentUserRole === 'super-admin' || window.currentUserRole === 'admin' || window.currentUserRole === 'hr' || window.currentUserRole === 'team-leader');
+            
+            if (leaveId) {
+                const status = msg.leave_status || 'pending';
+                if (status === 'approved') {
+                    cardHtml += `
+                        <div class="mt-3 pt-3 border-top border-light-subtle text-center">
+                            <span class="badge bg-success py-1.5 px-3 w-100 fw-semibold text-white" style="font-size: 11px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; gap: 4px;">
+                                <i class="bi bi-check-circle-fill"></i> Approved
+                            </span>
+                        </div>
+                    `;
+                } else if (status === 'rejected') {
+                    cardHtml += `
+                        <div class="mt-3 pt-3 border-top border-light-subtle text-center">
+                            <span class="badge bg-danger py-1.5 px-3 w-100 fw-semibold text-white" style="font-size: 11px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; gap: 4px;">
+                                <i class="bi bi-x-circle-fill"></i> Rejected
+                            </span>
+                        </div>
+                    `;
+                } else if (status === 'team_leader_approved') {
+                    const isHrOrAdmin = (window.currentUserRole === 'super-admin' || window.currentUserRole === 'admin' || window.currentUserRole === 'hr');
+                    if (canApproveReject && isHrOrAdmin) {
+                        cardHtml += `
+                            <div class="d-flex gap-2 mt-3 pt-3 border-top border-light-subtle">
+                                <button type="button" class="btn btn-success btn-sm flex-grow-1 py-1.5 fw-semibold d-flex align-items-center justify-content-center gap-1" onclick="handleLeaveAction(${leaveId}, 'approve')" style="font-size: 11px; border-radius: 6px;">
+                                    <i class="bi bi-check-lg"></i> Approve
+                                </button>
+                                <button type="button" class="btn btn-danger btn-sm flex-grow-1 py-1.5 fw-semibold d-flex align-items-center justify-content-center gap-1" onclick="handleLeaveAction(${leaveId}, 'reject')" style="font-size: 11px; border-radius: 6px;">
+                                    <i class="bi bi-x-lg"></i> Reject
+                                </button>
+                            </div>
+                        `;
+                    } else {
+                        cardHtml += `
+                            <div class="mt-3 pt-3 border-top border-light-subtle text-center">
+                                <span class="badge bg-warning py-1.5 px-3 w-100 fw-semibold text-dark" style="font-size: 11px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; gap: 4px;">
+                                    <i class="bi bi-hourglass-split"></i> TL Approved
+                                </span>
+                            </div>
+                        `;
+                    }
+                } else {
+                    if (canApproveReject) {
+                        cardHtml += `
+                            <div class="d-flex gap-2 mt-3 pt-3 border-top border-light-subtle">
+                                <button type="button" class="btn btn-success btn-sm flex-grow-1 py-1.5 fw-semibold d-flex align-items-center justify-content-center gap-1" onclick="handleLeaveAction(${leaveId}, 'approve')" style="font-size: 11px; border-radius: 6px;">
+                                    <i class="bi bi-check-lg"></i> Approve
+                                </button>
+                                <button type="button" class="btn btn-danger btn-sm flex-grow-1 py-1.5 fw-semibold d-flex align-items-center justify-content-center gap-1" onclick="handleLeaveAction(${leaveId}, 'reject')" style="font-size: 11px; border-radius: 6px;">
+                                    <i class="bi bi-x-lg"></i> Reject
+                                </button>
+                            </div>
+                        `;
+                    } else {
+                        cardHtml += `
+                            <div class="mt-3 pt-3 border-top border-light-subtle text-center">
+                                <span class="badge bg-secondary py-1.5 px-3 w-100 fw-semibold text-white" style="font-size: 11px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; gap: 4px;">
+                                    <i class="bi bi-hourglass"></i> Pending Review
+                                </span>
+                            </div>
+                        `;
+                    }
+                }
+            }
+
+            cardHtml += `
+                    </div>
+                </div>
+            `;
+            return cardHtml;
+        }
+
+        // Standard formatting
+        let escaped = escapeHtml(formatted);
+        escaped = escaped.replace(/\*([^*]+)\*/g, '<strong>$1</strong>');
+        const urlRegex = /(https?:\/\/[^\s<]+)/g;
+        escaped = escaped.replace(urlRegex, '<a href="$1" target="_blank" class="text-primary text-decoration-underline">$1</a>');
+        return escaped.replace(/\n/g, '<br>');
+    }
+
+    window.handleLeaveAction = function(leaveId, action) {
+        document.getElementById('leave_action_id').value = leaveId;
+        document.getElementById('leave_action_type').value = action;
+        
+        const label = document.getElementById('leaveActionCommentLabel');
+        const title = document.getElementById('leaveActionModalLabel');
+        const btn = document.getElementById('leaveActionConfirmBtn');
+        const textarea = document.getElementById('leave_action_comment');
+        
+        textarea.value = '';
+        textarea.classList.remove('is-invalid');
+        document.getElementById('leave_action_error').textContent = '';
+
+        if (action === 'approve') {
+            title.textContent = 'Approve Leave Request';
+            label.textContent = 'Approval Comments (Optional)';
+            textarea.placeholder = 'Enter any approval comments...';
+            btn.className = 'btn btn-success btn-sm';
+            btn.textContent = 'Approve';
+            textarea.required = false;
+        } else {
+            title.textContent = 'Reject Leave Request';
+            label.textContent = 'Rejection Reason (Required)';
+            textarea.placeholder = 'Enter reason for rejection...';
+            btn.className = 'btn btn-danger btn-sm';
+            btn.textContent = 'Reject';
+            textarea.required = true;
+        }
+
+        const modalEl = document.getElementById('leaveActionModal');
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    };
+
+    // Setup submit listener for leave action form
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('leaveActionForm');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const leaveId = document.getElementById('leave_action_id').value;
+                const action = document.getElementById('leave_action_type').value;
+                const commentVal = document.getElementById('leave_action_comment').value.trim();
+                const textarea = document.getElementById('leave_action_comment');
+                const errorDiv = document.getElementById('leave_action_error');
+                
+                if (action === 'reject' && !commentVal) {
+                    textarea.classList.add('is-invalid');
+                    errorDiv.textContent = 'Rejection reason is required.';
+                    return;
+                }
+
+                const token = "{{ csrf_token() }}";
+                const role = window.currentUserRole;
+                
+                let url = '';
+                let payload = {};
+                
+                if (action === 'approve') {
+                    url = (role === 'team-leader') ? `/leaves/${leaveId}/approve-tl` : `/leaves/${leaveId}/approve-hr`;
+                    payload = { comment: commentVal };
+                } else {
+                    url = `/leaves/${leaveId}/reject`;
+                    payload = { reason: commentVal };
+                }
+
+                const confirmBtn = document.getElementById('leaveActionConfirmBtn');
+                confirmBtn.disabled = true;
+                confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+
+                fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': token,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                })
+                .then(res => {
+                    if (res.redirected) {
+                        window.location.reload();
+                    } else {
+                        return res.json().then(data => {
+                            window.location.reload();
+                        });
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert("An error occurred. Please refresh and try again.");
+                    confirmBtn.disabled = false;
+                    confirmBtn.innerHTML = 'Confirm';
+                });
+            });
+        }
+    });
 
     function updateMainSidebarBadge(directCount) {
         if (directCount !== undefined) {
@@ -2747,45 +3074,193 @@
         }, 5000);
     }
 
+    // ─── Task Detail inline view ─────────────────────────────────────────────
+    let _taskDetailOpen = false;
+
     function toggleInfoSidebar(e) {
         if (e) e.preventDefault();
-        const sidebar = document.getElementById('chat-info-sidebar');
-        if (!sidebar) return;
-        if (sidebar.classList.contains('d-none')) {
-            openInfoSidebar();
-        } else {
+        if (!currentTaskData) return; // not a task chat
+        if (_taskDetailOpen) {
             closeInfoSidebar();
+        } else {
+            openInfoSidebar();
         }
     }
 
     function openInfoSidebar() {
-        const sidebar = document.getElementById('chat-info-sidebar');
-        if (!sidebar || !currentTaskData) return;
+        if (!currentTaskData) return;
+        _taskDetailOpen = true;
 
-        // Populate fields
-        document.getElementById('info-task-avatar').src = currentTaskData.assignee_avatar;
-        document.getElementById('info-task-title').textContent = currentTaskData.task_title;
-        document.getElementById('info-task-project').textContent = currentTaskData.project_name;
-        document.getElementById('info-task-desc').textContent = currentTaskData.description;
-        document.getElementById('info-task-status').textContent = currentTaskData.status_text;
-        document.getElementById('info-task-priority').textContent = currentTaskData.priority;
-        document.getElementById('info-task-deadline').textContent = currentTaskData.deadline;
-        document.getElementById('info-task-created').textContent = currentTaskData.created_at;
-        
-        document.getElementById('info-task-assignee-avatar').src = currentTaskData.assignee_real_avatar;
-        document.getElementById('info-task-assignee-name').textContent = currentTaskData.assignee_name;
-        
-        document.getElementById('info-task-creator-avatar').src = currentTaskData.creator_avatar;
-        document.getElementById('info-task-creator-name').textContent = currentTaskData.creator_name;
+        const d = currentTaskData;
+        const attachments = d.attachments || [];
+        const images = attachments.filter(a => a.is_image);
+        const files  = attachments.filter(a => !a.is_image);
 
-        sidebar.classList.remove('d-none');
+        // Status badge colours
+        const statusColors = {
+            'in_progress': ['#fef3c7','#92400e'], 'completed': ['#d1fae5','#065f46'],
+            'review':      ['#e0f2fe','#075985'], 'rework':    ['#fef2f2','#991b1b'],
+            'rejected':    ['#fef2f2','#991b1b'], 'pending':   ['#f1f5f9','#475569'],
+        };
+        const [sBg, sFg] = statusColors[d.status] || ['#f1f5f9','#475569'];
+
+        // Priority badge colours
+        const prioColors = {
+            'Critical': ['#fef2f2','#991b1b'], 'High': ['#fef3c7','#92400e'],
+            'Medium':   ['#eff6ff','#1e40af'], 'Low':  ['#f0fdf4','#166534'],
+        };
+        const [pBg, pFg] = prioColors[d.priority] || ['#f1f5f9','#475569'];
+
+        // Attachments HTML
+        let attachHtml = '';
+        if (attachments.length === 0) {
+            attachHtml = `<div class="text-center py-4 text-muted">
+                <i class="bi bi-paperclip" style="font-size:32px;opacity:.35;"></i>
+                <div class="mt-2" style="font-size:13px;">No attachments</div>
+            </div>`;
+        } else {
+            if (images.length > 0) {
+                attachHtml += `<div class="d-flex flex-wrap gap-2 mb-3">`;
+                images.forEach(img => {
+                    attachHtml += `
+                    <a href="${img.url}" target="_blank" title="${img.name}"
+                       style="width:90px;height:90px;border-radius:10px;overflow:hidden;display:block;
+                              border:1px solid #e2e8f0;flex-shrink:0;box-shadow:0 1px 4px rgba(0,0,0,.06);">
+                        <img src="${img.url}" alt="${img.name}"
+                             style="width:100%;height:100%;object-fit:cover;"
+                             onerror="this.parentElement.innerHTML='<div style=\"background:#f1f5f9;width:100%;height:100%;display:flex;align-items:center;justify-content:center;\"><i class=\"bi bi-image text-muted fs-4\"></i></div>'">
+                    </a>`;
+                });
+                attachHtml += `</div>`;
+            }
+            const extIcons = { pdf:'bi-file-pdf text-danger', doc:'bi-file-word text-primary',
+                docx:'bi-file-word text-primary', xls:'bi-file-excel text-success',
+                xlsx:'bi-file-excel text-success', zip:'bi-file-zip text-warning',
+                txt:'bi-file-text text-secondary' };
+            files.forEach(f => {
+                const icon = extIcons[f.ext] || 'bi-file-earmark text-muted';
+                const short = f.name.length > 40 ? f.name.substring(0,37)+'...' : f.name;
+                attachHtml += `
+                <a href="${f.url}" target="_blank" download
+                   class="d-flex align-items-center gap-3 p-3 rounded-3 text-decoration-none mb-2"
+                   style="background:#fff;border:1px solid #e2e8f0;transition:background .15s;"
+                   onmouseover="this.style.background='#f0f7ff'" onmouseout="this.style.background='#fff'">
+                    <i class="bi ${icon}" style="font-size:22px;flex-shrink:0;"></i>
+                    <div class="flex-grow-1 min-w-0">
+                        <div class="fw-semibold text-dark" style="font-size:13px;word-break:break-all;" title="${f.name}">${short}</div>
+                        <div class="text-muted" style="font-size:11px;">.${f.ext.toUpperCase()}&nbsp;&bull;&nbsp;Click to download</div>
+                    </div>
+                    <i class="bi bi-download text-primary" style="font-size:16px;flex-shrink:0;"></i>
+                </a>`;
+            });
+        }
+
+        const html = `
+        <div style="max-width:780px;margin:0 auto;">
+
+            <!-- Back button strip -->
+            <div class="d-flex align-items-center gap-2 mb-4">
+                <button onclick="closeInfoSidebar()" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-2"
+                        style="border-radius:20px;font-size:13px;">
+                    <i class="bi bi-arrow-left"></i> Back to messages
+                </button>
+                <a href="${d.task_url}" target="_blank" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-2"
+                   style="border-radius:20px;font-size:13px;">
+                    <i class="bi bi-box-arrow-up-right"></i> Open full task
+                </a>
+            </div>
+
+            <!-- Title card -->
+            <div class="card border-0 shadow-sm mb-4" style="border-radius:16px;overflow:hidden;">
+                <div style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);padding:24px 28px;">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <img src="${d.assignee_avatar}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.25);flex-shrink:0;">
+                        <div>
+                            <div class="text-white fw-bold" style="font-size:17px;line-height:1.3;">${d.task_title}</div>
+                            <div class="text-white-50" style="font-size:13px;margin-top:2px;">${d.project_name}</div>
+                        </div>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <span style="background:${sBg};color:${sFg};font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;">
+                            ${d.status_text}
+                        </span>
+                        <span style="background:${pBg};color:${pFg};font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;">
+                            ${d.priority} Priority
+                        </span>
+                        ${d.deadline !== 'No deadline' ? `<span style="background:rgba(255,255,255,.12);color:#e2e8f0;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;"><i class="bi bi-calendar3 me-1"></i>${d.deadline}</span>` : ''}
+                    </div>
+                </div>
+
+                <!-- Meta grid -->
+                <div class="card-body p-0">
+                    <div class="row g-0" style="border-top:1px solid #f1f5f9;">
+                        <div class="col-6 col-md-3 p-3 border-end border-bottom">
+                            <div class="text-muted" style="font-size:10px;text-transform:uppercase;letter-spacing:.6px;">Assignee</div>
+                            <div class="d-flex align-items-center gap-2 mt-1">
+                                <img src="${d.assignee_real_avatar}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;">
+                                <span class="fw-semibold text-dark" style="font-size:13px;">${d.assignee_name}</span>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3 p-3 border-md-end border-bottom">
+                            <div class="text-muted" style="font-size:10px;text-transform:uppercase;letter-spacing:.6px;">Creator</div>
+                            <div class="d-flex align-items-center gap-2 mt-1">
+                                <img src="${d.creator_avatar}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;">
+                                <span class="fw-semibold text-dark" style="font-size:13px;">${d.creator_name}</span>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3 p-3 border-end">
+                            <div class="text-muted" style="font-size:10px;text-transform:uppercase;letter-spacing:.6px;">Created</div>
+                            <div class="fw-semibold text-dark mt-1" style="font-size:13px;">${d.created_at}</div>
+                        </div>
+                        <div class="col-6 col-md-3 p-3">
+                            <div class="text-muted" style="font-size:10px;text-transform:uppercase;letter-spacing:.6px;">Est. Hours</div>
+                            <div class="fw-semibold text-dark mt-1" style="font-size:13px;">${d.estimated_hours ? d.estimated_hours + ' hrs' : '—'}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Description -->
+            <div class="card border-0 shadow-sm mb-4" style="border-radius:16px;">
+                <div class="card-body p-4">
+                    <div class="fw-bold text-dark mb-3 d-flex align-items-center gap-2" style="font-size:14px;">
+                        <i class="bi bi-file-text text-primary"></i> Description
+                    </div>
+                    <div style="white-space:pre-wrap;line-height:1.75;color:#334155;font-size:14px;min-height:48px;">${d.description || '<em class="text-muted">No description provided.</em>'}</div>
+                </div>
+            </div>
+
+            <!-- Attachments -->
+            <div class="card border-0 shadow-sm" style="border-radius:16px;">
+                <div class="card-body p-4">
+                    <div class="fw-bold text-dark mb-3 d-flex align-items-center gap-2" style="font-size:14px;">
+                        <i class="bi bi-paperclip text-primary"></i> Attachments
+                        <span class="badge bg-primary-subtle text-primary ms-1" style="font-size:11px;">${attachments.length}</span>
+                    </div>
+                    ${attachHtml}
+                </div>
+            </div>
+
+        </div>`;
+
+        const detailView = document.getElementById('chat-task-detail-view');
+        const bodyWrap   = document.getElementById('chat-body-wrap');
+        const inputBar   = document.getElementById('chat-form');
+
+        detailView.innerHTML = html;
+        detailView.style.display = 'block';
+        if (bodyWrap)   bodyWrap.style.display = 'none';
+        if (inputBar)   inputBar.style.display = 'none';
     }
 
     function closeInfoSidebar() {
-        const sidebar = document.getElementById('chat-info-sidebar');
-        if (sidebar) {
-            sidebar.classList.add('d-none');
-        }
+        _taskDetailOpen = false;
+        const detailView = document.getElementById('chat-task-detail-view');
+        const bodyWrap   = document.getElementById('chat-body-wrap');
+        const inputBar   = document.getElementById('chat-form');
+        if (detailView) detailView.style.display = 'none';
+        if (bodyWrap)   bodyWrap.style.display = 'block';
+        if (inputBar)   inputBar.style.display = '';
     }
 
     function toggleChatSearch() {
@@ -3081,6 +3556,7 @@
             const unreadCount = parseInt(item.getAttribute('data-unread-count') || '0');
             const isBug = item.getAttribute('data-is-bug') === '1';
             const priority = item.getAttribute('data-priority') || '';
+            const status = item.getAttribute('data-status') || '';
             
             let matchesFilter = true;
             if (activeChatFilter === 'unread') {
@@ -3089,6 +3565,8 @@
                 matchesFilter = isBug;
             } else if (activeChatFilter === 'critical') {
                 matchesFilter = priority === 'critical';
+            } else if (activeChatFilter === 'review') {
+                matchesFilter = status === 'review';
             }
 
             if (matchesSearch && matchesFilter) {
@@ -3136,6 +3614,7 @@
 
     function selectTask(taskId) {
         hideCreationForms();
+        closeInfoSidebar();
         if (activeTaskId === taskId) return;
         
         cancelReply();
@@ -3562,8 +4041,10 @@
         const textarea = document.getElementById('whatsapp-comment-input');
         const comment = textarea.value.trim();
         const imageData = document.getElementById('chat-image-data').value;
+        const fileInput = document.getElementById('chat-image-input');
+        const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
 
-        if (!comment && !imageData) return;
+        if (!comment && !imageData && !hasFile) return;
 
         const submitBtn = this.querySelector('.whatsapp-send-btn');
         submitBtn.disabled = true;
@@ -3635,18 +4116,39 @@
             },
             body: formData
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    let errMsg = data.message || 'Something went wrong.';
+                    if (data.errors) {
+                        const firstKey = Object.keys(data.errors)[0];
+                        if (firstKey && data.errors[firstKey].length > 0) {
+                            errMsg = data.errors[firstKey][0];
+                        }
+                    }
+                    throw new Error(errMsg);
+                });
+            }
+            return response.json();
+        })
         .then(data => {
             submitBtn.disabled = false;
             textarea.value = '';
             textarea.style.height = 'auto';
             document.getElementById('chat-image-data').value = '';
+            const chatImageInput = document.getElementById('chat-image-input');
+            if (chatImageInput) chatImageInput.value = '';
             cancelReply();
             
             const preview = document.getElementById('chat-attachment-preview');
             if (preview) {
                 preview.classList.add('d-none');
                 preview.style.backgroundImage = '';
+                preview.innerHTML = `
+                    <button type="button" id="chat-attachment-remove" class="btn btn-danger btn-sm p-0 d-flex align-items-center justify-content-center position-absolute" style="width: 20px; height: 20px; border-radius: 50%; top: -8px; right: -8px; font-size: 11px; z-index: 10;">
+                        <i class="bi bi-x"></i>
+                    </button>
+                `;
             }
             
             // Trigger an immediate check for updates
@@ -3661,13 +4163,14 @@
                     const chatBody = document.querySelector('.chat-body');
                     chatBody.scrollTop = chatBody.scrollHeight;
                     
-                    moveThreadToTop('direct', activeDirectUserId, data.message.message || '[Image]', 'Just now', 0);
+                    moveThreadToTop('direct', activeDirectUserId, data.message.message || (data.message.file_url ? '[Document]' : '[Image]'), 'Just now', 0);
                 }
             }
         })
         .catch(error => {
             submitBtn.disabled = false;
-            console.error('Error posting comment:', error);
+            alert(error.message || 'Error posting message.');
+            console.error('Error posting message:', error);
         });
     });
 
@@ -3688,7 +4191,9 @@
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 const imageVal = document.getElementById('chat-image-data').value;
-                if (this.value.trim().length > 0 || imageVal) {
+                const fileInput = document.getElementById('chat-image-input');
+                const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
+                if (this.value.trim().length > 0 || imageVal || hasFile) {
                     document.getElementById('chat-form').dispatchEvent(new Event('submit'));
                 }
             }
@@ -3721,10 +4226,17 @@
         if (removeBtn) {
             removeBtn.addEventListener('click', function() {
                 document.getElementById('chat-image-data').value = '';
+                const chatImageInput = document.getElementById('chat-image-input');
+                if (chatImageInput) chatImageInput.value = '';
                 const preview = document.getElementById('chat-attachment-preview');
                 if (preview) {
                     preview.classList.add('d-none');
                     preview.style.backgroundImage = '';
+                    preview.innerHTML = `
+                        <button type="button" id="chat-attachment-remove" class="btn btn-danger btn-sm p-0 d-flex align-items-center justify-content-center position-absolute" style="width: 20px; height: 20px; border-radius: 50%; top: -8px; right: -8px; font-size: 11px; z-index: 10;">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    `;
                 }
             });
         }
@@ -3891,34 +4403,65 @@
         chatImageInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    loadedImg = new Image();
-                    loadedImg.onload = function() {
-                        const maxDimension = 600;
-                        let width = loadedImg.width;
-                        let height = loadedImg.height;
-                        if (width > maxDimension || height > maxDimension) {
-                            if (width > height) {
-                                height = Math.round((height * maxDimension) / width);
-                                width = maxDimension;
-                            } else {
-                                width = Math.round((width * maxDimension) / height);
-                                height = maxDimension;
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        loadedImg = new Image();
+                        loadedImg.onload = function() {
+                            const maxDimension = 600;
+                            let width = loadedImg.width;
+                            let height = loadedImg.height;
+                            if (width > maxDimension || height > maxDimension) {
+                                if (width > height) {
+                                    height = Math.round((height * maxDimension) / width);
+                                    width = maxDimension;
+                                } else {
+                                    width = Math.round((width * maxDimension) / height);
+                                    height = maxDimension;
+                                }
                             }
-                        }
-                        canvas.width = width;
-                        canvas.height = height;
+                            canvas.width = width;
+                            canvas.height = height;
 
-                        ctx.drawImage(loadedImg, 0, 0, width, height);
+                            ctx.drawImage(loadedImg, 0, 0, width, height);
 
-                        const markupModalEl = document.getElementById('imageMarkupModal');
-                        const modal = new bootstrap.Modal(markupModalEl);
-                        modal.show();
+                            const markupModalEl = document.getElementById('imageMarkupModal');
+                            const modal = new bootstrap.Modal(markupModalEl);
+                            modal.show();
+                        };
+                        loadedImg.src = event.target.result;
                     };
-                    loadedImg.src = event.target.result;
-                };
-                reader.readAsDataURL(file);
+                    reader.readAsDataURL(file);
+                } else {
+                    // Non-image file (e.g. PDF)
+                    const preview = document.getElementById('chat-attachment-preview');
+                    if (preview) {
+                        preview.classList.remove('d-none');
+                        preview.style.backgroundImage = 'none';
+                        preview.innerHTML = `
+                            <div class="d-flex flex-column align-items-center justify-content-center h-100 text-center p-2">
+                                <i class="bi bi-file-earmark-pdf-fill text-danger fs-3"></i>
+                                <span class="text-xs text-truncate w-100 mt-1" style="font-size: 10px; max-width: 70px;" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>
+                            </div>
+                            <button type="button" id="chat-attachment-remove" class="btn btn-danger btn-sm p-0 d-flex align-items-center justify-content-center position-absolute" style="width: 20px; height: 20px; border-radius: 50%; top: -8px; right: -8px; font-size: 11px; z-index: 10;">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        `;
+
+                        // Re-bind the remove event because we replaced innerHTML
+                        document.getElementById('chat-attachment-remove').addEventListener('click', function() {
+                            const chatImageInput = document.getElementById('chat-image-input');
+                            if (chatImageInput) chatImageInput.value = '';
+                            preview.classList.add('d-none');
+                            preview.style.backgroundImage = '';
+                            preview.innerHTML = `
+                                <button type="button" id="chat-attachment-remove" class="btn btn-danger btn-sm p-0 d-flex align-items-center justify-content-center position-absolute" style="width: 20px; height: 20px; border-radius: 50%; top: -8px; right: -8px; font-size: 11px; z-index: 10;">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            `;
+                        });
+                    }
+                }
             }
         });
 

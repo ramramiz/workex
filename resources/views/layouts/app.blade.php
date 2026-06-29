@@ -818,8 +818,8 @@
                 <i class="bi bi-plus-circle nav-icon"></i><span class="nav-text">Create Company</span>
             </a>
         @else
-            <!-- Administration Department -->
-            <div class="sidebar-section-label">Administration</div>
+            <!-- Workspace / Main Details -->
+            <div class="sidebar-section-label">Workspace</div>
             <a href="{{ route('dashboard') }}" class="sidebar-item {{ request()->routeIs('dashboard') ? 'active' : '' }}" data-title="Dashboard">
                 <i class="bi bi-grid-1x2-fill nav-icon"></i><span class="nav-text">Dashboard</span>
             </a>
@@ -871,30 +871,54 @@
                 </span>
             </a>
             @if(!auth()->user()->isTelecaller())
-            <a href="{{ route('support.index') }}" class="sidebar-item {{ request()->routeIs('support*') ? 'active' : '' }}" data-title="Support">
-                <i class="bi bi-headset nav-icon"></i><span class="nav-text">Support / AMC</span>
-            </a>
-            @endif
-            @if(auth()->user()->isSuperAdmin())
-            <a href="{{ route('activity-logs.index') }}" class="sidebar-item {{ request()->routeIs('activity-logs*') ? 'active' : '' }}" data-title="Activity Logs">
-                <i class="bi bi-clock-history nav-icon"></i><span class="nav-text">Activity Logs</span>
-            </a>
-            <a href="{{ route('settings.index') }}" class="sidebar-item {{ request()->routeIs('settings*') ? 'active' : '' }}" data-title="Settings">
-                <i class="bi bi-gear-fill nav-icon"></i><span class="nav-text">Settings</span>
-            </a>
+                @if(auth()->user()->isEmployee() || auth()->user()->isTeamLeader())
+                <a href="{{ route('work-timer.index') }}" class="sidebar-item {{ request()->routeIs('work-timer*') ? 'active' : '' }}" data-title="Work Timer">
+                    <i class="bi bi-stopwatch-fill nav-icon"></i><span class="nav-text">Work Timer</span>
+                </a>
+                @endif
+                <a href="{{ route('tasks.approved') }}" class="sidebar-item {{ request()->routeIs('tasks.approved*') ? 'active' : '' }}" data-title="Approved Tasks">
+                    <i class="bi bi-check-circle nav-icon"></i><span class="nav-text">Approved Tasks</span>
+                </a>
+                @if(!auth()->user()->isEmployee())
+                <a href="{{ route('daily-reports.index') }}" class="sidebar-item {{ request()->routeIs('daily-reports*') ? 'active' : '' }}" data-title="Daily Reports">
+                    <i class="bi bi-journal-text nav-icon"></i><span class="nav-text">Daily Reports</span>
+                    @php
+                        $pendingReportsCount = auth()->user()->isAdminOrAbove() ? \App\Models\DailyReport::where('status', 'pending')->count() : 0;
+                    @endphp
+                    <span class="badge-count {{ $pendingReportsCount > 0 ? '' : 'd-none' }}">
+                        {{ $pendingReportsCount }}
+                    </span>
+                </a>
+                <a href="{{ route('bugs.index') }}" class="sidebar-item {{ request()->routeIs('bugs*') ? 'active' : '' }}" data-title="Bug Tracker">
+                    <i class="bi bi-bug-fill nav-icon"></i><span class="nav-text">Bug Tracker</span>
+                </a>
+                <a href="{{ route('meetings.index') }}" class="sidebar-item {{ request()->routeIs('meetings*') ? 'active' : '' }}" data-title="Meetings">
+                    <i class="bi bi-chat-left-quote nav-icon"></i><span class="nav-text">Meetings & Discussions</span>
+                </a>
+                @endif
             @endif
 
-            <!-- Management Department -->
-            @if(!auth()->user()->isTelecaller())
-            <div class="sidebar-section-label">Management</div>
-            <a href="{{ route('projects.index') }}" class="sidebar-item {{ request()->routeIs('projects*') ? 'active' : '' }}" data-title="Projects">
-                <i class="bi bi-kanban-fill nav-icon"></i><span class="nav-text">Projects</span>
-            </a>
-            @if(auth()->user()->isAdminOrAbove())
-            <a href="{{ route('clients.index') }}" class="sidebar-item {{ request()->routeIs('clients*') ? 'active' : '' }}" data-title="Clients">
-                <i class="bi bi-building nav-icon"></i><span class="nav-text">Clients</span>
+            <!-- Calling & Leads -->
+            @if(auth()->user()->isAdminOrAbove() || auth()->user()->isTelecaller() || auth()->user()->isHR() || auth()->user()->isTeamLeader())
+            <div class="sidebar-section-label">Calling & Leads</div>
+            @if(auth()->user()->isTelecaller())
+            <a href="{{ route('leads.start-work.index') }}" class="sidebar-item {{ request()->routeIs('leads.start-work*') ? 'active' : '' }}" data-title="Start Today Work">
+                <i class="bi bi-play-circle-fill nav-icon"></i><span class="nav-text">Start Today Work</span>
             </a>
             @endif
+            @if(auth()->user()->isAdminOrAbove())
+            <a href="{{ route('leads.index') }}" class="sidebar-item {{ request()->routeIs('leads*') && !request()->routeIs('leads.start-work*') ? 'active' : '' }}" data-title="Leads">
+                <i class="bi bi-funnel-fill nav-icon"></i><span class="nav-text">Leads & Enquiries</span>
+            </a>
+            @endif
+            @if(!auth()->user()->isTelecaller() && auth()->user()->isAdminOrAbove())
+            <a href="{{ route('quotations.index') }}" class="sidebar-item {{ request()->routeIs('quotations*') ? 'active' : '' }}" data-title="Quotations">
+                <i class="bi bi-file-earmark-text-fill nav-icon"></i><span class="nav-text">Quotations</span>
+            </a>
+            @endif
+            <a href="{{ route('reports.telecaller-performance') }}" class="sidebar-item {{ request()->routeIs('reports.telecaller-performance*') ? 'active' : '' }}" data-title="Performance">
+                <i class="bi bi-graph-up-arrow nav-icon"></i><span class="nav-text">Telecaller Performance</span>
+            </a>
             @if(auth()->user()->isSuperAdmin())
             <a href="{{ route('admin.telecaller-sessions.index') }}" class="sidebar-item {{ request()->routeIs('admin.telecaller-sessions*') ? 'active' : '' }}" data-title="Room Approvals">
                 <i class="bi bi-clipboard-check nav-icon"></i><span class="nav-text">Room Work Approvals</span>
@@ -906,90 +930,32 @@
                 </span>
             </a>
             @endif
-            <a href="{{ route('meetings.index') }}" class="sidebar-item {{ request()->routeIs('meetings*') ? 'active' : '' }}" data-title="Meetings">
-                <i class="bi bi-chat-left-quote nav-icon"></i><span class="nav-text">Meetings & Discussions</span>
-            </a>
             @endif
 
-            <!-- Development & Design Department -->
+            <!-- Customer Details -->
             @if(!auth()->user()->isTelecaller())
-            <div class="sidebar-section-label">Development & Design</div>
-            @if(auth()->user()->isEmployee() || auth()->user()->isTeamLeader())
-            <a href="{{ route('work-timer.index') }}" class="sidebar-item {{ request()->routeIs('work-timer*') ? 'active' : '' }}" data-title="Work Timer">
-                <i class="bi bi-stopwatch-fill nav-icon"></i><span class="nav-text">Work Timer</span>
+            <div class="sidebar-section-label">Customer Details</div>
+            @if(!auth()->user()->isEmployee())
+            <a href="{{ route('projects.index') }}" class="sidebar-item {{ request()->routeIs('projects*') ? 'active' : '' }}" data-title="Projects">
+                <i class="bi bi-kanban-fill nav-icon"></i><span class="nav-text">Projects</span>
             </a>
             @endif
-            <a href="{{ route('tasks.index') }}" class="sidebar-item {{ request()->routeIs('tasks*') && !request()->routeIs('tasks.completed-approvals*') && !request()->routeIs('tasks.approved*') ? 'active' : '' }}" data-title="Tasks">
-                <i class="bi bi-check2-square nav-icon"></i><span class="nav-text">Tasks</span>
-                @php
-                    $pendingTasksCount = \App\Models\Task::where('status', 'pending')
-                        ->when(!auth()->user()->isLeaderOrAbove(), fn($q) => $q->where('assigned_to', auth()->id()))
-                        ->count();
-                @endphp
-                <span class="badge-count {{ $pendingTasksCount > 0 ? '' : 'd-none' }}">
-                    {{ $pendingTasksCount }}
-                </span>
-            </a>
-            <a href="{{ route('tasks.approved') }}" class="sidebar-item {{ request()->routeIs('tasks.approved*') ? 'active' : '' }}" data-title="Approved Tasks">
-                <i class="bi bi-check-circle nav-icon"></i><span class="nav-text">Approved Tasks</span>
-            </a>
-            <a href="{{ route('daily-reports.index') }}" class="sidebar-item {{ request()->routeIs('daily-reports*') ? 'active' : '' }}" data-title="Daily Reports">
-                <i class="bi bi-journal-text nav-icon"></i><span class="nav-text">Daily Reports</span>
-                @php
-                    $pendingReportsCount = auth()->user()->isAdminOrAbove() ? \App\Models\DailyReport::where('status', 'pending')->count() : 0;
-                @endphp
-                <span class="badge-count {{ $pendingReportsCount > 0 ? '' : 'd-none' }}">
-                    {{ $pendingReportsCount }}
-                </span>
-            </a>
-            <a href="{{ route('bugs.index') }}" class="sidebar-item {{ request()->routeIs('bugs*') ? 'active' : '' }}" data-title="Bug Tracker">
-                <i class="bi bi-bug-fill nav-icon"></i><span class="nav-text">Bug Tracker</span>
-            </a>
             @if(auth()->user()->isAdminOrAbove())
-            <a href="{{ route('tasks.completed-approvals') }}" class="sidebar-item {{ request()->routeIs('tasks.completed-approvals*') ? 'active' : '' }}" data-title="Approvals">
-                <i class="bi bi-patch-check-fill nav-icon"></i><span class="nav-text">Approve Completed Work</span>
-                @php
-                    $pendingApprovalsCount = \App\Models\Task::where('status', 'review')->count();
-                @endphp
-                <span class="badge-count {{ $pendingApprovalsCount > 0 ? '' : 'd-none' }}">
-                    {{ $pendingApprovalsCount }}
-                </span>
+            <a href="{{ route('clients.index') }}" class="sidebar-item {{ request()->routeIs('clients*') ? 'active' : '' }}" data-title="Clients">
+                <i class="bi bi-building nav-icon"></i><span class="nav-text">Clients</span>
             </a>
             @endif
             @endif
 
-            <!-- Sales & Marketing Department -->
-            @if(auth()->user()->isAdminOrAbove() || auth()->user()->isTelecaller() || auth()->user()->isHR() || auth()->user()->isTeamLeader())
-            <div class="sidebar-section-label">Sales & Marketing</div>
-            @if(auth()->user()->isAdminOrAbove())
-            <a href="{{ route('leads.index') }}" class="sidebar-item {{ request()->routeIs('leads*') && !request()->routeIs('leads.start-work*') ? 'active' : '' }}" data-title="Leads">
-                <i class="bi bi-funnel-fill nav-icon"></i><span class="nav-text">Leads & Enquiries</span>
-            </a>
-            @endif
-            @if(auth()->user()->isTelecaller())
-            <a href="{{ route('leads.start-work.index') }}" class="sidebar-item {{ request()->routeIs('leads.start-work*') ? 'active' : '' }}" data-title="Start Today Work">
-                <i class="bi bi-play-circle-fill nav-icon"></i><span class="nav-text">Start Today Work</span>
-            </a>
-            @endif
-            @if(!auth()->user()->isTelecaller() && auth()->user()->isAdminOrAbove())
-            <a href="{{ route('quotations.index') }}" class="sidebar-item {{ request()->routeIs('quotations*') ? 'active' : '' }}" data-title="Quotations">
-                <i class="bi bi-file-earmark-text-fill nav-icon"></i><span class="nav-text">Quotations</span>
-            </a>
-            @endif
-            <a href="{{ route('reports.telecaller-performance') }}" class="sidebar-item {{ request()->routeIs('reports.telecaller-performance*') ? 'active' : '' }}" data-title="Performance">
-                <i class="bi bi-graph-up-arrow nav-icon"></i><span class="nav-text">Telecaller Performance</span>
-            </a>
-            @endif
-
-            <!-- Human Resources Department -->
+            <!-- ERP Details -->
             @if(!auth()->user()->isClient())
-            <div class="sidebar-section-label">Human Resources</div>
+            <div class="sidebar-section-label">ERP Details</div>
             @if(auth()->user()->isAdminOrAbove() || auth()->user()->isHR())
             <a href="{{ route('employees.index') }}" class="sidebar-item {{ request()->routeIs('employees*') ? 'active' : '' }}" data-title="Employees">
                 <i class="bi bi-people-fill nav-icon"></i><span class="nav-text">Employees</span>
             </a>
             @endif
-            @if(!auth()->user()->isTelecaller())
+            @if(auth()->user()->hasPermission('attendance.view-own') || auth()->user()->hasPermission('attendance.view-all'))
             <a href="{{ route('attendance.index') }}" class="sidebar-item {{ request()->routeIs('attendance*') ? 'active' : '' }}" data-title="Attendance">
                 <i class="bi bi-calendar2-check-fill nav-icon"></i><span class="nav-text">Attendance</span>
             </a>
@@ -1015,9 +981,7 @@
             </a>
             @endif
 
-            <!-- Accounts Department -->
             @if(auth()->user()->isAdminOrAbove() || auth()->user()->isAccounts() || (auth()->user()->isHR() && !auth()->user()->isTelecaller()))
-            <div class="sidebar-section-label">Accounts</div>
             @if(auth()->user()->isAdminOrAbove() || auth()->user()->isAccounts())
             <a href="{{ route('invoices.index') }}" class="sidebar-item {{ request()->routeIs('invoices*') ? 'active' : '' }}" data-title="Invoices">
                 <i class="bi bi-receipt nav-icon"></i><span class="nav-text">Invoices</span>
@@ -1028,6 +992,11 @@
             <a href="{{ route('expenses.index') }}" class="sidebar-item {{ request()->routeIs('expenses*') ? 'active' : '' }}" data-title="Expenses">
                 <i class="bi bi-cash-stack nav-icon"></i><span class="nav-text">Expenses</span>
             </a>
+            @if(auth()->user()->isAdminOrAbove())
+            <a href="{{ route('admin.payroll.index') }}" class="sidebar-item {{ request()->routeIs('admin.payroll*') ? 'active' : '' }}" data-title="Payroll">
+                <i class="bi bi-wallet2 nav-icon"></i><span class="nav-text">Salary Disbursal</span>
+            </a>
+            @endif
             @endif
             @if(!auth()->user()->isTelecaller())
             @if(auth()->user()->isAdminOrAbove() || auth()->user()->isHR() || auth()->user()->isAccounts())
@@ -1036,6 +1005,20 @@
             </a>
             @endif
             @endif
+            @endif
+
+            <!-- Settings -->
+            @if(auth()->user()->isSuperAdmin())
+            <div class="sidebar-section-label">Settings</div>
+            <a href="{{ route('admin.alerts.index') }}" class="sidebar-item {{ request()->routeIs('admin.alerts*') ? 'active' : '' }}" data-title="Global Alerts">
+                <i class="bi bi-exclamation-triangle nav-icon"></i><span class="nav-text">Global Alerts</span>
+            </a>
+            <a href="{{ route('activity-logs.index') }}" class="sidebar-item {{ request()->routeIs('activity-logs*') ? 'active' : '' }}" data-title="Activity Logs">
+                <i class="bi bi-clock-history nav-icon"></i><span class="nav-text">Activity Logs</span>
+            </a>
+            <a href="{{ route('settings.index') }}" class="sidebar-item {{ request()->routeIs('settings*') ? 'active' : '' }}" data-title="Settings">
+                <i class="bi bi-gear-fill nav-icon"></i><span class="nav-text">Settings</span>
+            </a>
             @endif
         @endif
     </nav>
@@ -1078,28 +1061,30 @@
             @php
                 $activeTaskLog = \App\Models\TaskTimeLog::where('user_id', auth()->id())->where('status', 'running')->with('task')->first();
             @endphp
-             @if(session('active_room_work'))
-                 @php
-                     $activeRoomWork = session('active_room_work');
-                     $isFollowups = ($activeRoomWork['room_id'] === 'followups');
-                     $roomName = $isFollowups ? "Today's Follow-ups" : (\App\Models\LeadRoom::find($activeRoomWork['room_id'])?->name ?? 'Select Room');
-                     $timerUrl = $isFollowups ? route('leads.start-work.followup-leads') : ($activeRoomWork['room_id'] ? route('leads.start-work.leads', $activeRoomWork['room_id']) : route('leads.start-work.select-room'));
-                 @endphp
-                <a href="{{ $timerUrl }}" class="work-timer-badge working d-none d-md-flex align-items-center gap-2 text-decoration-none" id="nav-room-timer" data-start-time="{{ $activeRoomWork['started_at'] ?? '' }}" data-status="{{ $activeRoomWork['status'] ?? '' }}" data-accumulated="{{ $activeRoomWork['accumulated_seconds'] ?? 0 }}" style="background: {{ ($activeRoomWork['status'] ?? '') === 'active' ? '#fffbeb' : '#f1f5f9' }}; color: {{ ($activeRoomWork['status'] ?? '') === 'active' ? '#b45309' : '#475569' }}; border: 1px solid {{ ($activeRoomWork['status'] ?? '') === 'active' ? '#fde68a' : '#cbd5e1' }}; cursor: pointer;">
-                    <span class="status-dot {{ ($activeRoomWork['status'] ?? '') === 'active' ? 'working' : '' }}" style="background: {{ ($activeRoomWork['status'] ?? '') === 'active' ? '#d97706' : '#94a3b8' }};"></span>
-                    <span style="font-size: 12px; font-weight: 600; max-width: 150px;" class="text-truncate">{{ $roomName }}</span>
-                    <span class="badge text-white ms-1" id="nav-room-timer-counter" style="background: {{ ($activeRoomWork['status'] ?? '') === 'active' ? '#d97706' : '#94a3b8' }}; font-size: 11px;">00:00:00</span>
-                </a>
-            @elseif($activeTaskLog)
-                <a href="{{ route('tasks.show', $activeTaskLog->task) }}" class="work-timer-badge working d-none d-md-flex align-items-center gap-2 text-decoration-none" id="nav-task-timer" data-start-time="{{ $activeTaskLog->started_at->toISOString() }}" style="background: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe; cursor: pointer;">
-                    <span class="status-dot working"></span>
-                    <span style="font-size: 12px; font-weight: 600; max-width: 150px;" class="text-truncate">Task: {{ $activeTaskLog->task->title }}</span>
-                    <span class="badge text-white ms-1" id="nav-timer-counter" style="background: #4f46e5; font-size: 11px;">00:00:00</span>
-                </a>
-            @else
-                <a href="{{ route('chat.index') }}" class="work-timer-badge text-decoration-none d-none d-md-flex align-items-center gap-2" style="background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1;">
-                    <i class="bi bi-play-fill text-secondary"></i> Start Work
-                </a>
+             @if(!auth()->user()->isSuperAdmin())
+                 @if(session('active_room_work'))
+                     @php
+                         $activeRoomWork = session('active_room_work');
+                         $isFollowups = ($activeRoomWork['room_id'] === 'followups');
+                         $roomName = $isFollowups ? "Today's Follow-ups" : (\App\Models\LeadRoom::find($activeRoomWork['room_id'])?->name ?? 'Select Room');
+                         $timerUrl = $isFollowups ? route('leads.start-work.followup-leads') : ($activeRoomWork['room_id'] ? route('leads.start-work.leads', $activeRoomWork['room_id']) : route('leads.start-work.select-room'));
+                     @endphp
+                    <a href="{{ $timerUrl }}" class="work-timer-badge working d-none d-md-flex align-items-center gap-2 text-decoration-none" id="nav-room-timer" data-start-time="{{ $activeRoomWork['started_at'] ?? '' }}" data-status="{{ $activeRoomWork['status'] ?? '' }}" data-accumulated="{{ $activeRoomWork['accumulated_seconds'] ?? 0 }}" style="background: {{ ($activeRoomWork['status'] ?? '') === 'active' ? '#fffbeb' : '#f1f5f9' }}; color: {{ ($activeRoomWork['status'] ?? '') === 'active' ? '#b45309' : '#475569' }}; border: 1px solid {{ ($activeRoomWork['status'] ?? '') === 'active' ? '#fde68a' : '#cbd5e1' }}; cursor: pointer;">
+                        <span class="status-dot {{ ($activeRoomWork['status'] ?? '') === 'active' ? 'working' : '' }}" style="background: {{ ($activeRoomWork['status'] ?? '') === 'active' ? '#d97706' : '#94a3b8' }};"></span>
+                        <span style="font-size: 12px; font-weight: 600; max-width: 150px;" class="text-truncate">{{ $roomName }}</span>
+                        <span class="badge text-white ms-1" id="nav-room-timer-counter" style="background: {{ ($activeRoomWork['status'] ?? '') === 'active' ? '#d97706' : '#94a3b8' }}; font-size: 11px;">00:00:00</span>
+                    </a>
+                @elseif($activeTaskLog)
+                    <a href="{{ route('tasks.show', $activeTaskLog->task) }}" class="work-timer-badge working d-none d-md-flex align-items-center gap-2 text-decoration-none" id="nav-task-timer" data-start-time="{{ $activeTaskLog->started_at->toISOString() }}" style="background: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe; cursor: pointer;">
+                        <span class="status-dot working"></span>
+                        <span style="font-size: 12px; font-weight: 600; max-width: 150px;" class="text-truncate">Task: {{ $activeTaskLog->task->title }}</span>
+                        <span class="badge text-white ms-1" id="nav-timer-counter" style="background: #4f46e5; font-size: 11px;">00:00:00</span>
+                    </a>
+                @else
+                    <a href="{{ route('chat.index') }}" class="work-timer-badge text-decoration-none d-none d-md-flex align-items-center gap-2" style="background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1;">
+                        <i class="bi bi-play-fill text-secondary"></i> Start Work
+                    </a>
+                @endif
             @endif
 
             <!-- Theme Toggle -->
@@ -1655,7 +1640,7 @@
         setInterval(pollNotifications, 10000);
     });
 </script>
-@stack('scripts')
+
 
 <!-- Global Image Annotation Markup Modal -->
 <div class="modal fade" id="globalImageMarkupModal" data-bs-backdrop="static" tabindex="-1" aria-labelledby="globalImageMarkupModalLabel" aria-hidden="true" style="z-index: 1060;">
@@ -3629,6 +3614,486 @@
         });
     }
 </script>
+
+    @auth
+    <!-- Global Alert Block Overlay Container -->
+    <div id="global-alert-container">
+        @if(isset($unconfirmedAlert) && $unconfirmedAlert)
+        <div id="global-alert-overlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(17, 24, 39, 0.95); z-index: 999999; display: flex; align-items: center; justify-content: center; padding: 20px; overflow-y: auto;">
+            <div class="card border-0 shadow-lg text-center animate__animated animate__fadeInUp" style="width: 100%; max-width: 550px; border-radius: 20px; background: #ffffff;">
+                <div class="card-body p-5">
+                    <!-- Icon and Heading -->
+                    <div class="mb-4">
+                        <div class="bg-danger-subtle text-danger rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 60px; height: 60px; background-color: #fef2f2 !important; color: #dc2626 !important;">
+                            <i class="bi bi-exclamation-triangle-fill fs-3"></i>
+                        </div>
+                        <span class="badge bg-danger-subtle text-danger rounded-pill px-3 py-1.5 fw-bold" style="font-size: 12px; letter-spacing: 0.5px;">
+                            {{ strtoupper($unconfirmedAlert->heading) }}
+                        </span>
+                    </div>
+
+                    <!-- Alert Message -->
+                    <h3 class="fw-extrabold text-dark mb-3" style="font-size: 22px;">{{ $unconfirmedAlert->title }}</h3>
+                    <p class="text-secondary mb-4" style="font-size: 14px; line-height: 1.6;">
+                        Please read the message carefully. You are required to confirm that you have read and understood this alert to continue using the application.
+                    </p>
+
+                    <!-- CAPTCHA and Confirmation Section -->
+                    <div class="bg-light p-4 rounded-3 mb-4" style="border-radius: 14px !important; background-color: #f3f4f6 !important;">
+                        <label class="form-label text-dark fw-bold mb-2 d-block" style="font-size: 13px;">Security Verification</label>
+                        
+                        <!-- Code Display Box (HTML Text instead of Canvas) -->
+                        <div class="d-flex align-items-center justify-content-center gap-3 mb-3">
+                            <div id="alert-captcha-box" class="rounded border bg-white d-flex align-items-center justify-content-center fw-bold text-dark" style="height: 45px; width: 120px; font-size: 28px; font-family: Arial, sans-serif; letter-spacing: 4px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05); border-color: #d1d5db !important;">
+                                --
+                            </div>
+                            <button type="button" class="btn btn-outline-secondary btn-sm p-2 rounded-circle d-flex align-items-center justify-content-center" style="width: 34px; height: 34px; line-height: 1;" onclick="refreshAlertCaptcha()" title="Refresh Image">
+                                <i class="bi bi-arrow-clockwise"></i>
+                            </button>
+                        </div>
+
+                        <!-- Input with Onscreen Keyboard Toggle Icon -->
+                        <div class="mb-3">
+                            <div class="input-group">
+                                <input type="text" id="alert-captcha-input" class="form-control text-center fw-bold fs-5 py-2.5" placeholder="Enter 2-digit number" maxlength="2" inputmode="numeric" pattern="[0-9]*" required style="border-radius: 10px 0 0 10px; letter-spacing: 2px;">
+                                <button class="btn btn-outline-secondary px-3 d-flex align-items-center justify-content-center" type="button" id="alert-keyboard-toggle-btn" style="border-radius: 0 10px 10px 0;" onclick="toggleOnscreenKeyboard()" title="Onscreen Keyboard">
+                                    <i class="bi bi-keyboard-fill fs-5"></i>
+                                </button>
+                            </div>
+                            <div id="alert-captcha-error" class="text-danger small mt-2 d-none"></div>
+                        </div>
+
+                        <!-- Onscreen Keyboard Grid -->
+                        <div id="onscreen-keyboard-container" class="d-none mt-3 p-3 bg-white border rounded" style="border-radius: 14px; max-width: 280px; margin: 0 auto; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                            <div class="row g-2">
+                                <div class="col-4"><button type="button" class="btn btn-light w-100 py-2.5 fw-bold text-dark border bg-white" onclick="pressOnscreenKey('1')">1</button></div>
+                                <div class="col-4"><button type="button" class="btn btn-light w-100 py-2.5 fw-bold text-dark border bg-white" onclick="pressOnscreenKey('2')">2</button></div>
+                                <div class="col-4"><button type="button" class="btn btn-light w-100 py-2.5 fw-bold text-dark border bg-white" onclick="pressOnscreenKey('3')">3</button></div>
+                                <div class="col-4"><button type="button" class="btn btn-light w-100 py-2.5 fw-bold text-dark border bg-white" onclick="pressOnscreenKey('4')">4</button></div>
+                                <div class="col-4"><button type="button" class="btn btn-light w-100 py-2.5 fw-bold text-dark border bg-white" onclick="pressOnscreenKey('5')">5</button></div>
+                                <div class="col-4"><button type="button" class="btn btn-light w-100 py-2.5 fw-bold text-dark border bg-white" onclick="pressOnscreenKey('6')">6</button></div>
+                                <div class="col-4"><button type="button" class="btn btn-light w-100 py-2.5 fw-bold text-dark border bg-white" onclick="pressOnscreenKey('7')">7</button></div>
+                                <div class="col-4"><button type="button" class="btn btn-light w-100 py-2.5 fw-bold text-dark border bg-white" onclick="pressOnscreenKey('8')">8</button></div>
+                                <div class="col-4"><button type="button" class="btn btn-light w-100 py-2.5 fw-bold text-dark border bg-white" onclick="pressOnscreenKey('9')">9</button></div>
+                                <div class="col-4"><button type="button" class="btn btn-light w-100 py-2.5 fw-semibold text-secondary border" style="font-size: 12px; background-color: #f3f4f6;" onclick="pressOnscreenKey('clear')">Clear</button></div>
+                                <div class="col-4"><button type="button" class="btn btn-light w-100 py-2.5 fw-bold text-dark border bg-white" onclick="pressOnscreenKey('0')">0</button></div>
+                                <div class="col-4"><button type="button" class="btn btn-light w-100 py-2.5 fw-semibold text-secondary border d-flex align-items-center justify-content-center" style="background-color: #f3f4f6;" onclick="pressOnscreenKey('backspace')"><i class="bi bi-backspace-fill fs-5"></i></button></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Read and Confirmed Button -->
+                    <button type="button" id="alert-confirm-btn" class="btn btn-warning w-100 fw-bold py-3 text-dark text-uppercase" style="border-radius: 12px; letter-spacing: 1px;" onclick="submitAlertConfirmation({{ $unconfirmedAlert->id }})">
+                        Read and Confirmed
+                    </button>
+                </div>
+            </div>
+        </div>
+        @endif
+    </div>
+
+    <!-- Modal for Task Approvals and Rejections -->
+    <div class="modal fade" id="chatActionFeedbackModal" tabindex="-1" aria-labelledby="chatActionFeedbackModalLabel" aria-hidden="true" style="z-index: 1060;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-dark" id="chatActionFeedbackModalLabel">Task Feedback</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="chatActionFeedbackForm" onsubmit="submitChatActionFeedback(event)">
+                    <div class="modal-body py-3">
+                        <input type="hidden" id="chatActionTaskId">
+                        <input type="hidden" id="chatActionType">
+                        
+                        <div class="mb-3">
+                            <label for="chatActionNotes" class="form-label fw-bold text-dark" id="chatActionNotesLabel" style="font-size: 13.5px;">Notes</label>
+                            <textarea class="form-control" id="chatActionNotes" rows="3" placeholder="Enter notes..." style="border-radius: 8px; font-size: 13.5px;"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 pt-0">
+                        <button type="button" class="btn btn-light btn-sm px-3 border" style="border-radius: 8px;" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-warning btn-sm px-3 fw-bold" id="chatActionSubmitBtn" style="border-radius: 8px;">Submit</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let alertRingInterval = null;
+        let alertPollInterval = null;
+        let alertCaptchaToken = '';
+
+        function playAlertRingSound() {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                
+                const audioCtx = new AudioContext();
+                
+                function ring() {
+                    if (!document.getElementById('global-alert-overlay')) {
+                        if (alertRingInterval) clearInterval(alertRingInterval);
+                        return;
+                    }
+
+                    let time = audioCtx.currentTime;
+                    beep(time, 0.12, 880);
+                    beep(time + 0.18, 0.12, 880);
+                }
+                
+                function beep(start, duration, freq) {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    
+                    gain.gain.setValueAtTime(0, start);
+                    gain.gain.linearRampToValueAtTime(0.15, start + 0.02);
+                    gain.gain.setValueAtTime(0.15, start + duration - 0.02);
+                    gain.gain.linearRampToValueAtTime(0, start + duration);
+                    
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    
+                    osc.start(start);
+                    osc.stop(start + duration);
+                }
+                
+                setTimeout(ring, 500);
+                alertRingInterval = setInterval(ring, 3000);
+            } catch (e) {
+                console.warn('AudioContext not allowed or failed to initialize:', e);
+            }
+        }
+
+        function refreshAlertCaptcha() {
+            const box = document.getElementById('alert-captcha-box');
+            if (!box) return;
+            
+            box.textContent = '--';
+            box.style.opacity = '0.5';
+
+            fetch("{{ route('alerts.captcha-code') }}")
+                .then(response => response.json())
+                .then(data => {
+                    box.textContent = data.code;
+                    box.style.opacity = '1';
+                    alertCaptchaToken = data.token || '';
+                })
+                .catch(err => {
+                    console.error('Error fetching captcha code:', err);
+                    box.textContent = 'Err';
+                });
+                
+            document.getElementById('alert-captcha-input').value = '';
+            document.getElementById('alert-captcha-error').classList.add('d-none');
+        }
+
+        function toggleOnscreenKeyboard() {
+            const container = document.getElementById('onscreen-keyboard-container');
+            const btn = document.getElementById('alert-keyboard-toggle-btn');
+            if (container.classList.contains('d-none')) {
+                container.classList.remove('d-none');
+                btn.classList.add('active');
+                btn.classList.add('btn-warning');
+                btn.classList.remove('btn-outline-secondary');
+            } else {
+                container.classList.add('d-none');
+                btn.classList.remove('active');
+                btn.classList.remove('btn-warning');
+                btn.classList.add('btn-outline-secondary');
+            }
+        }
+
+        function pressOnscreenKey(key) {
+            const input = document.getElementById('alert-captcha-input');
+            const errorDiv = document.getElementById('alert-captcha-error');
+            errorDiv.classList.add('d-none');
+
+            if (key === 'clear') {
+                input.value = '';
+            } else if (key === 'backspace') {
+                input.value = input.value.slice(0, -1);
+            } else {
+                if (input.value.length < 2) {
+                    input.value += key;
+                }
+            }
+        }
+
+        function showDynamicAlert(alertId, heading, title) {
+            if (document.getElementById('global-alert-overlay')) return;
+
+            if (alertPollInterval) clearInterval(alertPollInterval);
+
+            const overlay = document.createElement('div');
+            overlay.id = 'global-alert-overlay';
+            overlay.style.position = 'fixed';
+            overlay.style.top = '0';
+            overlay.style.left = '0';
+            overlay.style.width = '100vw';
+            overlay.style.height = '100vh';
+            overlay.style.background = 'rgba(17, 24, 39, 0.95)';
+            overlay.style.zIndex = '999999';
+            overlay.style.display = 'flex';
+            overlay.style.alignItems = 'center';
+            overlay.style.justifyContent = 'center';
+            overlay.style.padding = '20px';
+            overlay.style.overflowY = 'auto';
+
+            overlay.innerHTML = `
+                <div class="card border-0 shadow-lg text-center animate__animated animate__fadeInUp" style="width: 100%; max-width: 550px; border-radius: 20px; background: #ffffff;">
+                    <div class="card-body p-5">
+                        <div class="mb-4">
+                            <div class="bg-danger-subtle text-danger rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 60px; height: 60px; background-color: #fef2f2 !important; color: #dc2626 !important;">
+                                <i class="bi bi-exclamation-triangle-fill fs-3"></i>
+                            </div>
+                            <span class="badge bg-danger-subtle text-danger rounded-pill px-3 py-1.5 fw-bold" style="font-size: 12px; letter-spacing: 0.5px;">
+                                ${heading.toUpperCase()}
+                            </span>
+                        </div>
+
+                        <h3 class="fw-extrabold text-dark mb-3" style="font-size: 22px;">${title}</h3>
+                        <p class="text-secondary mb-4" style="font-size: 14px; line-height: 1.6;">
+                            Please read the message carefully. You are required to confirm that you have read and understood this alert to continue using the application.
+                        </p>
+
+                        <div class="bg-light p-4 rounded-3 mb-4" style="border-radius: 14px !important; background-color: #f3f4f6 !important;">
+                            <label class="form-label text-dark fw-bold mb-2 d-block" style="font-size: 13px;">Security Verification</label>
+                            
+                            <div class="d-flex align-items-center justify-content-center gap-3 mb-3">
+                                <div id="alert-captcha-box" class="rounded border bg-white d-flex align-items-center justify-content-center fw-bold text-dark" style="height: 45px; width: 120px; font-size: 28px; font-family: Arial, sans-serif; letter-spacing: 4px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05); border-color: #d1d5db !important;">
+                                    --
+                                </div>
+                                <button type="button" class="btn btn-outline-secondary btn-sm p-2 rounded-circle d-flex align-items-center justify-content-center" style="width: 34px; height: 34px; line-height: 1;" onclick="refreshAlertCaptcha()" title="Refresh Image">
+                                    <i class="bi bi-arrow-clockwise"></i>
+                                </button>
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="input-group">
+                                    <input type="text" id="alert-captcha-input" class="form-control text-center fw-bold fs-5 py-2.5" placeholder="Enter 2-digit number" maxlength="2" inputmode="numeric" pattern="[0-9]*" required style="border-radius: 10px 0 0 10px; letter-spacing: 2px;">
+                                    <button class="btn btn-outline-secondary px-3 d-flex align-items-center justify-content-center" type="button" id="alert-keyboard-toggle-btn" style="border-radius: 0 10px 10px 0;" onclick="toggleOnscreenKeyboard()" title="Onscreen Keyboard">
+                                        <i class="bi bi-keyboard-fill fs-5"></i>
+                                    </button>
+                                </div>
+                                <div id="alert-captcha-error" class="text-danger small mt-2 d-none"></div>
+                            </div>
+
+                            <div id="onscreen-keyboard-container" class="d-none mt-3 p-3 bg-white border rounded" style="border-radius: 14px; max-width: 280px; margin: 0 auto; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                                <div class="row g-2">
+                                    <div class="col-4"><button type="button" class="btn btn-light w-100 py-2.5 fw-bold text-dark border bg-white" onclick="pressOnscreenKey('1')">1</button></div>
+                                    <div class="col-4"><button type="button" class="btn btn-light w-100 py-2.5 fw-bold text-dark border bg-white" onclick="pressOnscreenKey('2')">2</button></div>
+                                    <div class="col-4"><button type="button" class="btn btn-light w-100 py-2.5 fw-bold text-dark border bg-white" onclick="pressOnscreenKey('3')">3</button></div>
+                                    <div class="col-4"><button type="button" class="btn btn-light w-100 py-2.5 fw-bold text-dark border bg-white" onclick="pressOnscreenKey('4')">4</button></div>
+                                    <div class="col-4"><button type="button" class="btn btn-light w-100 py-2.5 fw-bold text-dark border bg-white" onclick="pressOnscreenKey('5')">5</button></div>
+                                    <div class="col-4"><button type="button" class="btn btn-light w-100 py-2.5 fw-bold text-dark border bg-white" onclick="pressOnscreenKey('6')">6</button></div>
+                                    <div class="col-4"><button type="button" class="btn btn-light w-100 py-2.5 fw-bold text-dark border bg-white" onclick="pressOnscreenKey('7')">7</button></div>
+                                    <div class="col-4"><button type="button" class="btn btn-light w-100 py-2.5 fw-bold text-dark border bg-white" onclick="pressOnscreenKey('8')">8</button></div>
+                                    <div class="col-4"><button type="button" class="btn btn-light w-100 py-2.5 fw-bold text-dark border bg-white" onclick="pressOnscreenKey('9')">9</button></div>
+                                    <div class="col-4"><button type="button" class="btn btn-light w-100 py-2.5 fw-semibold text-secondary border" style="font-size: 12px; background-color: #f3f4f6;" onclick="pressOnscreenKey('clear')">Clear</button></div>
+                                    <div class="col-4"><button type="button" class="btn btn-light w-100 py-2.5 fw-bold text-dark border bg-white" onclick="pressOnscreenKey('0')">0</button></div>
+                                    <div class="col-4"><button type="button" class="btn btn-light w-100 py-2.5 fw-semibold text-secondary border d-flex align-items-center justify-content-center" style="background-color: #f3f4f6;" onclick="pressOnscreenKey('backspace')"><i class="bi bi-backspace-fill fs-5"></i></button></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="button" id="alert-confirm-btn" class="btn btn-warning w-100 fw-bold py-3 text-dark text-uppercase" style="border-radius: 12px; letter-spacing: 1px;" onclick="submitAlertConfirmation(${alertId})">
+                            Read and Confirmed
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('global-alert-container').appendChild(overlay);
+            refreshAlertCaptcha();
+            playAlertRingSound();
+        }
+
+        function checkPendingAlerts() {
+            // Must include Accept: application/json so middleware returns JSON instead of a redirect
+            fetch("{{ route('alerts.check-active') }}", {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(response => {
+                if (!response.ok) return; // silently skip auth redirects (401/403)
+                return response.json();
+            })
+            .then(data => {
+                if (data && data.has_alert) {
+                    showDynamicAlert(data.alert_id, data.heading, data.title);
+                }
+            })
+            .catch(err => console.warn('Alert poll error:', err));
+        }
+
+        function startAlertPolling() {
+            if (alertPollInterval) clearInterval(alertPollInterval);
+            checkPendingAlerts();
+            alertPollInterval = setInterval(checkPendingAlerts, 5000);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const overlay = document.getElementById('global-alert-overlay');
+            if (overlay) {
+                // Alert was server-rendered on page load
+                refreshAlertCaptcha();
+                playAlertRingSound();
+            } else {
+                // No pending alert on load — start polling for live alerts
+                startAlertPolling();
+            }
+        });
+
+        function submitAlertConfirmation(alertId) {
+            const input = document.getElementById('alert-captcha-input');
+            const code = input.value.trim();
+            const errorDiv = document.getElementById('alert-captcha-error');
+            const btn = document.getElementById('alert-confirm-btn');
+
+            if (!code || code.length !== 2 || isNaN(code)) {
+                errorDiv.textContent = 'Please enter the 2-digit number shown in the box.';
+                errorDiv.classList.remove('d-none');
+                return;
+            }
+
+            errorDiv.classList.add('d-none');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Confirming...';
+
+            fetch("{{ route('alerts.confirm') }}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                },
+                body: JSON.stringify({
+                    alert_id: alertId,
+                    captcha: code,
+                    token: alertCaptchaToken
+                })
+            })
+            .then(response => response.json().then(data => ({ status: response.status, body: data })))
+            .then(res => {
+                if (res.status === 200 && res.body.success) {
+                    if (alertRingInterval) clearInterval(alertRingInterval);
+                    alertRingInterval = null;
+                    const overlayEl = document.getElementById('global-alert-overlay');
+                    if (overlayEl) overlayEl.remove();
+                    // Restart polling to catch any subsequent alerts without a full page reload
+                    startAlertPolling();
+                } else {
+                    errorDiv.textContent = res.body.message || 'Verification failed. Please try again.';
+                    errorDiv.classList.remove('d-none');
+                    btn.disabled = false;
+                    btn.innerHTML = 'Read and Confirmed';
+                    refreshAlertCaptcha();
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                errorDiv.textContent = 'A system error occurred. Please try again later.';
+                errorDiv.classList.remove('d-none');
+                btn.disabled = false;
+                btn.innerHTML = 'Read and Confirmed';
+                refreshAlertCaptcha();
+            });
+        }
+
+        window.handleCommentApprove = function(event, taskId) {
+            event.preventDefault();
+            document.getElementById('chatActionTaskId').value = taskId;
+            document.getElementById('chatActionType').value = 'approve';
+            document.getElementById('chatActionFeedbackModalLabel').textContent = 'Approve Task Completion';
+            document.getElementById('chatActionNotesLabel').textContent = 'Approval Notes (optional)';
+            document.getElementById('chatActionNotes').value = 'Approved via Chat';
+            document.getElementById('chatActionNotes').placeholder = 'Enter approval notes...';
+            document.getElementById('chatActionNotes').removeAttribute('required');
+            
+            const submitBtn = document.getElementById('chatActionSubmitBtn');
+            submitBtn.textContent = 'Approve';
+            submitBtn.className = 'btn btn-success btn-sm px-3 text-white fw-bold';
+
+            const modal = new bootstrap.Modal(document.getElementById('chatActionFeedbackModal'));
+            modal.show();
+        };
+
+        window.handleCommentReject = function(event, taskId) {
+            event.preventDefault();
+            document.getElementById('chatActionTaskId').value = taskId;
+            document.getElementById('chatActionType').value = 'reject';
+            document.getElementById('chatActionFeedbackModalLabel').textContent = 'Reject Task Completion';
+            document.getElementById('chatActionNotesLabel').textContent = 'Rejection Reasons (required)';
+            document.getElementById('chatActionNotes').value = '';
+            document.getElementById('chatActionNotes').placeholder = 'Enter rejection feedback reasons...';
+            document.getElementById('chatActionNotes').setAttribute('required', 'required');
+            
+            const submitBtn = document.getElementById('chatActionSubmitBtn');
+            submitBtn.textContent = 'Reject';
+            submitBtn.className = 'btn btn-danger btn-sm px-3 text-white fw-bold';
+
+            const modal = new bootstrap.Modal(document.getElementById('chatActionFeedbackModal'));
+            modal.show();
+        };
+
+        window.submitChatActionFeedback = function(event) {
+            event.preventDefault();
+            
+            const taskId = document.getElementById('chatActionTaskId').value;
+            const actionType = document.getElementById('chatActionType').value;
+            const comment = document.getElementById('chatActionNotes').value.trim();
+
+            if (actionType === 'reject' && !comment) {
+                alert('Rejection reasons are required.');
+                return;
+            }
+
+            const submitBtn = document.getElementById('chatActionSubmitBtn');
+            const originalHtml = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Submitting...';
+
+            const url = actionType === 'approve' 
+                ? `/tasks/${taskId}/approve-completion` 
+                : `/tasks/${taskId}/reject-completion`;
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ comment: comment || 'Approved' })
+            })
+            .then(response => {
+                if (response.ok) {
+                    const modalEl = document.getElementById('chatActionFeedbackModal');
+                    const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                    if (modalInstance) modalInstance.hide();
+                    
+                    if (typeof selectTask === 'function') {
+                        selectTask(taskId);
+                    } else {
+                        location.reload();
+                    }
+                } else {
+                    alert(`Failed to ${actionType} task.`);
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalHtml;
+                }
+            })
+            .catch(error => {
+                console.error(`Error during task ${actionType}:`, error);
+                alert('An error occurred.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalHtml;
+            });
+        };
+    </script>
+    @endauth
 
     @stack('scripts')
 </body>

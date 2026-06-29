@@ -33,7 +33,7 @@
             @endif
 
             <!-- Change Room Button -->
-            <a href="{{ route('leads.start-work.select-room') }}" class="btn btn-outline-warning btn-sm fw-bold d-flex align-items-center gap-2 px-3 py-1.5 text-dark" style="border-radius: 20px;">
+            <a href="{{ route('leads.start-work.select-room', ['client_id' => $selectedClientId ?? '']) }}" class="btn btn-outline-warning btn-sm fw-bold d-flex align-items-center gap-2 px-3 py-1.5 text-dark" style="border-radius: 20px;">
                 <i class="bi bi-door-open-fill"></i> Change Room
             </a>
 

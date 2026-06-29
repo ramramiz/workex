@@ -104,6 +104,26 @@
                  </div>
              @endif
              <div class="chat-text text-dark" style="white-space: pre-wrap;">{!! $formattedComment !!}</div>
+
+             @if(auth()->user()->isAdminOrAbove() && isset($task) && $task && $task->status === 'review' && str_contains($item->comment, 'Submitted task for completion review'))
+                 <div class="d-flex border-top mt-3" style="margin-left: -16px; margin-right: -16px; margin-bottom: -10px;">
+                     <a href="javascript:void(0)" onclick="handleCommentApprove(event, {{ $task->id }})" class="btn btn-link text-success fw-bold flex-fill text-center border-end rounded-0 py-2 text-decoration-none" style="font-size: 13px; outline: none; box-shadow: none;">
+                         <i class="bi bi-check-circle-fill me-1"></i> Approve
+                     </a>
+                     <a href="javascript:void(0)" onclick="handleCommentReject(event, {{ $task->id }})" class="btn btn-link text-danger fw-bold flex-fill text-center border-end rounded-0 py-2 text-decoration-none" style="font-size: 13px; outline: none; box-shadow: none;">
+                         <i class="bi bi-x-circle-fill me-1"></i> Reject
+                     </a>
+                     @if(request()->is('chat*') || request()->routeIs('chat.*'))
+                         <a href="javascript:void(0)" onclick="toggleInfoSidebar(event)" class="btn btn-link text-primary fw-bold flex-fill text-center rounded-0 py-2 text-decoration-none" style="font-size: 13px; outline: none; box-shadow: none;">
+                             <i class="bi bi-eye-fill me-1"></i> Review
+                         </a>
+                     @else
+                         <a href="{{ route('tasks.show', $task) }}" class="btn btn-link text-primary fw-bold flex-fill text-center rounded-0 py-2 text-decoration-none" style="font-size: 13px; outline: none; box-shadow: none;">
+                             <i class="bi bi-eye-fill me-1"></i> Review
+                         </a>
+                     @endif
+                 </div>
+             @endif
          @else
              <!-- Time Log Content -->
              <div class="time-log-box">

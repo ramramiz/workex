@@ -21,7 +21,7 @@ class LeadRoomWorkController extends Controller
         // If they already have an active room work session, redirect them directly to it!
         if ($user->active_room_work_session_id) {
             $session = $user->activeRoomWorkSession;
-            if ($session && $session->status === 'active') {
+            if ($session && in_array($session->status, ['active', 'paused'])) {
                 if ($session->lead_room_id) {
                     return redirect()->route('leads.start-work.leads', $session->lead_room_id)
                         ->with('info', 'Redirected to your active calling session.');
@@ -32,7 +32,18 @@ class LeadRoomWorkController extends Controller
             }
         }
 
-        return view('leads.start-work.index');
+        // Get unique clients corresponding to the rooms assigned to the telecaller
+        $clients = \App\Models\Client::whereIn('id', function($q) use ($user) {
+            $q->select('client_id')
+              ->from('lead_rooms')
+              ->whereIn('id', function($sq) use ($user) {
+                  $sq->select('lead_room_id')
+                    ->from('lead_room_user')
+                    ->where('user_id', $user->id);
+              });
+        })->get();
+
+        return view('leads.start-work.index', compact('clients'));
     }
 
     public function startWorkSession(Request $request)
@@ -44,7 +55,7 @@ class LeadRoomWorkController extends Controller
 
         if ($user->active_room_work_session_id) {
             $session = $user->activeRoomWorkSession;
-            if ($session && $session->status === 'active') {
+            if ($session && in_array($session->status, ['active', 'paused'])) {
                 if ($session->lead_room_id) {
                     return redirect()->route('leads.start-work.leads', $session->lead_room_id)
                         ->with('warning', 'You already have an active calling session.');
@@ -54,6 +65,10 @@ class LeadRoomWorkController extends Controller
                 }
             }
         }
+
+        $request->validate([
+            'client_id' => 'nullable|exists:clients,id',
+        ]);
 
         // Create the session in database (lead_room_id is null)
         $session = LeadRoomWorkSession::create([
@@ -66,6 +81,11 @@ class LeadRoomWorkController extends Controller
         $user->update([
             'active_room_work_session_id' => $session->id,
         ]);
+
+        // Store selected customer in session
+        if ($request->client_id) {
+            session(['selected_client_id' => $request->client_id]);
+        }
 
         session(['active_room_work' => [
             'room_id' => null,
@@ -94,10 +114,25 @@ class LeadRoomWorkController extends Controller
             ]);
         }
 
+        // Get unique clients corresponding to the rooms assigned to the telecaller
+        $clients = \App\Models\Client::whereIn('id', function($q) use ($user) {
+            $q->select('client_id')
+              ->from('lead_rooms')
+              ->whereIn('id', function($sq) use ($user) {
+                  $sq->select('lead_room_id')
+                    ->from('lead_room_user')
+                    ->where('user_id', $user->id);
+              });
+        })->get();
+
+        if ($clients->isNotEmpty()) {
+            return redirect()->route('leads.start-work.select-customer')->with('success', 'Work session started! Please select a customer.');
+        }
+
         return redirect()->route('leads.start-work.select-room')->with('success', 'Work session started! Please select a room.');
     }
 
-    public function selectRoomList()
+    public function selectCustomerForm()
     {
         $user = auth()->user();
         if (!$user->isTelecaller()) {
@@ -105,36 +140,124 @@ class LeadRoomWorkController extends Controller
         }
 
         $session = $user->activeRoomWorkSession;
-        if (!$session || $session->status !== 'active') {
+        if (!$session || !in_array($session->status, ['active', 'paused'])) {
             return redirect()->route('leads.start-work.index')
                 ->with('error', 'Please start your day work session first.');
         }
 
-        $rooms = $user->rooms()->with('client')->withCount(['leads' => function($q) use ($user) {
+        // Get unique clients corresponding to the rooms assigned to the telecaller
+        $clients = \App\Models\Client::whereIn('id', function($q) use ($user) {
+            $q->select('client_id')
+              ->from('lead_rooms')
+              ->whereIn('id', function($sq) use ($user) {
+                  $sq->select('lead_room_id')
+                    ->from('lead_room_user')
+                    ->where('user_id', $user->id);
+              });
+        })->get();
+
+        $selectedClientId = session('selected_client_id')
+            ?? ($clients->isNotEmpty() ? $clients->first()->id : null);
+
+        return view('leads.start-work.select_customer', compact('clients', 'selectedClientId'));
+    }
+
+    public function updateCustomer(Request $request)
+    {
+        $user = auth()->user();
+        if (!$user->isTelecaller()) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        $session = $user->activeRoomWorkSession;
+        if (!$session || !in_array($session->status, ['active', 'paused'])) {
+            return redirect()->route('leads.start-work.index')
+                ->with('error', 'Please start your day work session first.');
+        }
+
+        $request->validate([
+            'client_id' => 'required|exists:clients,id',
+        ]);
+
+        session(['selected_client_id' => $request->client_id]);
+
+        return redirect()->route('leads.start-work.select-room')->with('success', 'Customer selected successfully!');
+    }
+
+    public function selectRoomList(Request $request)
+    {
+        $user = auth()->user();
+        if (!$user->isTelecaller()) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        $session = $user->activeRoomWorkSession;
+        if (!$session || !in_array($session->status, ['active', 'paused'])) {
+            return redirect()->route('leads.start-work.index')
+                ->with('error', 'Please start your day work session first.');
+        }
+
+        // Get unique clients corresponding to the rooms assigned to the telecaller
+        $clients = \App\Models\Client::whereIn('id', function($q) use ($user) {
+            $q->select('client_id')
+              ->from('lead_rooms')
+              ->whereIn('id', function($sq) use ($user) {
+                  $sq->select('lead_room_id')
+                    ->from('lead_room_user')
+                    ->where('user_id', $user->id);
+              });
+        })->get();
+
+        $selectedClientId = $request->query('client_id');
+        if ($selectedClientId) {
+            session(['selected_client_id' => $selectedClientId]);
+        } else {
+            $selectedClientId = session('selected_client_id');
+        }
+
+        if (!$selectedClientId) {
+            if ($clients->isNotEmpty()) {
+                $selectedClientId = $clients->first()->id;
+                session(['selected_client_id' => $selectedClientId]);
+            } else {
+                $selectedClientId = null;
+            }
+        }
+
+        $roomsQuery = $user->rooms()->with('client')->withCount(['leads' => function($q) use ($user) {
             $q->where(function($sq) use ($user) {
                 $sq->where('assigned_to', $user->id)
                   ->orWhereNull('assigned_to');
             });
-        }])->latest()->get();
+        }]);
+
+        if ($selectedClientId) {
+            $roomsQuery->where('client_id', $selectedClientId);
+        }
+        $rooms = $roomsQuery->latest()->get();
 
         // Fetch today's follow-up leads assigned to the telecaller's rooms or direct
-        $todayFollowUps = Lead::forUser($user)
+        $todayFollowUpsQuery = Lead::forUser($user)
             ->whereDate('follow_up_date', today())
-            ->with('room')
-            ->get();
+            ->forClient($selectedClientId)
+            ->with('room');
+        $todayFollowUps = $todayFollowUpsQuery->get();
  
         // Fetch interested leads assigned to the telecaller's rooms or direct
-        $interestedCount = Lead::forUser($user)
+        $interestedQuery = Lead::forUser($user)
             ->where('status', 'interested')
-            ->count();
+            ->forClient($selectedClientId);
+        $interestedCount = $interestedQuery->count();
 
-        // Fetch not connected calls logged by this telecaller today
-        $notConnectedCalls = LeadCall::where('telecaller_id', $user->id)
-            ->whereDate('created_at', today())
-            ->whereIn('status', ['Not Connected', 'Busy', 'Switched Off'])
-            ->count();
+        // Fetch not connected leads (any time, matching room calling counts)
+        $notConnectedLeadsQuery = Lead::forUser($user)
+            ->whereHas('latestCall', function($q) {
+                $q->whereIn('status', ['Not Connected', 'Busy', 'Switched Off']);
+            })
+            ->forClient($selectedClientId);
+        $notConnectedCalls = $notConnectedLeadsQuery->count();
 
-        return view('leads.start-work.select_room', compact('rooms', 'todayFollowUps', 'interestedCount', 'notConnectedCalls'));
+        return view('leads.start-work.select_room', compact('rooms', 'todayFollowUps', 'interestedCount', 'notConnectedCalls', 'clients', 'selectedClientId'));
     }
 
     public function selectRoom(LeadRoom $room)
@@ -149,7 +272,7 @@ class LeadRoomWorkController extends Controller
         }
 
         $session = $user->activeRoomWorkSession;
-        if (!$session || $session->status !== 'active') {
+        if (!$session || !in_array($session->status, ['active', 'paused'])) {
             return redirect()->route('leads.start-work.index')
                 ->with('error', 'Please start your day work session first.');
         }
@@ -214,7 +337,7 @@ class LeadRoomWorkController extends Controller
             ->with('success', 'Room ' . $room->name . ' selected!');
     }
 
-    public function selectFollowupRoom()
+    public function selectFollowupRoom(Request $request)
     {
         $user = auth()->user();
         if (!$user->isTelecaller()) {
@@ -222,7 +345,7 @@ class LeadRoomWorkController extends Controller
         }
 
         $session = $user->activeRoomWorkSession;
-        if (!$session || $session->status !== 'active') {
+        if (!$session || !in_array($session->status, ['active', 'paused'])) {
             return redirect()->route('leads.start-work.index')
                 ->with('error', 'Please start your day work session first.');
         }
@@ -283,7 +406,7 @@ class LeadRoomWorkController extends Controller
             'note' => 'Started/Switched calling session in room: Today Follow-ups',
         ]);
 
-        return redirect()->route('leads.start-work.followup-leads')
+        return redirect()->route('leads.start-work.followup-leads', ['client_id' => $request->query('client_id')])
             ->with('success', 'Joined Today\'s Follow-ups Room!');
     }
 
@@ -295,7 +418,7 @@ class LeadRoomWorkController extends Controller
         }
 
         $session = $user->activeRoomWorkSession;
-        if (!$session || $session->status !== 'active') {
+        if (!$session || !in_array($session->status, ['active', 'paused'])) {
             return redirect()->route('leads.start-work.index')
                 ->with('error', 'Please start your day work session first.');
         }
@@ -369,26 +492,33 @@ class LeadRoomWorkController extends Controller
             ]]);
         }
 
+        $selectedClientId = $request->query('client_id');
+
         $leadsQuery = Lead::forUser($user)
             ->whereDate('follow_up_date', today())
-            ->with('room')
-            ->latest();
+            ->with('room');
+            
+        $leadsQuery->forClient($selectedClientId)->latest();
 
         $leads = $leadsQuery->paginate(15);
         $totalFollowUps = $leadsQuery->count();
 
         // Fetch interested leads (across all rooms/direct since follow-ups is a global view)
-        $interestedCount = Lead::forUser($user)
+        $interestedQuery = Lead::forUser($user)
             ->where('status', 'interested')
-            ->count();
+            ->forClient($selectedClientId);
+        $interestedCount = $interestedQuery->count();
 
         // Fetch today's not connected calls (across all rooms/direct since follow-ups is a global view)
-        $notConnectedCalls = LeadCall::where('telecaller_id', $user->id)
-            ->whereDate('created_at', today())
-            ->whereIn('status', ['Not Connected', 'Busy', 'Switched Off'])
-            ->count();
+        // Fetch not connected leads logged by this telecaller (any time, matching room calling counts)
+        $notConnectedLeadsQuery = Lead::forUser($user)
+            ->whereHas('latestCall', function($q) {
+                $q->whereIn('status', ['Not Connected', 'Busy', 'Switched Off']);
+            })
+            ->forClient($selectedClientId);
+        $notConnectedCalls = $notConnectedLeadsQuery->count();
 
-        return view('leads.start-work.followups', compact('leads', 'session', 'totalFollowUps', 'interestedCount', 'notConnectedCalls'));
+        return view('leads.start-work.followups', compact('leads', 'session', 'totalFollowUps', 'interestedCount', 'notConnectedCalls', 'selectedClientId'));
     }
 
     public function pauseFollowupWork(Request $request)
@@ -609,7 +739,7 @@ class LeadRoomWorkController extends Controller
         }
 
         $session = $user->activeRoomWorkSession;
-        if (!$session || $session->status !== 'active') {
+        if (!$session || !in_array($session->status, ['active', 'paused'])) {
             return redirect()->route('leads.start-work.index')
                 ->with('error', 'Please start your day work session first.');
         }
@@ -1111,32 +1241,39 @@ class LeadRoomWorkController extends Controller
         }
 
         $session = $user->activeRoomWorkSession;
-        if (!$session || $session->status !== 'active') {
+        if (!$session || !in_array($session->status, ['active', 'paused'])) {
             return redirect()->route('leads.start-work.index')
                 ->with('error', 'Please start your day work session first.');
         }
 
+        $selectedClientId = $request->query('client_id');
+
         $leadsQuery = Lead::forUser($user)
             ->where('status', 'interested')
-            ->with('room')
-            ->latest();
+            ->forClient($selectedClientId)
+            ->with('room');
+        $leadsQuery->latest();
 
         $leads = $leadsQuery->paginate(15);
         $totalLeads = $leadsQuery->count();
 
         // Pass the other counts for the top cards
-        $totalFollowUps = Lead::forUser($user)
+        $totalFollowUpsQuery = Lead::forUser($user)
             ->whereDate('follow_up_date', today())
-            ->count();
+            ->forClient($selectedClientId);
+        $totalFollowUps = $totalFollowUpsQuery->count();
             
         $interestedCount = $totalLeads;
 
-        $notConnectedCalls = LeadCall::where('telecaller_id', $user->id)
-            ->whereDate('created_at', today())
-            ->whereIn('status', ['Not Connected', 'Busy', 'Switched Off'])
-            ->count();
+        // Fetch not connected leads (any time, matching room calling counts)
+        $notConnectedLeadsQuery = Lead::forUser($user)
+            ->whereHas('latestCall', function($q) {
+                $q->whereIn('status', ['Not Connected', 'Busy', 'Switched Off']);
+            })
+            ->forClient($selectedClientId);
+        $notConnectedCalls = $notConnectedLeadsQuery->count();
 
-        return view('leads.start-work.interested_leads', compact('leads', 'session', 'totalLeads', 'totalFollowUps', 'interestedCount', 'notConnectedCalls'));
+        return view('leads.start-work.interested_leads', compact('leads', 'session', 'totalLeads', 'totalFollowUps', 'interestedCount', 'notConnectedCalls', 'selectedClientId'));
     }
 
     public function notConnectedLeads(Request $request)
@@ -1147,39 +1284,44 @@ class LeadRoomWorkController extends Controller
         }
 
         $session = $user->activeRoomWorkSession;
-        if (!$session || $session->status !== 'active') {
+        if (!$session || !in_array($session->status, ['active', 'paused'])) {
             return redirect()->route('leads.start-work.index')
                 ->with('error', 'Please start your day work session first.');
         }
 
+        $selectedClientId = $request->query('client_id');
+
         // Get leads where their latest call was not connected
         $leadsQuery = Lead::forUser($user)
-            ->whereHas('latestCall', function($q) use ($user) {
-                $q->where('telecaller_id', $user->id)
-                  ->whereDate('created_at', today())
-                  ->whereIn('status', ['Not Connected', 'Busy', 'Switched Off']);
+            ->whereHas('latestCall', function($q) {
+                $q->whereIn('status', ['Not Connected', 'Busy', 'Switched Off']);
             })
-            ->with('room')
-            ->latest();
+            ->forClient($selectedClientId);
+        $leadsQuery->with('room')->latest();
 
         $leads = $leadsQuery->paginate(15);
         $totalLeads = $leadsQuery->count();
 
         // Pass the other counts for the top cards
-        $totalFollowUps = Lead::forUser($user)
+        $totalFollowUpsQuery = Lead::forUser($user)
             ->whereDate('follow_up_date', today())
-            ->count();
+            ->forClient($selectedClientId);
+        $totalFollowUps = $totalFollowUpsQuery->count();
             
-        $interestedCount = Lead::forUser($user)
+        $interestedQuery = Lead::forUser($user)
             ->where('status', 'interested')
-            ->count();
+            ->forClient($selectedClientId);
+        $interestedCount = $interestedQuery->count();
 
-        $notConnectedCalls = LeadCall::where('telecaller_id', $user->id)
-            ->whereDate('created_at', today())
-            ->whereIn('status', ['Not Connected', 'Busy', 'Switched Off'])
-            ->count();
+        // Fetch not connected leads (any time, matching room calling counts)
+        $notConnectedLeadsQuery = Lead::forUser($user)
+            ->whereHas('latestCall', function($q) {
+                $q->whereIn('status', ['Not Connected', 'Busy', 'Switched Off']);
+            })
+            ->forClient($selectedClientId);
+        $notConnectedCalls = $notConnectedLeadsQuery->count();
 
-        return view('leads.start-work.not_connected_leads', compact('leads', 'session', 'totalLeads', 'totalFollowUps', 'interestedCount', 'notConnectedCalls'));
+        return view('leads.start-work.not_connected_leads', compact('leads', 'session', 'totalLeads', 'totalFollowUps', 'interestedCount', 'notConnectedCalls', 'selectedClientId'));
     }
 
     public function exportInterestedLeads(Request $request)
@@ -1190,7 +1332,7 @@ class LeadRoomWorkController extends Controller
         }
 
         $session = $user->activeRoomWorkSession;
-        if (!$session || $session->status !== 'active') {
+        if (!$session || !in_array($session->status, ['active', 'paused'])) {
             return redirect()->route('leads.start-work.index')
                 ->with('error', 'Please start your day work session first.');
         }

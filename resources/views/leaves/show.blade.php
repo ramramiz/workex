@@ -37,7 +37,12 @@
                 <div class="row g-3 mb-4">
                     <div class="col-6">
                         <small class="text-muted d-block">Leave Type</small>
-                        <span class="fw-semibold text-capitalize text-dark">{{ str_replace('_', ' ', $leave->leave_type) }}</span>
+                        <span class="fw-semibold text-capitalize text-dark">
+                            {{ str_replace('_', ' ', $leave->leave_type) }}
+                            @if($leave->leave_type === 'half_day' && $leave->half_day_session)
+                                <span class="text-muted text-lowercase">({{ $leave->half_day_session }} shift)</span>
+                            @endif
+                        </span>
                     </div>
                     <div class="col-6">
                         <small class="text-muted d-block">Duration</small>
@@ -52,6 +57,19 @@
                     <small class="text-muted d-block mb-1">Reason for Request</small>
                     <div class="bg-light p-3 border rounded text-dark fs-7" style="white-space: pre-wrap;">{{ $leave->reason }}</div>
                 </div>
+
+                @if($leave->attachments && count($leave->attachments) > 0)
+                <div class="mb-3">
+                    <small class="text-muted d-block mb-1">Medical Document Attachment</small>
+                    <div class="d-flex align-items-center gap-2">
+                        @foreach($leave->attachments as $path)
+                            <a href="{{ asset('storage/' . $path) }}" target="_blank" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-2">
+                                <i class="bi bi-file-earmark-medical"></i> View Medical Document
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
             </div>
         </div>
 
@@ -125,7 +143,7 @@
         @endif
 
         <!-- HR Controls -->
-        @if(($leave->status === 'team_leader_approved' || $leave->status === 'pending') && auth()->user()->isHR() && $leave->user_id !== auth()->id())
+        @if(($leave->status === 'team_leader_approved' || $leave->status === 'pending') && (auth()->user()->isHR() || auth()->user()->isAdmin() || auth()->user()->isSuperAdmin()) && $leave->user_id !== auth()->id())
             <div class="card border border-warning-subtle mb-4">
                 <div class="card-header bg-warning-subtle border-warning-subtle"><h6 class="mb-0 text-warning-emphasis">HR Department Review</h6></div>
                 <div class="card-body">

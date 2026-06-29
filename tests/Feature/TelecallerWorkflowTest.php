@@ -791,6 +791,13 @@ class TelecallerWorkflowTest extends TestCase
         // Attempting to access dashboard should now succeed (middleware is bypassed since status is paused)
         $response2 = $this->actingAs($this->telecaller1)->get(route('dashboard'));
         $response2->assertStatus(200);
+
+        // Accessing calling pages while paused should succeed and NOT redirect to index
+        $this->actingAs($this->telecaller1)->get(route('leads.start-work.leads', $room))->assertStatus(200);
+        $this->actingAs($this->telecaller1)->get(route('leads.start-work.followup-leads'))->assertStatus(200);
+        $this->actingAs($this->telecaller1)->get(route('leads.start-work.select-room'))->assertStatus(200);
+        $this->actingAs($this->telecaller1)->get(route('leads.start-work.interested-leads'))->assertStatus(200);
+        $this->actingAs($this->telecaller1)->get(route('leads.start-work.not-connected-leads'))->assertStatus(200);
     }
 
     public function test_telecaller_session_pausing_saves_accumulated_seconds(): void
@@ -1631,17 +1638,113 @@ class TelecallerWorkflowTest extends TestCase
         // Start session
         $this->actingAs($this->telecaller1)->post(route('leads.start-work.start-session'));
 
-        // Visit select-room page and check if not connected calls today count is 1 (lead1 called today, not lead2)
+        // Visit select-room page and check if not connected calls count is 2 (both lead1 and lead2)
         $response = $this->actingAs($this->telecaller1)->get(route('leads.start-work.select-room'));
         $response->assertStatus(200);
-        $response->assertViewHas('notConnectedCalls', 1);
+        $response->assertViewHas('notConnectedCalls', 2);
 
-        // Visit not connected leads page and verify only lead1 is listed, count is 1
+        // Visit not connected leads page and verify both lead1 and lead2 are listed, count is 2
         $response = $this->actingAs($this->telecaller1)->get(route('leads.start-work.not-connected-leads'));
         $response->assertStatus(200);
-        $response->assertViewHas('totalLeads', 1);
+        $response->assertViewHas('totalLeads', 2);
         $response->assertSee('Lead Called Today Not Connected');
-        $response->assertDontSee('Lead Called Yesterday Not Connected');
+        $response->assertSee('Lead Called Yesterday Not Connected');
+    }
+
+    public function test_select_room_filters_by_client(): void
+    {
+        $clientA = \App\Models\Client::create([
+            'company_name' => 'Client A',
+            'contact_person' => 'Contact A',
+            'email' => 'clienta@example.com',
+            'phone' => '1111111111',
+            'status' => 'active'
+        ]);
+
+        $clientB = \App\Models\Client::create([
+            'company_name' => 'Client B',
+            'contact_person' => 'Contact B',
+            'email' => 'clientb@example.com',
+            'phone' => '2222222222',
+            'status' => 'active'
+        ]);
+
+        $roomA = \App\Models\LeadRoom::create([
+            'name' => 'Room A',
+            'client_id' => $clientA->id,
+            'created_by' => $this->admin->id
+        ]);
+        $roomA->users()->attach($this->telecaller1->id);
+
+        $roomB = \App\Models\LeadRoom::create([
+            'name' => 'Room B',
+            'client_id' => $clientB->id,
+            'created_by' => $this->admin->id
+        ]);
+        $roomB->users()->attach($this->telecaller1->id);
+
+        $leadA = Lead::create([
+            'client_name' => 'Lead A Client A',
+            'requirement' => 'Dev',
+            'assigned_to' => $this->telecaller1->id,
+            'lead_room_id' => $roomA->id,
+            'client_id' => $clientA->id,
+            'created_by' => $this->admin->id,
+            'source' => 'direct',
+            'status' => 'interested'
+        ]);
+
+        $leadB = Lead::create([
+            'client_name' => 'Lead B Client B',
+            'requirement' => 'Design',
+            'assigned_to' => $this->telecaller1->id,
+            'lead_room_id' => $roomB->id,
+            'client_id' => $clientB->id,
+            'created_by' => $this->admin->id,
+            'source' => 'direct',
+            'status' => 'interested'
+        ]);
+
+        // Start session -> should redirect to select-customer
+        $response = $this->actingAs($this->telecaller1)->post(route('leads.start-work.start-session'));
+        $response->assertRedirect(route('leads.start-work.select-customer'));
+
+        // Visit select-customer page
+        $response = $this->actingAs($this->telecaller1)->get(route('leads.start-work.select-customer'));
+        $response->assertStatus(200);
+        $response->assertSee('Select Customer');
+        $response->assertSee('Client A');
+        $response->assertSee('Client B');
+
+        // Select Client A
+        $response = $this->actingAs($this->telecaller1)->post(route('leads.start-work.update-customer'), [
+            'client_id' => $clientA->id
+        ]);
+        $response->assertRedirect(route('leads.start-work.select-room'));
+        $this->assertEquals($clientA->id, session('selected_client_id'));
+
+        // Visit select-room page (should show Room A since Client A is in session)
+        $response = $this->actingAs($this->telecaller1)->get(route('leads.start-work.select-room'));
+        $response->assertStatus(200);
+        $response->assertViewHas('selectedClientId', $clientA->id);
+        $response->assertViewHas('interestedCount', 1);
+        $response->assertSee('Room A');
+        $response->assertDontSee('Room B');
+
+        // Post to update-customer with Client B's ID
+        $response = $this->actingAs($this->telecaller1)->post(route('leads.start-work.update-customer'), [
+            'client_id' => $clientB->id
+        ]);
+        $response->assertRedirect(route('leads.start-work.select-room'));
+        $this->assertEquals($clientB->id, session('selected_client_id'));
+
+        // Visit select-room page (should show Room B now)
+        $response = $this->actingAs($this->telecaller1)->get(route('leads.start-work.select-room'));
+        $response->assertStatus(200);
+        $response->assertViewHas('selectedClientId', $clientB->id);
+        $response->assertViewHas('interestedCount', 1);
+        $response->assertSee('Room B');
+        $response->assertDontSee('Room A');
     }
 }
 

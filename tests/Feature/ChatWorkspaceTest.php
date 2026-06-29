@@ -390,7 +390,7 @@ class ChatWorkspaceTest extends TestCase
         // Assert filters exist
         $response->assertSee('data-filter="unread"', false);
         $response->assertSee('data-filter="bugs"', false);
-        $response->assertSee('data-filter="critical"', false);
+        $response->assertSee('data-filter="review"', false);
 
         // Assert dynamic data attributes are rendered on list items
         $response->assertSee('data-unread-count="', false);
@@ -499,5 +499,527 @@ class ChatWorkspaceTest extends TestCase
         $response->assertDontSee('Register bug');
         $response->assertSee('WorkeX Chat');
         $response->assertSee('Select a task or contact on the left to start collaborating.');
+    }
+
+    public function test_super_admin_can_manage_employee_roles_and_permissions()
+    {
+        $employeeRecord = \App\Models\Employee::where('user_id', $this->employee->id)->first();
+        if (!$employeeRecord) {
+            $employeeRecord = \App\Models\Employee::create([
+                'user_id' => $this->employee->id,
+                'employee_code' => 'EMP-TEST',
+                'status' => 'active',
+                'joining_date' => now(),
+            ]);
+        }
+
+        // 1. Employee cannot view/update permissions
+        $this->actingAs($this->employee)->get(route('employees.permissions.get', $employeeRecord))->assertStatus(403);
+        $this->actingAs($this->employee)->post(route('employees.permissions.update', $employeeRecord))->assertStatus(403);
+
+        // 2. Super Admin can view permissions
+        $getResponse = $this->actingAs($this->superAdmin)->get(route('employees.permissions.get', $employeeRecord));
+        $getResponse->assertStatus(200);
+        $getResponse->assertJsonStructure(['roles', 'current_role_id', 'permissions']);
+
+        // Find or create a permission
+        $permission = \App\Models\Permission::firstOrCreate(
+            ['slug' => 'projects.view-all'],
+            ['name' => 'View All Projects', 'module' => 'Projects']
+        );
+
+        // 3. Super Admin can update permissions
+        $postResponse = $this->actingAs($this->superAdmin)->post(route('employees.permissions.update', $employeeRecord), [
+            'role_id' => $this->employee->role_id,
+            'permissions' => [$permission->id],
+        ]);
+        $postResponse->assertStatus(200);
+        $postResponse->assertJson(['success' => true]);
+
+        // Assert direct permission database relation
+        $this->assertDatabaseHas('user_permissions', [
+            'user_id' => $this->employee->id,
+            'permission_id' => $permission->id,
+        ]);
+
+        // 4. Test that the employee now passes the hasPermission check
+        $this->assertTrue($this->employee->fresh()->hasPermission('projects.view-all'));
+    }
+
+    public function test_employee_with_attendance_permission_can_access_attendance_routes()
+    {
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
+
+        // Employee user fresh instance
+        $employeeUser = $this->employee->fresh();
+
+        // 2. By default, employee has 'attendance.view-own' permission via role fallback
+        $this->assertTrue($employeeUser->hasPermission('attendance.view-own'));
+
+        // 3. Access attendance index as employee
+        $response = $this->actingAs($employeeUser)->get(route('attendance.index'));
+        $response->assertStatus(200);
+
+        // 4. Check if they cannot access other people's records
+        $otherUser = User::factory()->create();
+        $attendanceRecord = \App\Models\Attendance::create([
+            'user_id' => $otherUser->id,
+            'date' => now()->toDateString(),
+            'status' => 'present',
+        ]);
+
+        $this->actingAs($employeeUser)->get(route('attendance.show', $attendanceRecord))->assertStatus(403);
+
+        // 5. Check if they can access their own attendance details
+        $ownAttendanceRecord = \App\Models\Attendance::create([
+            'user_id' => $employeeUser->id,
+            'date' => now()->toDateString(),
+            'status' => 'present',
+        ]);
+        $this->actingAs($employeeUser)->get(route('attendance.show', $ownAttendanceRecord))->assertStatus(200);
+
+        // 6. Check if they cannot access edit attendance
+        $this->actingAs($employeeUser)->get(route('attendance.edit', $ownAttendanceRecord))->assertStatus(403);
+    }
+
+    public function test_half_day_leave_creation_and_approval()
+    {
+        $employeeUser = $this->employee;
+        $response = $this->actingAs($employeeUser)->post(route('leaves.store'), [
+            'leave_type' => 'half_day',
+            'half_day_session' => 'morning',
+            'from_date' => '2026-06-30',
+            'to_date' => '2026-07-02',
+            'reason' => 'Doctor appointment',
+        ]);
+
+        $response->assertRedirect(route('leaves.index'));
+
+        $leave = \App\Models\Leave::where('user_id', $employeeUser->id)->where('leave_type', 'half_day')->first();
+        $this->assertNotNull($leave);
+        $this->assertEquals(0.5, $leave->total_days);
+        $this->assertEquals('morning', $leave->half_day_session);
+        $this->assertEquals('2026-06-30', $leave->from_date->toDateString());
+        $this->assertEquals('2026-06-30', $leave->to_date->toDateString());
+
+        $hrApprovalResponse = $this->actingAs($this->superAdmin)->post(route('leaves.approve-hr', $leave), [
+            'comment' => 'Approved half day',
+        ]);
+        $hrApprovalResponse->assertRedirect();
+        $attendance = \App\Models\Attendance::where('user_id', $employeeUser->id)->first();
+        $this->assertNotNull($attendance);
+        $this->assertEquals('half_day', $attendance->status);
+    }
+
+    public function test_casual_leave_limit_rules()
+    {
+        $employeeUser = $this->employee;
+
+        // 1. First casual leave submission should succeed (date range should be overridden to a single date)
+        $response1 = $this->actingAs($employeeUser)->post(route('leaves.store'), [
+            'leave_type' => 'casual_leave',
+            'from_date' => '2026-06-01',
+            'to_date' => '2026-06-03', // should be overridden to 2026-06-01
+            'reason' => 'Family event',
+        ]);
+        $response1->assertRedirect(route('leaves.index'));
+
+        $leave = \App\Models\Leave::where('user_id', $employeeUser->id)->where('leave_type', 'casual_leave')->first();
+        $this->assertNotNull($leave);
+        $this->assertEquals('2026-06-01', $leave->to_date->toDateString());
+        $this->assertEquals(1.0, $leave->total_days);
+
+        // 2. Second casual leave submission in same month should fail validation
+        $response2 = $this->actingAs($employeeUser)->post(route('leaves.store'), [
+            'leave_type' => 'casual_leave',
+            'from_date' => '2026-06-15',
+            'to_date' => '2026-06-15',
+            'reason' => 'Another event',
+        ]);
+        $response2->assertSessionHasErrors('leave_type');
+    }
+
+    public function test_casual_leave_disabled_if_two_half_days_taken()
+    {
+        $employeeUser = $this->employee;
+
+        // 1. Take first half day
+        $this->actingAs($employeeUser)->post(route('leaves.store'), [
+            'leave_type' => 'half_day',
+            'half_day_session' => 'morning',
+            'from_date' => '2026-06-01',
+            'to_date' => '2026-06-01',
+            'reason' => 'Appointment 1',
+        ])->assertRedirect();
+
+        // 2. Take second half day
+        $this->actingAs($employeeUser)->post(route('leaves.store'), [
+            'leave_type' => 'half_day',
+            'half_day_session' => 'evening',
+            'from_date' => '2026-06-02',
+            'to_date' => '2026-06-02',
+            'reason' => 'Appointment 2',
+        ])->assertRedirect();
+
+        // 3. Trying to apply for a casual leave should fail now because 2 half days were taken
+        $response = $this->actingAs($employeeUser)->post(route('leaves.store'), [
+            'leave_type' => 'casual_leave',
+            'from_date' => '2026-06-10',
+            'to_date' => '2026-06-10',
+            'reason' => 'Some event',
+        ]);
+        $response->assertSessionHasErrors('leave_type');
+    }
+
+    public function test_sick_leave_limit_and_document_upload()
+    {
+        $employeeUser = $this->employee;
+
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $file = \Illuminate\Http\UploadedFile::fake()->create('medical.pdf', 100);
+
+        // 1. Apply for sick leave with medical document upload (date range should be overridden to a single date)
+        $response1 = $this->actingAs($employeeUser)->post(route('leaves.store'), [
+            'leave_type' => 'sick_leave',
+            'from_date' => '2026-06-05',
+            'to_date' => '2026-06-08', // should be overridden to 2026-06-05
+            'reason' => 'Sick leave request',
+            'medical_document' => $file
+        ]);
+        $response1->assertRedirect(route('leaves.index'));
+
+        // Assert attachment was stored and dates/days are overridden
+        $leave = \App\Models\Leave::where('user_id', $employeeUser->id)->where('leave_type', 'sick_leave')->first();
+        $this->assertNotNull($leave);
+        $this->assertEquals('2026-06-05', $leave->to_date->toDateString());
+        $this->assertEquals(1.0, $leave->total_days);
+        $this->assertCount(1, $leave->attachments);
+        \Illuminate\Support\Facades\Storage::disk('public')->assertExists($leave->attachments[0]);
+
+        // 2. Applying for second sick leave should fail
+        $response2 = $this->actingAs($employeeUser)->post(route('leaves.store'), [
+            'leave_type' => 'sick_leave',
+            'from_date' => '2026-06-20',
+            'to_date' => '2026-06-21',
+            'reason' => 'Flu',
+        ]);
+        $response2->assertSessionHasErrors('leave_type');
+    }
+
+    public function test_leave_request_date_overlap_validation()
+    {
+        $employeeUser = $this->employee;
+
+        // 1. Create a pending leave request
+        $leave = \App\Models\Leave::create([
+            'user_id' => $employeeUser->id,
+            'leave_type' => 'unpaid_leave',
+            'from_date' => '2026-06-15',
+            'to_date' => '2026-06-15',
+            'reason' => 'Pending request',
+            'status' => 'pending'
+        ]);
+
+        // 2. Try to apply again for the same date -> should fail overlap check
+        $response = $this->actingAs($employeeUser)->post(route('leaves.store'), [
+            'leave_type' => 'half_day',
+            'half_day_session' => 'morning',
+            'from_date' => '2026-06-15',
+            'to_date' => '2026-06-15',
+            'reason' => 'Another request on same day',
+        ]);
+        $response->assertSessionHasErrors('from_date');
+
+        // 3. Reject the pending leave
+        $leave->update(['status' => 'rejected']);
+
+        // 4. Try to apply again for the same date -> should now succeed because previous is rejected
+        $response2 = $this->actingAs($employeeUser)->post(route('leaves.store'), [
+            'leave_type' => 'half_day',
+            'half_day_session' => 'morning',
+            'from_date' => '2026-06-15',
+            'to_date' => '2026-06-15',
+            'reason' => 'Another request on same day',
+        ]);
+        $response2->assertRedirect(route('leaves.index'));
+    }
+
+    public function test_leave_request_sends_direct_messages_to_tl_hr_and_admins()
+    {
+        $employeeUser = $this->employee;
+
+        // 1. Create a Team Leader user
+        $tlRole = Role::where('slug', 'team-leader')->first();
+        $teamLeaderUser = User::factory()->create([
+            'role_id' => $tlRole->id,
+        ]);
+
+        // 2. Set the teamLeaderUser as team_leader_id on employeeUser's Employee record
+        $employeeRecord = \App\Models\Employee::where('user_id', $employeeUser->id)->first();
+        if (!$employeeRecord) {
+            $employeeRecord = \App\Models\Employee::create([
+                'user_id' => $employeeUser->id,
+                'employee_code' => 'EMP-TEST',
+                'status' => 'active',
+                'joining_date' => now(),
+            ]);
+        }
+        $employeeRecord->update([
+            'team_leader_id' => $teamLeaderUser->id,
+        ]);
+
+        // 3. Create an HR user
+        $hrRole = Role::where('slug', 'hr')->first();
+        $hrUser = User::factory()->create([
+            'role_id' => $hrRole->id,
+        ]);
+
+        // 4. Create an Admin user (in addition to superAdmin who is already created in setUp)
+        $adminRole = Role::where('slug', 'admin')->first();
+        $adminUser = User::factory()->create([
+            'role_id' => $adminRole->id,
+        ]);
+
+        // Clear any direct messages in DB just in case
+        \App\Models\DirectMessage::query()->truncate();
+
+        // 5. Post a leave request (unpaid_leave for 3 days)
+        $response = $this->actingAs($employeeUser)->post(route('leaves.store'), [
+            'leave_type' => 'unpaid_leave',
+            'from_date' => '2026-06-15',
+            'to_date' => '2026-06-17',
+            'reason' => 'Family event',
+        ]);
+        $response->assertRedirect(route('leaves.index'));
+
+        // 6. Assert that direct messages were sent to:
+        //    - teamLeaderUser
+        //    - hrUser
+        //    - adminUser
+        //    - superAdmin
+        $this->assertDatabaseHas('direct_messages', [
+            'sender_id' => $employeeUser->id,
+            'receiver_id' => $teamLeaderUser->id,
+        ]);
+
+        $this->assertDatabaseHas('direct_messages', [
+            'sender_id' => $employeeUser->id,
+            'receiver_id' => $hrUser->id,
+        ]);
+
+        $this->assertDatabaseHas('direct_messages', [
+            'sender_id' => $employeeUser->id,
+            'receiver_id' => $adminUser->id,
+        ]);
+
+        $this->assertDatabaseHas('direct_messages', [
+            'sender_id' => $employeeUser->id,
+            'receiver_id' => $this->superAdmin->id,
+        ]);
+
+        // Check content of one of the messages
+        $dm = \App\Models\DirectMessage::where('sender_id', $employeeUser->id)
+            ->where('receiver_id', $teamLeaderUser->id)
+            ->first();
+        $this->assertNotNull($dm);
+        $this->assertStringContainsString('Unpaid Leave', $dm->message);
+        $this->assertStringContainsString('Family event', $dm->message);
+        $this->assertStringContainsString('15-06-2026 to 17-06-2026', $dm->message);
+
+        // 7. Approve the leave request as HR user
+        $leave = \App\Models\Leave::where('user_id', $employeeUser->id)->first();
+        
+        // Truncate messages table to only count the new approval messages
+        \App\Models\DirectMessage::query()->truncate();
+
+        $hrApprovalResponse = $this->actingAs($hrUser)->post(route('leaves.approve-hr', $leave), [
+            'comment' => 'Fully approved by HR',
+        ]);
+        $hrApprovalResponse->assertRedirect();
+
+        // 8. Assert that direct messages were sent from hrUser to:
+        //    - employeeUser
+        //    - teamLeaderUser
+        //    - adminUser
+        //    - superAdmin
+        // 8. Assert that direct messages were sent:
+        //    - From hrUser to employeeUser
+        $this->assertDatabaseHas('direct_messages', [
+            'sender_id' => $hrUser->id,
+            'receiver_id' => $employeeUser->id,
+        ]);
+
+        //    - From employeeUser (as sender) to other managers (teamLeaderUser, adminUser, superAdmin)
+        $this->assertDatabaseHas('direct_messages', [
+            'sender_id' => $employeeUser->id,
+            'receiver_id' => $teamLeaderUser->id,
+        ]);
+
+        $this->assertDatabaseHas('direct_messages', [
+            'sender_id' => $employeeUser->id,
+            'receiver_id' => $adminUser->id,
+        ]);
+
+        $this->assertDatabaseHas('direct_messages', [
+            'sender_id' => $employeeUser->id,
+            'receiver_id' => $this->superAdmin->id,
+        ]);
+
+        // Check content of the message to the employee
+        $dmApproval = \App\Models\DirectMessage::where('sender_id', $hrUser->id)
+            ->where('receiver_id', $employeeUser->id)
+            ->first();
+        $this->assertNotNull($dmApproval);
+        $this->assertStringContainsString('fully approved', $dmApproval->message);
+        $this->assertStringContainsString('Fully approved by HR', $dmApproval->message);
+    }
+
+    public function test_leave_request_can_be_approved_by_admin()
+    {
+        $employeeUser = $this->employee;
+
+        // Create the Employee record
+        $employeeRecord = \App\Models\Employee::where('user_id', $employeeUser->id)->first();
+        if (!$employeeRecord) {
+            $employeeRecord = \App\Models\Employee::create([
+                'user_id' => $employeeUser->id,
+                'employee_code' => 'EMP-TEST-2',
+                'status' => 'active',
+                'joining_date' => now(),
+            ]);
+        }
+
+        // Post a leave request
+        $response = $this->actingAs($employeeUser)->post(route('leaves.store'), [
+            'leave_type' => 'unpaid_leave',
+            'from_date' => '2026-07-20',
+            'to_date' => '2026-07-22',
+            'reason' => 'Admin test leave',
+        ]);
+        $response->assertRedirect(route('leaves.index'));
+
+        $leave = \App\Models\Leave::where('user_id', $employeeUser->id)->where('leave_type', 'unpaid_leave')->first();
+        $this->assertNotNull($leave);
+
+        // Approve the leave request as Admin
+        $approvalResponse = $this->actingAs($this->superAdmin)->post(route('leaves.approve-hr', $leave), [
+            'comment' => 'Approved by admin overrides',
+        ]);
+        $approvalResponse->assertRedirect();
+
+        $leave->refresh();
+        $this->assertEquals('approved', $leave->status);
+        $this->assertEquals('approved', $leave->hr_status);
+        $this->assertEquals($this->superAdmin->id, $leave->hr_id);
+    }
+
+    public function test_employee_dashboard_displays_leaves_correctly()
+    {
+        $employeeUser = $this->employee;
+
+        // 1. Create a past approved leave (should not appear in activeApprovedLeaves)
+        \App\Models\Leave::create([
+            'user_id' => $employeeUser->id,
+            'leave_type' => 'casual_leave',
+            'from_date' => now()->subDays(10)->toDateString(),
+            'to_date' => now()->subDays(8)->toDateString(),
+            'total_days' => 3,
+            'reason' => 'Past leave',
+            'status' => 'approved',
+            'hr_status' => 'approved',
+        ]);
+
+        // 2. Create an upcoming/active approved leave (should appear in activeApprovedLeaves)
+        \App\Models\Leave::create([
+            'user_id' => $employeeUser->id,
+            'leave_type' => 'sick_leave',
+            'from_date' => now()->addDays(2)->toDateString(),
+            'to_date' => now()->addDays(3)->toDateString(),
+            'total_days' => 2,
+            'reason' => 'Upcoming leave',
+            'status' => 'approved',
+            'hr_status' => 'approved',
+        ]);
+
+        // 3. Create a pending leave (should appear in leaveRequests but not activeApprovedLeaves)
+        \App\Models\Leave::create([
+            'user_id' => $employeeUser->id,
+            'leave_type' => 'unpaid_leave',
+            'from_date' => now()->addDays(5)->toDateString(),
+            'to_date' => now()->addDays(6)->toDateString(),
+            'total_days' => 2,
+            'reason' => 'Pending leave',
+            'status' => 'pending',
+        ]);
+
+        $response = $this->actingAs($employeeUser)->get(route('dashboard'));
+        $response->assertStatus(200);
+
+        // Check view data
+        $response->assertViewHas('leaveRequests');
+        $response->assertViewHas('activeApprovedLeaves');
+
+        $activeLeaves = $response->viewData('activeApprovedLeaves');
+        $allRequests = $response->viewData('leaveRequests');
+
+        // The upcoming sick leave should be in both lists
+        $this->assertTrue($activeLeaves->contains('leave_type', 'sick_leave'));
+        // The past casual leave should not be in the active list (ended)
+        $this->assertFalse($activeLeaves->contains('leave_type', 'casual_leave'));
+        // The pending unpaid leave should not be in the active list (not approved)
+        $this->assertFalse($activeLeaves->contains('leave_type', 'unpaid_leave'));
+
+        // All three should be in the all requests list
+        $this->assertTrue($allRequests->contains('leave_type', 'sick_leave'));
+        $this->assertTrue($allRequests->contains('leave_type', 'casual_leave'));
+        $this->assertTrue($allRequests->contains('leave_type', 'unpaid_leave'));
+    }
+
+    public function test_employee_can_revoke_and_delete_leave_request()
+    {
+        $employeeUser = $this->employee;
+
+        // 1. Create a leave request
+        $leave = \App\Models\Leave::create([
+            'user_id' => $employeeUser->id,
+            'leave_type' => 'casual_leave',
+            'from_date' => '2026-08-10',
+            'to_date' => '2026-08-10',
+            'total_days' => 1,
+            'reason' => 'Revoke test',
+            'status' => 'pending',
+        ]);
+
+        // 2. Create a corresponding attendance log
+        $attendance = \App\Models\Attendance::create([
+            'user_id' => $employeeUser->id,
+            'date' => '2026-08-10',
+            'status' => 'on_leave',
+            'company_id' => $employeeUser->company_id ?: 1,
+        ]);
+
+        // 3. Create a corresponding direct message notification
+        $message = \App\Models\DirectMessage::create([
+            'sender_id' => $employeeUser->id,
+            'receiver_id' => $this->superAdmin->id,
+            'message' => "Hello, I have submitted a leave request. View here: http://127.0.0.1:8000/leaves/{$leave->id}",
+            'company_id' => $employeeUser->company_id ?: 1,
+        ]);
+
+        // Assert database has them
+        $this->assertDatabaseHas('leaves', ['id' => $leave->id]);
+        $this->assertDatabaseHas('attendance', ['id' => $attendance->id]);
+        $this->assertDatabaseHas('direct_messages', ['id' => $message->id]);
+
+        // Revoke the leave request
+        $response = $this->actingAs($employeeUser)
+            ->from(route('dashboard'))
+            ->delete(route('leaves.destroy', $leave));
+        $response->assertRedirect(route('dashboard'));
+
+        // Assert they are deleted from the database
+        $this->assertDatabaseMissing('leaves', ['id' => $leave->id]);
+        $this->assertDatabaseMissing('attendance', ['id' => $attendance->id]);
+        $this->assertDatabaseMissing('direct_messages', ['id' => $message->id]);
     }
 }

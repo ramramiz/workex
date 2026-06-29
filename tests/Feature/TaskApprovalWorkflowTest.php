@@ -174,7 +174,7 @@ class TaskApprovalWorkflowTest extends TestCase
         $this->assertDatabaseHas('task_comments', [
             'task_id' => $this->task->id,
             'user_id' => $this->developerHisham->id,
-            'comment' => "🚀 **Submitted task for completion review**\n\n**Description:** Finished implementation.\n**Test URL:** [https://biznx.example.com/test](https://biznx.example.com/test)",
+            'comment' => "🚀 **Submitted task for completion review**\n\n**Description:** Finished implementation.\n**Test URL:** [https://biznx.example.com/test](https://biznx.example.com/test)\n\n@Admin, please review and approve my work.",
         ]);
     }
 

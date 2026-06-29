@@ -66,12 +66,22 @@ class DirectChatController extends Controller
             ->orderBy('created_at', 'asc')
             ->get()
             ->map(function ($m) {
+                $leaveStatus = null;
+                if ($m->message && (str_contains($m->message, 'submitted a leave request') || str_contains($m->message, 'leave request for'))) {
+                    if (preg_match('/leaves\/(\d+)/', $m->message, $matches)) {
+                        $leaveId = $matches[1];
+                        $leaveStatus = \App\Models\Leave::find($leaveId)?->status;
+                    }
+                }
+
                 return [
                     'id' => $m->id,
                     'sender_id' => $m->sender_id,
                     'receiver_id' => $m->receiver_id,
                     'message' => $m->message,
                     'image_url' => $m->image_path ? asset('storage/' . $m->image_path) : null,
+                    'file_url' => $m->file_path ? asset('storage/' . $m->file_path) : null,
+                    'file_name' => $m->file_name,
                     'formatted_time' => $m->created_at->format('d M Y, h:i A'),
                     'time' => $m->created_at->format('h:i A'),
                     'date' => $m->created_at->format('d M Y'),
@@ -82,6 +92,7 @@ class DirectChatController extends Controller
                     'is_pinned' => $m->is_pinned,
                     'is_important' => $m->is_important,
                     'is_editable' => ($m->sender_id === auth()->id() && $m->created_at->diffInMinutes(now()) < 30),
+                    'leave_status' => $leaveStatus,
                     'seen_by' => $m->read_at ? [
                         [
                             'name' => $m->receiver->name,
@@ -91,6 +102,8 @@ class DirectChatController extends Controller
                     'reply_to_message' => $m->parent ? [
                         'sender_name' => $m->parent->sender_id === auth()->id() ? 'You' : $m->parent->sender->name,
                         'message' => $m->parent->message,
+                        'image_url' => $m->parent->image_path ? asset('storage/' . $m->parent->image_path) : null,
+                        'file_url' => $m->parent->file_path ? asset('storage/' . $m->parent->file_path) : null,
                     ] : null,
                 ];
             });
@@ -108,6 +121,7 @@ class DirectChatController extends Controller
             'message' => 'nullable|string',
             'image' => 'nullable|image|max:10240',
             'image_data' => 'nullable|string',
+            'document' => 'nullable|file|mimes:pdf|max:20480',
             'parent_id' => 'nullable|exists:direct_messages,id',
         ]);
 
@@ -132,7 +146,15 @@ class DirectChatController extends Controller
             }
         }
 
-        if (empty($request->message) && empty($imagePath)) {
+        $documentPath = null;
+        $documentName = null;
+
+        if ($request->hasFile('document')) {
+            $documentPath = $request->file('document')->store('direct_messages/documents/' . auth()->id(), 'public');
+            $documentName = $request->file('document')->getClientOriginalName();
+        }
+
+        if (empty($request->message) && empty($imagePath) && empty($documentPath)) {
             return response()->json(['success' => false, 'message' => 'Cannot send an empty message.'], 422);
         }
 
@@ -141,6 +163,8 @@ class DirectChatController extends Controller
             'receiver_id' => $user->id,
             'message' => $request->message,
             'image_path' => $imagePath,
+            'file_path' => $documentPath,
+            'file_name' => $documentName,
             'company_id' => auth()->user()->company_id,
             'parent_id' => $request->parent_id,
         ]);
@@ -155,6 +179,8 @@ class DirectChatController extends Controller
                 'receiver_id' => $message->receiver_id,
                 'message' => $message->message,
                 'image_url' => $message->image_path ? asset('storage/' . $message->image_path) : null,
+                'file_url' => $message->file_path ? asset('storage/' . $message->file_path) : null,
+                'file_name' => $message->file_name,
                 'formatted_time' => $message->created_at->format('d M Y, h:i A'),
                 'time' => $message->created_at->format('h:i A'),
                 'date' => $message->created_at->format('d M Y'),
@@ -169,6 +195,8 @@ class DirectChatController extends Controller
                 'reply_to_message' => $message->parent ? [
                     'sender_name' => $message->parent->sender_id === auth()->id() ? 'You' : $message->parent->sender->name,
                     'message' => $message->parent->message,
+                    'image_url' => $message->parent->image_path ? asset('storage/' . $message->parent->image_path) : null,
+                    'file_url' => $message->parent->file_path ? asset('storage/' . $message->parent->file_path) : null,
                 ] : null,
             ]
         ]);
@@ -196,6 +224,8 @@ class DirectChatController extends Controller
                 'sender_avatar' => $m->sender->avatar_url,
                 'message' => $m->message,
                 'image_url' => $m->image_path ? asset('storage/' . $m->image_path) : null,
+                'file_url' => $m->file_path ? asset('storage/' . $m->file_path) : null,
+                'file_name' => $m->file_name,
                 'formatted_time' => $m->created_at->format('d M Y, h:i A'),
                 'time' => $m->created_at->format('h:i A'),
                 'date' => $m->created_at->format('d M Y'),
@@ -214,6 +244,8 @@ class DirectChatController extends Controller
                 'reply_to_message' => $m->parent ? [
                     'sender_name' => $m->parent->sender_id === auth()->id() ? 'You' : $m->parent->sender->name,
                     'message' => $m->parent->message,
+                    'image_url' => $m->parent->image_path ? asset('storage/' . $m->parent->image_path) : null,
+                    'file_url' => $m->parent->file_path ? asset('storage/' . $m->parent->file_path) : null,
                 ] : null,
             ];
         });

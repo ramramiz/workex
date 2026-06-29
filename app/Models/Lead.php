@@ -50,4 +50,20 @@ class Lead extends Model
         }
         return $query;
     }
+
+    public function scopeForClient($query, $clientId)
+    {
+        if (!$clientId) {
+            return $query;
+        }
+
+        return $query->where(function($q) use ($clientId) {
+            $q->where('leads.client_id', $clientId)
+              ->orWhereIn('leads.lead_room_id', function($sq) use ($clientId) {
+                  $sq->select('id')
+                    ->from('lead_rooms')
+                    ->where('client_id', $clientId);
+              });
+        });
+    }
 }

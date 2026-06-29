@@ -30,7 +30,7 @@ class ProjectController extends Controller
 
     public function create()
     {
-        if (!auth()->user()->isLeaderOrAbove()) {
+        if (!auth()->user()->hasPermission('projects.create')) {
             abort(403, 'Unauthorized action.');
         }
         $clients      = Client::where('status', 'active')->get();
@@ -41,7 +41,7 @@ class ProjectController extends Controller
 
     public function store(Request $request)
     {
-        if (!auth()->user()->isLeaderOrAbove()) {
+        if (!auth()->user()->hasPermission('projects.create')) {
             abort(403, 'Unauthorized action. Only Team Leaders and Admins can create projects.');
         }
         $request->validate([

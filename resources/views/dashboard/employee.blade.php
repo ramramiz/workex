@@ -141,4 +141,123 @@
         </div>
     </div>
 </div>
+
+<!-- Leaves Section -->
+<div class="row g-4 mt-4">
+    <!-- Active/Upcoming Approved Leaves -->
+    <div class="col-lg-6">
+        <div class="card border border-light-subtle shadow-sm" style="border-radius:12px;">
+            <div class="card-header bg-white border-bottom border-light-subtle d-flex justify-content-between align-items-center py-3">
+                <span class="fw-bold text-dark fs-6"><i class="bi bi-calendar-check text-success me-2"></i>Active & Upcoming Leaves</span>
+                <span class="badge bg-success-subtle text-success fs-8">{{ $activeApprovedLeaves->count() }} Active</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="px-4">Type</th>
+                                <th>Duration</th>
+                                <th>Days</th>
+                                <th class="px-4">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($activeApprovedLeaves as $leave)
+                                <tr>
+                                    <td class="px-4 fw-medium text-dark">
+                                        {{ ucwords(str_replace('_', ' ', $leave->leave_type)) }}
+                                        @if($leave->leave_type === 'half_day' && $leave->half_day_session)
+                                            <span class="text-muted" style="font-size:11px;">({{ ucfirst($leave->half_day_session) }})</span>
+                                        @endif
+                                    </td>
+                                    <td>{{ $leave->from_date->format('d M Y') }} to {{ $leave->to_date->format('d M Y') }}</td>
+                                    <td class="fw-semibold">{{ floatval($leave->total_days) }}</td>
+                                    <td class="px-4">
+                                        <span class="badge bg-success-subtle text-success py-1.5 px-2.5 rounded-pill fw-semibold" style="font-size: 10px;">
+                                            <i class="bi bi-check-circle-fill me-1"></i>Approved
+                                        </span>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="4" class="text-center py-5 text-muted">
+                                        <i class="bi bi-calendar-x fs-3 text-secondary mb-2 d-block"></i>
+                                        No active or upcoming approved leaves.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- All Leave Statuses -->
+    <div class="col-lg-6">
+        <div class="card border border-light-subtle shadow-sm" style="border-radius:12px;">
+            <div class="card-header bg-white border-bottom border-light-subtle d-flex justify-content-between align-items-center py-3">
+                <span class="fw-bold text-dark fs-6"><i class="bi bi-clock-history text-primary me-2"></i>My Leave Statuses & History</span>
+                <a href="{{ route('leaves.create') }}" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg me-1"></i>Apply Leave</a>
+            </div>
+            <div class="card-body p-0" style="max-height: 380px; overflow-y: auto;">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" style="font-size: 13px;">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="px-4">Type</th>
+                                <th>Duration</th>
+                                <th>Days</th>
+                                <th>Status</th>
+                                <th class="px-4">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($leaveRequests as $leave)
+                                <tr>
+                                    <td class="px-4 fw-medium text-dark">
+                                        {{ ucwords(str_replace('_', ' ', $leave->leave_type)) }}
+                                        @if($leave->leave_type === 'half_day' && $leave->half_day_session)
+                                            <span class="text-muted" style="font-size:11px;">({{ ucfirst($leave->half_day_session) }})</span>
+                                        @endif
+                                    </td>
+                                    <td>{{ $leave->from_date->format('d M') }} - {{ $leave->to_date->format('d M') }}</td>
+                                    <td class="fw-semibold">{{ floatval($leave->total_days) }}</td>
+                                    <td>
+                                        @if($leave->status === 'approved')
+                                            <span class="badge bg-success-subtle text-success py-1.5 px-2.5 rounded-pill fw-semibold" style="font-size: 10px;">Approved</span>
+                                        @elseif($leave->status === 'rejected')
+                                            <span class="badge bg-danger-subtle text-danger py-1.5 px-2.5 rounded-pill fw-semibold" style="font-size: 10px;">Rejected</span>
+                                        @elseif($leave->status === 'team_leader_approved')
+                                            <span class="badge bg-warning-subtle text-warning-emphasis py-1.5 px-2.5 rounded-pill fw-semibold" style="font-size: 10px;">TL Approved</span>
+                                        @else
+                                            <span class="badge bg-secondary-subtle text-secondary py-1.5 px-2.5 rounded-pill fw-semibold" style="font-size: 10px;">Pending</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-4">
+                                        <form action="{{ route('leaves.destroy', $leave) }}" method="POST" onsubmit="return confirm('Are you sure you want to revoke and delete this leave request?');" style="display:inline;">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-sm btn-outline-danger py-1 px-2.5 fw-semibold d-flex align-items-center gap-1" style="font-size: 10px; border-radius: 6px;">
+                                                <i class="bi bi-trash" style="font-size: 11px;"></i> Revoke
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="5" class="text-center py-5 text-muted">
+                                        <i class="bi bi-journal-x fs-3 text-secondary mb-2 d-block"></i>
+                                        No leave requests submitted yet.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
