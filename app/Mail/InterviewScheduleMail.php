@@ -41,7 +41,7 @@ class InterviewScheduleMail extends Mailable
     {
         $vacancyTitle = $this->application->vacancy?->title ?? 'Position';
         return $this->subject('Interview Invitation - ' . $vacancyTitle)
-                    ->from('No-Replay@teamtechsoul.com', 'Techsoul')
+                    ->from('no-replay@techsoul.support', 'Techsoul')
                     ->view('emails.interview_schedule');
     }
 }
