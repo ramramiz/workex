@@ -7,6 +7,16 @@
 
         <title>{{ config('app.name', 'Laravel') }}</title>
 
+        @php
+            $companyLogo = \App\Models\Setting::get('company_logo');
+        @endphp
+        @if($companyLogo)
+            <link rel="icon" type="image/x-icon" href="{{ asset('storage/' . $companyLogo) }}">
+            <link rel="shortcut icon" href="{{ asset('storage/' . $companyLogo) }}">
+        @else
+            <link rel="icon" type="image/x-icon" href="/favicon.ico">
+        @endif
+
         {{-- PWA --}}
         <link rel="manifest" href="/manifest.json">
         <meta name="theme-color" content="#6366f1">

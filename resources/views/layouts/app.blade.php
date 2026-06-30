@@ -28,6 +28,16 @@
     </script>
 
     <title>@yield('title', 'Dashboard') — {{ config('app.name') }}</title>
+
+    @php
+        $companyLogo = \App\Models\Setting::get('company_logo');
+    @endphp
+    @if($companyLogo)
+        <link rel="icon" type="image/x-icon" href="{{ asset('storage/' . $companyLogo) }}">
+        <link rel="shortcut icon" href="{{ asset('storage/' . $companyLogo) }}">
+    @else
+        <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    @endif
     <meta name="description" content="@yield('meta_description', 'Employee Work Monitoring & Project Management System')">
 
     <!-- Google Fonts -->
@@ -953,6 +963,9 @@
             @if(auth()->user()->isAdminOrAbove() || auth()->user()->isHR())
             <a href="{{ route('employees.index') }}" class="sidebar-item {{ request()->routeIs('employees*') ? 'active' : '' }}" data-title="Employees">
                 <i class="bi bi-people-fill nav-icon"></i><span class="nav-text">Employees</span>
+            </a>
+            <a href="{{ route('job-vacancies.index') }}" class="sidebar-item {{ request()->routeIs('job-vacancies*') ? 'active' : '' }}" data-title="Hiring">
+                <i class="bi bi-briefcase-fill nav-icon"></i><span class="nav-text">Hiring & Vacancies</span>
             </a>
             @endif
             @if(auth()->user()->hasPermission('attendance.view-own') || auth()->user()->hasPermission('attendance.view-all'))

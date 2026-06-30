@@ -29,6 +29,9 @@ use App\Http\Controllers\LeadCallController;
 use App\Http\Controllers\LeadAppointmentController;
 use App\Http\Controllers\PerformanceReportController;
 use App\Http\Controllers\SalaryDisbursalController;
+use App\Http\Controllers\JobVacancyController;
+use App\Http\Controllers\JobApplicationController;
+use App\Http\Controllers\PublicJobVacancyController;
 
 Route::get('/', function () {
     return auth()->check() ? redirect()->route('dashboard') : redirect()->route('login');
@@ -156,11 +159,25 @@ Route::get('/diagnose-storage', function () {
 // Auth routes (Breeze)
 require __DIR__.'/auth.php';
 
+// Public Careers & Job Applications
+Route::get('careers/{token}', [PublicJobVacancyController::class, 'show'])->name('careers.vacancy.show');
+Route::post('careers/{token}/apply', [PublicJobVacancyController::class, 'apply'])->name('careers.vacancy.apply');
+Route::get('careers/{token}/success', [PublicJobVacancyController::class, 'success'])->name('careers.success');
+
 // Authenticated Routes
 Route::middleware(['auth'])->group(function () {
 
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Job Vacancies & Hiring
+    Route::middleware(['role:super-admin,admin,hr'])->group(function () {
+        Route::resource('job-vacancies', JobVacancyController::class);
+        Route::get('job-vacancies/{job_vacancy}/applications', [JobVacancyController::class, 'applications'])->name('job-vacancies.applications');
+        Route::patch('job-applications/{application}/status', [JobApplicationController::class, 'updateStatus'])->name('job-applications.update-status');
+        Route::post('job-applications/schedule-interview', [JobApplicationController::class, 'scheduleInterview'])->name('job-applications.schedule-interview');
+        Route::delete('job-applications/{application}', [JobApplicationController::class, 'destroy'])->name('job-applications.destroy');
+    });
 
     // Live Status Board
     Route::middleware(['role:super-admin'])->group(function () {
