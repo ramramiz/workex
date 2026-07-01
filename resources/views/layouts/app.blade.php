@@ -967,6 +967,9 @@
             <a href="{{ route('job-vacancies.index') }}" class="sidebar-item {{ request()->routeIs('job-vacancies*') ? 'active' : '' }}" data-title="Hiring">
                 <i class="bi bi-briefcase-fill nav-icon"></i><span class="nav-text">Hiring & Vacancies</span>
             </a>
+            <a href="{{ route('interns.index') }}" class="sidebar-item {{ request()->routeIs('interns*') ? 'active' : '' }}" data-title="Interns">
+                <i class="bi bi-award-fill nav-icon"></i><span class="nav-text">Interns Directory</span>
+            </a>
             @endif
             @if(auth()->user()->hasPermission('attendance.view-own') || auth()->user()->hasPermission('attendance.view-all'))
             <a href="{{ route('attendance.index') }}" class="sidebar-item {{ request()->routeIs('attendance*') ? 'active' : '' }}" data-title="Attendance">

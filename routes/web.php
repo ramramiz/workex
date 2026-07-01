@@ -32,6 +32,7 @@ use App\Http\Controllers\SalaryDisbursalController;
 use App\Http\Controllers\JobVacancyController;
 use App\Http\Controllers\JobApplicationController;
 use App\Http\Controllers\PublicJobVacancyController;
+use App\Http\Controllers\InternController;
 
 Route::get('/', function () {
     return auth()->check() ? redirect()->route('dashboard') : redirect()->route('login');
@@ -164,6 +165,11 @@ Route::get('careers/{token}', [PublicJobVacancyController::class, 'show'])->name
 Route::post('careers/{token}/apply', [PublicJobVacancyController::class, 'apply'])->name('careers.vacancy.apply');
 Route::get('careers/{token}/success', [PublicJobVacancyController::class, 'success'])->name('careers.success');
 
+// Public Certificate Verification
+Route::get('verify-certificate/{code}', [InternController::class, 'verifyPublic'])
+    ->name('interns.verify.public')
+    ->where('code', '.*');
+
 // Authenticated Routes
 Route::middleware(['auth'])->group(function () {
 
@@ -178,6 +184,11 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('job-applications/{application}/status', [JobApplicationController::class, 'updateStatus'])->name('job-applications.update-status');
         Route::post('job-applications/schedule-interview', [JobApplicationController::class, 'scheduleInterview'])->name('job-applications.schedule-interview');
         Route::delete('job-applications/{application}', [JobApplicationController::class, 'destroy'])->name('job-applications.destroy');
+        
+        // Interns
+        Route::get('interns/{intern}/certificate', [InternController::class, 'generateCertificate'])->name('interns.certificate');
+        Route::get('interns/{intern}/qr-code', [InternController::class, 'downloadQrCode'])->name('interns.qr-code');
+        Route::resource('interns', InternController::class);
     });
 
     // Live Status Board
