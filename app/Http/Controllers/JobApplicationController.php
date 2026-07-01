@@ -39,6 +39,21 @@ class JobApplicationController extends Controller
                     'interview_time' => $request->interview_time,
                     'interview_venue' => $request->interview_venue,
                 ]);
+
+                // Log the sent message
+                \App\Models\HiringMailLog::create([
+                    'company_id' => $app->company_id,
+                    'job_application_id' => $app->id,
+                    'candidate_name' => $app->name,
+                    'candidate_email' => $app->email,
+                    'vacancy_title' => $app->vacancy?->title ?? 'Position',
+                    'subject' => 'Interview Invitation - ' . ($app->vacancy?->title ?? 'Position'),
+                    'interview_date' => $request->interview_date,
+                    'interview_time' => $request->interview_time,
+                    'interview_venue' => $request->interview_venue,
+                    'sent_by' => auth()->id(),
+                ]);
+
                 $sentCount++;
             } catch (\Exception $e) {
                 Log::error('Failed sending interview call to candidate ' . $app->id . ': ' . $e->getMessage());

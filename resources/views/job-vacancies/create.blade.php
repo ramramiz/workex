@@ -63,6 +63,11 @@
                             </select>
                             @error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
+                        <div class="col-12">
+                            <label class="form-label">Salary Note / Range <span class="text-muted">(Optional, shown below Salary Expectations on application form)</span></label>
+                            <input type="text" name="salary_note" id="salary_note" class="form-control @error('salary_note') is-invalid @enderror" value="{{ old('salary_note') }}">
+                            @error('salary_note')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
                     </div>
 
                     <h6 class="text-uppercase text-primary fw-semibold fs-7 mb-3 border-bottom pb-2">Description & Requirements</h6>
@@ -88,4 +93,31 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const titleInput = document.querySelector('input[name="title"]');
+        const salaryNoteInput = document.getElementById('salary_note');
+        
+        if (titleInput && salaryNoteInput) {
+            // Set initial default value on load if empty
+            if (!salaryNoteInput.value) {
+                salaryNoteInput.value = 'For Senior Software Engineer, we will provide a salary in the range of 15,000 to 20,000.';
+            }
+
+            salaryNoteInput.addEventListener('input', function() {
+                salaryNoteInput.dataset.manuallyEdited = 'true';
+            });
+            
+            titleInput.addEventListener('input', function() {
+                if (salaryNoteInput.dataset.manuallyEdited !== 'true') {
+                    const jobTitle = this.value.trim() || 'Senior Software Engineer';
+                    salaryNoteInput.value = `For ${jobTitle}, we will provide a salary in the range of 15,000 to 20,000.`;
+                }
+            });
+        }
+    });
+</script>
+@endpush
 @endsection

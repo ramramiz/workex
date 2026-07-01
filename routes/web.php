@@ -172,6 +172,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Job Vacancies & Hiring
     Route::middleware(['role:super-admin,admin,hr'])->group(function () {
+        Route::get('job-vacancies/mail-logs', [JobVacancyController::class, 'mailLogs'])->name('job-vacancies.mail-logs');
         Route::resource('job-vacancies', JobVacancyController::class);
         Route::get('job-vacancies/{job_vacancy}/applications', [JobVacancyController::class, 'applications'])->name('job-vacancies.applications');
         Route::patch('job-applications/{application}/status', [JobApplicationController::class, 'updateStatus'])->name('job-applications.update-status');

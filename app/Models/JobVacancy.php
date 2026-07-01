@@ -20,6 +20,7 @@ class JobVacancy extends Model
         'location',
         'job_type',
         'status',
+        'salary_note',
         'token',
     ];
 

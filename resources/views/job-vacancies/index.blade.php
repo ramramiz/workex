@@ -11,9 +11,14 @@
 <div class="card shadow-sm border-0">
     <div class="card-header bg-white d-flex align-items-center justify-content-between py-3">
         <h5 class="mb-0 fw-bold text-dark">Job Vacancies</h5>
-        <a href="{{ route('job-vacancies.create') }}" class="btn btn-primary d-inline-flex align-items-center gap-2">
-            <i class="bi bi-plus-lg"></i> Register New Vacancy
-        </a>
+        <div class="d-flex gap-2">
+            <a href="{{ route('job-vacancies.mail-logs') }}" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" style="border-radius: 8px;">
+                <i class="bi bi-envelope-paper-fill"></i> Sent Mails Log
+            </a>
+            <a href="{{ route('job-vacancies.create') }}" class="btn btn-primary d-inline-flex align-items-center gap-2" style="border-radius: 8px;">
+                <i class="bi bi-plus-lg"></i> Register New Vacancy
+            </a>
+        </div>
     </div>
     
     @if(session('success'))

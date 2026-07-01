@@ -342,6 +342,12 @@
                                 <input type="text" name="salary_expectation" class="form-control @error('salary_expectation') is-invalid @enderror" 
                                        value="{{ old('salary_expectation') }}" required>
                                 @error('salary_expectation')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                @if($vacancy->salary_note)
+                                    <div class="form-text text-muted mt-1.5 fw-medium d-flex align-items-center gap-1.5" style="font-size: 0.82rem; color: #4f46e5 !important;">
+                                        <i class="bi bi-info-circle-fill"></i>
+                                        <span>{{ $vacancy->salary_note }}</span>
+                                    </div>
+                                @endif
                             </div>
 
                             <!-- Relocation -->

@@ -34,6 +34,7 @@ class JobVacancyController extends Controller
             'location' => 'nullable|string|max:255',
             'job_type' => 'required|string|max:255',
             'status' => 'required|in:active,inactive',
+            'salary_note' => 'nullable|string|max:1000',
         ]);
 
         JobVacancy::create($data);
@@ -57,6 +58,7 @@ class JobVacancyController extends Controller
             'location' => 'nullable|string|max:255',
             'job_type' => 'required|string|max:255',
             'status' => 'required|in:active,inactive',
+            'salary_note' => 'nullable|string|max:1000',
         ]);
 
         $jobVacancy->update($data);
@@ -74,5 +76,14 @@ class JobVacancyController extends Controller
     {
         $applications = $jobVacancy->applications()->latest()->paginate(20);
         return view('job-vacancies.applications', compact('jobVacancy', 'applications'));
+    }
+
+    public function mailLogs(Request $request)
+    {
+        $logs = \App\Models\HiringMailLog::with(['application', 'sender'])
+            ->latest()
+            ->paginate(20);
+
+        return view('job-vacancies.mail-logs', compact('logs'));
     }
 }
