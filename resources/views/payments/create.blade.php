@@ -55,10 +55,10 @@
                         <label class="form-label">Payment Mode <span class="text-danger">*</span></label>
                         <select name="payment_mode" class="form-select @error('payment_mode') is-invalid @enderror" required>
                             <option value="">-- Select Mode --</option>
-                            <option value="bank_transfer" {{ old('payment_mode') === 'bank_transfer' ? 'selected' : '' }}>Bank Wire Transfer</option>
-                            <option value="online" {{ old('payment_mode') === 'online' ? 'selected' : '' }}>Online Card/UPI</option>
-                            <option value="cheque" {{ old('payment_mode') === 'cheque' ? 'selected' : '' }}>Cheque</option>
-                            <option value="cash" {{ old('payment_mode') === 'cash' ? 'selected' : '' }}>Cash</option>
+                            <option value="Cash" {{ old('payment_mode') === 'Cash' ? 'selected' : '' }}>Cash</option>
+                            @foreach($banks as $bank)
+                                <option value="{{ $bank->name }}" {{ old('payment_mode') === $bank->name ? 'selected' : '' }}>{{ $bank->name }} - {{ $bank->branch }} - ****{{ substr($bank->account_number, -4) }}</option>
+                            @endforeach
                         </select>
                         @error('payment_mode')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>

@@ -15,6 +15,7 @@ use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\BugController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\ProformaInvoiceController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\SupportTicketController;
@@ -52,22 +53,22 @@ Route::get('/diagnose-storage', function () {
     
     // Check actual directory
     if (is_dir($storageRealPath)) {
-        $output .= "<p style='color: green;'>✔ Actual storage directory exists.</p>";
+        $output .= "<p style='color: green;'>âœ” Actual storage directory exists.</p>";
         $output .= "<p>Actual storage directory permissions: " . substr(sprintf('%o', fileperms($storageRealPath)), -4) . "</p>";
     } else {
-        $output .= "<p style='color: red;'>✘ Actual storage directory does NOT exist at {$storageRealPath}!</p>";
+        $output .= "<p style='color: red;'>âœ˜ Actual storage directory does NOT exist at {$storageRealPath}!</p>";
         // Try to create it
         if (mkdir($storageRealPath, 0755, true)) {
-            $output .= "<p style='color: green;'>✔ Created actual storage directory.</p>";
+            $output .= "<p style='color: green;'>âœ” Created actual storage directory.</p>";
         } else {
-            $output .= "<p style='color: red;'>✘ Failed to create actual storage directory.</p>";
+            $output .= "<p style='color: red;'>âœ˜ Failed to create actual storage directory.</p>";
         }
     }
     
     // Check reports directory
     $reportsPath = $storageRealPath . '/reports';
     if (is_dir($reportsPath)) {
-        $output .= "<p style='color: green;'>✔ 'reports' directory exists inside actual storage.</p>";
+        $output .= "<p style='color: green;'>âœ” 'reports' directory exists inside actual storage.</p>";
         $output .= "<p>'reports' directory permissions: " . substr(sprintf('%o', fileperms($reportsPath)), -4) . "</p>";
         
         // List files in reports directory
@@ -83,7 +84,7 @@ Route::get('/diagnose-storage', function () {
         }
         $output .= "</ul>";
     } else {
-        $output .= "<p style='color: orange;'>⚠ 'reports' directory does NOT exist yet. (It will be created when a report is saved).</p>";
+        $output .= "<p style='color: orange;'>âš  'reports' directory does NOT exist yet. (It will be created when a report is saved).</p>";
     }
 
     // Check public storage link
@@ -95,15 +96,15 @@ Route::get('/diagnose-storage', function () {
             $target = readlink($storageLinkPath);
             $output .= "<p><b>Link target:</b> {$target}</p>";
             if (file_exists($target)) {
-                $output .= "<p style='color: green;'>✔ Link target exists and is accessible.</p>";
+                $output .= "<p style='color: green;'>âœ” Link target exists and is accessible.</p>";
             } else {
-                $output .= "<p style='color: red;'>✘ Link target does NOT exist! (Broken symbolic link)</p>";
+                $output .= "<p style='color: red;'>âœ˜ Link target does NOT exist! (Broken symbolic link)</p>";
             }
         } else {
-            $output .= "<p style='color: orange;'>⚠ public/storage exists but is a regular DIRECTORY/FILE, not a symbolic link! This will prevent proper symlinking.</p>";
+            $output .= "<p style='color: orange;'>âš  public/storage exists but is a regular DIRECTORY/FILE, not a symbolic link! This will prevent proper symlinking.</p>";
         }
     } else {
-        $output .= "<p style='color: red;'>✘ public/storage does NOT exist at all.</p>";
+        $output .= "<p style='color: red;'>âœ˜ public/storage does NOT exist at all.</p>";
     }
 
     // Actions
@@ -114,14 +115,14 @@ Route::get('/diagnose-storage', function () {
         if (file_exists($storageLinkPath) || is_link($storageLinkPath)) {
             $removed = @rmdir($storageLinkPath) || @unlink($storageLinkPath);
             if ($removed) {
-                $output .= "<p style='color: green;'>✔ Successfully removed existing symbolic link/directory.</p>";
+                $output .= "<p style='color: green;'>âœ” Successfully removed existing symbolic link/directory.</p>";
             } else {
                 // If rmdir and unlink failed, it might be a real non-empty directory. Rename it to preserve files.
                 $backupPath = $storageLinkPath . '_backup_' . time();
                 if (rename($storageLinkPath, $backupPath)) {
-                    $output .= "<p style='color: green;'>✔ Successfully renamed public/storage directory to {$backupPath} to free up path.</p>";
+                    $output .= "<p style='color: green;'>âœ” Successfully renamed public/storage directory to {$backupPath} to free up path.</p>";
                 } else {
-                    $output .= "<p style='color: red;'>✘ Failed to remove or rename public/storage directory.</p>";
+                    $output .= "<p style='color: red;'>âœ˜ Failed to remove or rename public/storage directory.</p>";
                 }
             }
         }
@@ -129,23 +130,23 @@ Route::get('/diagnose-storage', function () {
         // Recreate storage link using PHP symlink
         try {
             if (symlink($storageRealPath, $storageLinkPath)) {
-                $output .= "<p style='color: green;'><b>✔ Successfully created symbolic link via PHP symlink()!</b></p>";
+                $output .= "<p style='color: green;'><b>âœ” Successfully created symbolic link via PHP symlink()!</b></p>";
             } else {
-                $output .= "<p style='color: red;'>✘ symlink() returned false.</p>";
+                $output .= "<p style='color: red;'>âœ˜ symlink() returned false.</p>";
                 // Try Artisan storage:link
                 \Illuminate\Support\Facades\Artisan::call('storage:link');
                 $artisanOutput = \Illuminate\Support\Facades\Artisan::output();
                 $output .= "<p>Artisan storage:link output: <pre>{$artisanOutput}</pre></p>";
             }
         } catch (\Throwable $e) {
-            $output .= "<p style='color: red;'>✘ Error: {$e->getMessage()}</p>";
+            $output .= "<p style='color: red;'>âœ˜ Error: {$e->getMessage()}</p>";
             // Try Artisan storage:link
             try {
                 \Illuminate\Support\Facades\Artisan::call('storage:link');
                 $artisanOutput = \Illuminate\Support\Facades\Artisan::output();
                 $output .= "<p>Artisan storage:link output: <pre>{$artisanOutput}</pre></p>";
             } catch (\Throwable $ex) {
-                $output .= "<p style='color: red;'>✘ Artisan storage:link also failed: {$ex->getMessage()}</p>";
+                $output .= "<p style='color: red;'>âœ˜ Artisan storage:link also failed: {$ex->getMessage()}</p>";
             }
         }
         
@@ -175,6 +176,9 @@ Route::middleware(['auth'])->group(function () {
 
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Global Search (AJAX)
+    Route::get('/search', [\App\Http\Controllers\GlobalSearchController::class, 'search'])->name('global.search');
 
     // Job Vacancies & Hiring
     Route::middleware(['role:super-admin,admin,hr'])->group(function () {
@@ -213,6 +217,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('employees/{employee}/toggle-status', [EmployeeController::class, 'toggleStatus'])->name('employees.toggle-status');
     Route::get('employees/{employee}/permissions', [EmployeeController::class, 'getPermissions'])->name('employees.permissions.get');
     Route::post('employees/{employee}/permissions', [EmployeeController::class, 'updatePermissions'])->name('employees.permissions.update');
+    Route::post('employees/{employee}/login-as', [EmployeeController::class, 'loginAs'])->name('employees.login-as');
+    Route::post('employees/return-account', [EmployeeController::class, 'returnAccount'])->name('employees.return-account');
 
     // Employee Session Management
     Route::get('users/{user}/sessions', [\App\Http\Controllers\UserSessionController::class, 'index'])->name('users.sessions.index');
@@ -225,6 +231,9 @@ Route::middleware(['auth'])->group(function () {
 
     // Clients
     Route::post('clients/quick-store', [ClientController::class, 'quickStore'])->name('clients.quick-store');
+    Route::get('clients/import/template', [ClientController::class, 'downloadTemplate'])->name('clients.import.template');
+    Route::post('clients/import/preview', [ClientController::class, 'preview'])->name('clients.import.preview');
+    Route::post('clients/import/submit', [ClientController::class, 'submit'])->name('clients.import.submit');
     Route::resource('clients', ClientController::class);
 
     // Lead Import
@@ -234,6 +243,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('leads/import/submit', [\App\Http\Controllers\LeadImportController::class, 'submit'])->name('leads.import.submit');
 
     // Leads
+    Route::post('leads/export-customer-leads', [LeadController::class, 'exportCustomerLeads'])->name('leads.export-customer-leads');
     Route::resource('leads', LeadController::class);
     Route::post('leads/{lead}/follow-up', [LeadController::class, 'addFollowUp'])->name('leads.follow-up');
     Route::post('leads/{lead}/convert', [LeadController::class, 'convert'])->name('leads.convert');
@@ -256,9 +266,14 @@ Route::middleware(['auth'])->group(function () {
     // Projects, Meetings, Daily Reports, Attendance, and Bug Listings restricted to non-employees
     Route::middleware(['role:super-admin,admin,team-leader,hr,accounts'])->group(function () {
         // Projects
+        Route::get('projects/previews', [ProjectController::class, 'previews'])->name('projects.previews');
+        Route::get('projects/import/template', [ProjectController::class, 'downloadTemplate'])->name('projects.import.template');
+        Route::post('projects/import/preview', [ProjectController::class, 'preview'])->name('projects.import.preview');
+        Route::post('projects/import/submit', [ProjectController::class, 'submit'])->name('projects.import.submit');
         Route::resource('projects', ProjectController::class);
         Route::post('projects/{project}/update-status', [ProjectController::class, 'updateStatus'])->name('projects.update-status');
         Route::post('projects/{project}/team', [ProjectController::class, 'updateTeam'])->name('projects.team.update');
+        Route::post('projects/{project}/discontinue', [ProjectController::class, 'discontinue'])->name('projects.discontinue');
 
         // Meetings
         Route::resource('meetings', MeetingController::class);
@@ -309,11 +324,37 @@ Route::middleware(['auth'])->group(function () {
     Route::get('invoices/{invoice}/pdf', [InvoiceController::class, 'pdf'])->name('invoices.pdf');
     Route::post('invoices/{invoice}/send', [InvoiceController::class, 'send'])->name('invoices.send');
 
+    // Proforma Invoices
+    Route::resource('proforma-invoices', ProformaInvoiceController::class);
+    Route::get('proforma-invoices/{proforma_invoice}/pdf', [ProformaInvoiceController::class, 'pdf'])->name('proforma-invoices.pdf');
+    Route::post('proforma-invoices/{proforma_invoice}/send', [ProformaInvoiceController::class, 'send'])->name('proforma-invoices.send');
+    Route::post('proforma-invoices/{proforma_invoice}/convert', [ProformaInvoiceController::class, 'convertToInvoice'])->name('proforma-invoices.convert');
+
     // Payments
     Route::resource('payments', PaymentController::class)->except(['edit', 'update']);
 
     // Expenses
     Route::resource('expenses', ExpenseController::class);
+
+    // Banks
+    Route::resource('banks', \App\Http\Controllers\BankController::class);
+
+    // Investors
+    Route::resource('investors', \App\Http\Controllers\InvestorController::class);
+    Route::post('investors/{investor}/transactions', [\App\Http\Controllers\InvestorController::class, 'storeTransaction'])->name('investors.transactions.store');
+
+    // Hosting Providers
+    Route::resource('hosting-providers', \App\Http\Controllers\HostingProviderController::class);
+
+    // Domain Registrations
+    Route::resource('domain-registrations', \App\Http\Controllers\DomainRegistrationController::class);
+
+    // Project AMCs
+    Route::get('project-amcs/import/template', [\App\Http\Controllers\ProjectAmcController::class, 'downloadTemplate'])->name('project-amcs.import.template');
+    Route::post('project-amcs/import/preview', [\App\Http\Controllers\ProjectAmcController::class, 'preview'])->name('project-amcs.import.preview');
+    Route::post('project-amcs/import/submit', [\App\Http\Controllers\ProjectAmcController::class, 'submit'])->name('project-amcs.import.submit');
+    Route::resource('project-amcs', \App\Http\Controllers\ProjectAmcController::class);
+    Route::post('project-amcs/{project_amc}/logs', [\App\Http\Controllers\ProjectAmcController::class, 'storeLog'])->name('project-amcs.logs.store');
 
     // Support Tickets
     Route::resource('support', SupportTicketController::class);
@@ -369,6 +410,9 @@ Route::middleware(['auth'])->group(function () {
     // Settings
     Route::get('settings', [SettingController::class, 'index'])->name('settings.index');
     Route::post('settings', [SettingController::class, 'update'])->name('settings.update');
+    Route::get('settings/discontinued-projects', [ProjectController::class, 'discontinuedProjects'])->name('settings.discontinued-projects');
+    Route::get('settings/discontinued-projects/{id}', [ProjectController::class, 'showDiscontinuedProject'])->name('settings.discontinued-projects.show');
+    Route::post('settings/discontinued-projects/{id}/reactivate', [ProjectController::class, 'reactivateProject'])->name('settings.discontinued-projects.reactivate');
     Route::resource('settings/holidays', \App\Http\Controllers\HolidayController::class)->names([
         'index' => 'settings.holidays.index',
         'create' => 'settings.holidays.create',
@@ -443,6 +487,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('admin/payroll', [SalaryDisbursalController::class, 'index'])->name('admin.payroll.index');
         Route::get('admin/payroll/disburse', [SalaryDisbursalController::class, 'create'])->name('admin.payroll.create');
         Route::post('admin/payroll/disburse', [SalaryDisbursalController::class, 'store'])->name('admin.payroll.store');
+        Route::delete('admin/payroll/{slip}', [SalaryDisbursalController::class, 'destroy'])->name('admin.payroll.destroy');
+        Route::get('admin/payroll/employee/{employee}/attendance-report', [SalaryDisbursalController::class, 'attendanceReport'])->name('admin.payroll.attendance-report');
     });
     Route::get('admin/payroll/{slip}/payslip', [SalaryDisbursalController::class, 'show'])->name('admin.payroll.show');
 
@@ -457,13 +503,23 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Attendance management (permission-based)
-    Route::middleware(['permission:attendance.view-own|attendance.view-all'])->group(function () {
-        Route::resource('attendance', AttendanceController::class)->only(['index', 'show']);
-    });
     Route::middleware(['permission:attendance.view-all'])->group(function () {
         Route::get('attendance/report', [AttendanceController::class, 'report'])->name('attendance.report');
+    });
+    Route::middleware(['permission:attendance.view-own|attendance.view-all'])->group(function () {
+        Route::resource('attendance', AttendanceController::class)->only(['index', 'show']);
     });
     Route::middleware(['permission:attendance.edit'])->group(function () {
         Route::resource('attendance', AttendanceController::class)->only(['edit', 'update']);
     });
+
+    // Documents Management
+    Route::middleware(['role:super-admin,admin,hr'])->group(function () {
+        Route::post('documents', [\App\Http\Controllers\DocumentController::class, 'store'])->name('documents.store');
+        Route::get('documents/{document}/view', [\App\Http\Controllers\DocumentController::class, 'view'])->name('documents.view');
+        Route::get('documents/{document}/download', [\App\Http\Controllers\DocumentController::class, 'download'])->name('documents.download');
+        Route::delete('documents/{document}', [\App\Http\Controllers\DocumentController::class, 'destroy'])->name('documents.destroy');
+    });
 });
+
+

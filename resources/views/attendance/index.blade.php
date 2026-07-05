@@ -88,8 +88,16 @@
                                 </div>
                             </td>
                         @endif
-                        <td>{{ $rec->login_time ? \Carbon\Carbon::parse($rec->login_time)->format('h:i A') : '—' }}</td>
-                        <td>{{ $rec->logout_time ? \Carbon\Carbon::parse($rec->logout_time)->format('h:i A') : 'Active' }}</td>
+                        @php
+                            $recDateStr = ($rec->date instanceof \Carbon\Carbon) ? $rec->date->format('Y-m-d') : \Carbon\Carbon::parse($rec->date)->format('Y-m-d');
+                            $taskKey    = ($rec->user_id ?? 0) . '_' . $recDateStr;
+                            $taskIn     = $taskInOut[$taskKey]['in']  ?? null;
+                            $taskOut    = $taskInOut[$taskKey]['out'] ?? null;
+                            $inDisplay  = $taskIn  ? $taskIn->format('h:i A')  : ($rec->login_time  ? \Carbon\Carbon::parse($rec->login_time)->format('h:i A')  : '—');
+                            $outDisplay = $taskOut ? $taskOut->format('h:i A') : ($rec->logout_time ? \Carbon\Carbon::parse($rec->logout_time)->format('h:i A') : ($rec->status === 'present' || $rec->status === 'late' ? 'Active' : '—'));
+                        @endphp
+                        <td>{{ $inDisplay }}</td>
+                        <td>{{ $outDisplay }}</td>
                         <td>
                             @if($rec->total_minutes)
                                 <span class="fw-medium">{{ number_format($rec->total_minutes / 60, 2) }} hrs</span>

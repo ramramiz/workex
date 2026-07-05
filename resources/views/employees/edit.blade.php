@@ -29,9 +29,14 @@
                             @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-12 col-md-6">
-                            <label class="form-label">Email Address <span class="text-danger">*</span></label>
+                            <label class="form-label">Work Email <span class="text-danger">*</span></label>
                             <input type="email" name="email" class="form-control @error('email') is-invalid @enderror" value="{{ old('email', $employee->user->email ?? '') }}" required>
                             @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">Personal Email <span class="text-muted">(Optional)</span></label>
+                            <input type="email" name="personal_email" class="form-control @error('personal_email') is-invalid @enderror" value="{{ old('personal_email', $employee->personal_email ?? '') }}">
+                            @error('personal_email')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-12 col-md-6">
                             <label class="form-label">Phone Number</label>
@@ -59,6 +64,10 @@
                                 <input type="file" name="avatar" class="form-control @error('avatar') is-invalid @enderror" accept="image/*">
                             </div>
                             @error('avatar')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">Google Drive Folder Link</label>
+                            <input type="url" name="google_drive_link" class="form-control @error('google_drive_link') is-invalid @enderror" value="{{ old('google_drive_link', $employee->google_drive_link) }}" placeholder="https://drive.google.com/drive/folders/...">
+                            @error('google_drive_link')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                     </div>
 
@@ -105,9 +114,20 @@
                             <label class="form-label">Salary</label>
                             <div class="input-group">
                                 <span class="input-group-text">₹</span>
-                                <input type="number" step="0.01" name="salary" class="form-control @error('salary') is-invalid @enderror" value="{{ old('salary', $employee->salary) }}">
+                                <input type="number" step="0.01" name="salary" id="salary" class="form-control @error('salary') is-invalid @enderror" value="{{ old('salary', $employee->salary) }}">
+                            </div>
+                            <div class="form-text text-muted mt-1" id="single-day-salary-text" style="display: none;">
+                                Single Day Salary (LOP Rate): <strong>₹0.00</strong> (Monthly / 26)
                             </div>
                             @error('salary')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">Applicable for Salary <span class="text-danger">*</span></label>
+                            <select name="is_applicable_for_salary" class="form-select @error('is_applicable_for_salary') is-invalid @enderror" required>
+                                <option value="1" {{ old('is_applicable_for_salary', $employee->is_applicable_for_salary) == 1 ? 'selected' : '' }}>Yes</option>
+                                <option value="0" {{ old('is_applicable_for_salary', $employee->is_applicable_for_salary) == 0 ? 'selected' : '' }}>No</option>
+                            </select>
+                            @error('is_applicable_for_salary')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                     </div>
 
@@ -149,8 +169,31 @@
         }
     }
 
+    function updateSingleDaySalary() {
+        const salaryInput = document.getElementById('salary');
+        const singleDayText = document.getElementById('single-day-salary-text');
+
+        if (!salaryInput || !singleDayText) return;
+        const salaryType = "{{ $employee->salary_type ?? 'monthly' }}";
+        
+        if (salaryType === 'monthly') {
+            const salaryVal = parseFloat(salaryInput.value) || 0;
+            const singleDayVal = salaryVal / 26;
+            singleDayText.style.display = 'block';
+            singleDayText.innerHTML = `Single Day Salary (LOP Rate): <strong>₹${singleDayVal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong> (Monthly / 26)`;
+        } else {
+            singleDayText.style.display = 'none';
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         filterDesignations();
+
+        const salaryInput = document.getElementById('salary');
+        if (salaryInput) {
+            salaryInput.addEventListener('input', updateSingleDaySalary);
+            updateSingleDaySalary();
+        }
     });
 </script>
 @endpush

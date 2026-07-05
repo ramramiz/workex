@@ -273,6 +273,7 @@ class MailboxController extends Controller
     {
         try {
             $user = $this->getMailboxUser($request);
+            session_write_close();
             $folderType = $request->input('folder', 'inbox');
             if (!in_array($folderType, ['inbox', 'sent', 'trash'])) {
                 $folderType = 'inbox';
@@ -385,6 +386,7 @@ class MailboxController extends Controller
     {
         try {
             $user = $this->getMailboxUser($request);
+            session_write_close();
 
             $folderType = $request->input('folder', 'inbox');
             if (!in_array($folderType, ['inbox', 'sent', 'trash'])) {
@@ -499,6 +501,7 @@ class MailboxController extends Controller
     {
         try {
             $user = $this->getMailboxUser($request);
+            session_write_close();
             $folderType = $request->input('folder', 'inbox');
 
             if (!$user->mailbox_imap_enabled) {
@@ -654,6 +657,7 @@ class MailboxController extends Controller
     {
         try {
             $user = $this->getMailboxUser($request);
+            session_write_close();
             $folderType = $request->input('folder', 'inbox');
 
             if (!$user->mailbox_imap_enabled) {
@@ -732,6 +736,7 @@ class MailboxController extends Controller
         ]);
 
         $user = $this->getMailboxUser($request);
+        session_write_close();
 
         if (!$user->mailbox_imap_enabled) {
             // Find receiver user

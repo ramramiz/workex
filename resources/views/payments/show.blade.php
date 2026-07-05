@@ -55,8 +55,13 @@
 
                 <div class="row g-2 mb-3">
                     <div class="col-6">
-                        <small class="text-muted d-block">Payment Mode</small>
-                        <span class="text-capitalize fw-semibold text-dark">{{ str_replace('_', ' ', $payment->payment_mode) }}</span>
+                        @php
+                            $matchedBank = \App\Models\Bank::where('name', $payment->payment_mode)->first();
+                            $payModeDisplay = $matchedBank 
+                                ? ($matchedBank->name . ' - ' . $matchedBank->branch . ' - ****' . substr($matchedBank->account_number, -4)) 
+                                : $payment->payment_mode;
+                        @endphp
+                        <span class="text-capitalize fw-semibold text-dark">{{ $payModeDisplay }}</span>
                     </div>
                     <div class="col-6">
                         <small class="text-muted d-block">Transaction ID</small>

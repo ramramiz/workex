@@ -70,6 +70,45 @@
                             <input type="file" name="logo" class="form-control @error('logo') is-invalid @enderror" accept="image/*">
                             @error('logo')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
+                        <div class="col-12">
+                            <label class="form-label">Project URL (Optional)</label>
+                            <input type="text" name="url" class="form-control @error('url') is-invalid @enderror" placeholder="e.g. https://myproject.com" value="{{ old('url') }}">
+                            @error('url')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">Domain Provider</label>
+                            <select name="domain_registration_id" class="form-select @error('domain_registration_id') is-invalid @enderror">
+                                <option value="">-- Choose Domain Provider --</option>
+                                @foreach($domainRegistrations as $dr)
+                                    <option value="{{ $dr->id }}" data-renewal="{{ $dr->renewal_date ? $dr->renewal_date->format('Y-m-d') : '' }}" {{ old('domain_registration_id') == $dr->id ? 'selected' : '' }}>
+                                        {{ $dr->name }}{{ $dr->username ? ' - ' . $dr->username : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('domain_registration_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">Domain Valid Till</label>
+                            <input type="date" name="domain_valid_till" class="form-control @error('domain_valid_till') is-invalid @enderror" value="{{ old('domain_valid_till') }}">
+                            @error('domain_valid_till')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">Hosting Provider</label>
+                            <select name="hosting_provider_id" class="form-select @error('hosting_provider_id') is-invalid @enderror">
+                                <option value="">-- Choose Hosting Provider --</option>
+                                @foreach($hostingProviders as $hp)
+                                    <option value="{{ $hp->id }}" data-renewal="{{ $hp->renewal_date ? $hp->renewal_date->format('Y-m-d') : '' }}" {{ old('hosting_provider_id') == $hp->id ? 'selected' : '' }}>
+                                        {{ $hp->name }}{{ $hp->username ? ' - ' . $hp->username : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('hosting_provider_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">Hosting Valid Till</label>
+                            <input type="date" name="hosting_valid_till" class="form-control @error('hosting_valid_till') is-invalid @enderror" value="{{ old('hosting_valid_till') }}">
+                            @error('hosting_valid_till')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
                     </div>
 
                     <h6 class="text-uppercase text-primary fs-7 mb-3 border-bottom pb-2">Client & Leader Alignment</h6>
@@ -133,6 +172,52 @@
                             <label class="form-label">Technologies Used <span class="text-muted">(Comma separated tags)</span></label>
                             <input type="text" name="technologies" class="form-control @error('technologies') is-invalid @enderror" value="{{ old('technologies') }}" placeholder="e.g. PHP, Laravel, MySQL, Bootstrap">
                             @error('technologies')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+
+                    <h6 class="text-uppercase text-primary fs-7 mb-3 border-bottom pb-2 mt-4">Project AMC Contract (Optional)</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-12 col-md-4">
+                            <label class="form-label">AMC Start Date</label>
+                            <input type="date" name="amc_start_date" id="amc_start_date" class="form-control @error('amc_start_date') is-invalid @enderror" value="{{ old('amc_start_date') }}">
+                            @error('amc_start_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label">Billing Frequency <span class="text-danger">*</span></label>
+                            <select name="amc_frequency" id="amc_frequency" class="form-select @error('amc_frequency') is-invalid @enderror" required>
+                                <option value="annually" {{ old('amc_frequency', 'annually') === 'annually' ? 'selected' : '' }}>Annually</option>
+                                <option value="semi-annually" {{ old('amc_frequency') === 'semi-annually' ? 'selected' : '' }}>Semi-Annually</option>
+                                <option value="quarterly" {{ old('amc_frequency') === 'quarterly' ? 'selected' : '' }}>Quarterly</option>
+                                <option value="monthly" {{ old('amc_frequency') === 'monthly' ? 'selected' : '' }}>Monthly</option>
+                            </select>
+                            @error('amc_frequency')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label">AMC Value (₹)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" step="0.01" name="amc_amount" class="form-control @error('amc_amount') is-invalid @enderror" value="{{ old('amc_amount') }}" placeholder="0.00">
+                            </div>
+                            @error('amc_amount')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">AMC Due Date</label>
+                            <input type="date" name="amc_end_date" id="amc_due_date" class="form-control @error('amc_end_date') is-invalid @enderror" value="{{ old('amc_end_date') }}" disabled>
+                            @error('amc_end_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">Contract Status <span class="text-danger">*</span></label>
+                            <select name="amc_status" class="form-select @error('amc_status') is-invalid @enderror" required>
+                                <option value="active" {{ old('amc_status', 'active') === 'active' ? 'selected' : '' }}>Active</option>
+                                <option value="pending_renewal" {{ old('amc_status') === 'pending_renewal' ? 'selected' : '' }}>Pending Renewal</option>
+                                <option value="expired" {{ old('amc_status') === 'expired' ? 'selected' : '' }}>Expired</option>
+                            </select>
+                            @error('amc_status')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Remarks / Description</label>
+                            <textarea name="amc_remarks" class="form-control @error('amc_remarks') is-invalid @enderror" rows="3" placeholder="Contract conditions, notes...">{{ old('amc_remarks') }}</textarea>
+                            @error('amc_remarks')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                     </div>
 
@@ -258,6 +343,59 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // AMC Due Date dynamic enabling and calculation
+    const amcStartInput = document.getElementById('amc_start_date');
+    const amcFreqSelect = document.getElementById('amc_frequency');
+    const amcDueInput = document.getElementById('amc_due_date');
+
+    function checkEnableAmcDue() {
+        if (amcStartInput && amcFreqSelect && amcDueInput) {
+            if (amcStartInput.value && amcFreqSelect.value) {
+                amcDueInput.disabled = false;
+                
+                // Auto-calculate default due date if it is empty
+                if (!amcDueInput.value) {
+                    const startVal = new Date(amcStartInput.value);
+                    if (!isNaN(startVal.getTime())) {
+                        let endVal = new Date(startVal);
+                        const freq = amcFreqSelect.value;
+                        
+                        if (freq === 'annually') {
+                            endVal.setFullYear(endVal.getFullYear() + 1);
+                        } else if (freq === 'semi-annually') {
+                            endVal.setMonth(endVal.getMonth() + 6);
+                        } else if (freq === 'quarterly') {
+                            endVal.setMonth(endVal.getMonth() + 3);
+                        } else if (freq === 'monthly') {
+                            endVal.setMonth(endVal.getMonth() + 1);
+                        }
+                        
+                        endVal.setDate(endVal.getDate() - 1);
+                        
+                        const yyyy = endVal.getFullYear();
+                        const mm = String(endVal.getMonth() + 1).padStart(2, '0');
+                        const dd = String(endVal.getDate()).padStart(2, '0');
+                        amcDueInput.value = `${yyyy}-${mm}-${dd}`;
+                    }
+                }
+            } else {
+                amcDueInput.disabled = true;
+            }
+        }
+    }
+
+    if (amcStartInput && amcFreqSelect) {
+        amcStartInput.addEventListener('change', checkEnableAmcDue);
+        amcFreqSelect.addEventListener('change', function() {
+            // Force recalculate if frequency changes and start date is set
+            if (amcStartInput.value) {
+                amcDueInput.value = '';
+            }
+            checkEnableAmcDue();
+        });
+        checkEnableAmcDue();
+    }
+
     // Dropdowns selectors
     const clientSelect = document.getElementById('project_client_select');
     const tlSelect = document.getElementById('project_team_leader_select');
@@ -457,6 +595,60 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error(err);
         });
     });
+
+    // Auto-update renewal/validity dates based on selected provider
+    const hostingProviderSelect = document.querySelector('select[name="hosting_provider_id"]');
+    const hostingValidTillInput = document.querySelector('input[name="hosting_valid_till"]');
+    const domainRegistrationSelect = document.querySelector('select[name="domain_registration_id"]');
+    const domainValidTillInput = document.querySelector('input[name="domain_valid_till"]');
+
+    function updateHostingValidity(isInitial = false) {
+        const selectedOption = hostingProviderSelect.options[hostingProviderSelect.selectedIndex];
+        if (selectedOption && selectedOption.value) {
+            const renewalDate = selectedOption.getAttribute('data-renewal');
+            if (!isInitial || !hostingValidTillInput.value) {
+                hostingValidTillInput.value = renewalDate || '';
+            }
+            hostingValidTillInput.readOnly = true;
+            hostingValidTillInput.style.pointerEvents = 'none';
+            hostingValidTillInput.style.backgroundColor = '#e9ecef';
+        } else {
+            if (!isInitial) {
+                hostingValidTillInput.value = '';
+            }
+            hostingValidTillInput.readOnly = false;
+            hostingValidTillInput.style.pointerEvents = 'auto';
+            hostingValidTillInput.style.backgroundColor = '';
+        }
+    }
+
+    function updateDomainValidity(isInitial = false) {
+        const selectedOption = domainRegistrationSelect.options[domainRegistrationSelect.selectedIndex];
+        if (selectedOption && selectedOption.value) {
+            const renewalDate = selectedOption.getAttribute('data-renewal');
+            if (!isInitial || !domainValidTillInput.value) {
+                domainValidTillInput.value = renewalDate || '';
+            }
+        } else {
+            if (!isInitial) {
+                domainValidTillInput.value = '';
+            }
+        }
+        domainValidTillInput.readOnly = false;
+        domainValidTillInput.style.pointerEvents = 'auto';
+        domainValidTillInput.style.backgroundColor = '';
+    }
+
+    if (hostingProviderSelect) {
+        hostingProviderSelect.addEventListener('change', () => updateHostingValidity(false));
+        updateHostingValidity(true);
+    }
+
+    if (domainRegistrationSelect) {
+        domainRegistrationSelect.addEventListener('change', () => updateDomainValidity(false));
+        updateDomainValidity(true);
+    }
 });
 </script>
+
 @endpush

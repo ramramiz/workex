@@ -582,6 +582,16 @@ class ChatWorkspaceTest extends TestCase
         $this->actingAs($employeeUser)->get(route('attendance.edit', $ownAttendanceRecord))->assertStatus(403);
     }
 
+    public function test_authorized_user_can_access_attendance_report()
+    {
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
+        $adminUser = $this->superAdmin;
+
+        // Verify that the route /attendance/report resolves and does not return a 404
+        $response = $this->actingAs($adminUser)->get(route('attendance.report'));
+        $this->assertNotEquals(404, $response->status());
+    }
+
     public function test_half_day_leave_creation_and_approval()
     {
         $employeeUser = $this->employee;

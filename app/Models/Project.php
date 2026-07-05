@@ -10,12 +10,20 @@ class Project extends Model
 {
     use SoftDeletes, BelongsToCompany;
 
+    protected static function booted()
+    {
+        static::addGlobalScope('not_discontinued', function ($builder) {
+            $builder->where('status', '!=', 'discontinued');
+        });
+    }
+
     protected $fillable = [
-        'quotation_id', 'client_id', 'project_code', 'name', 'logo_path', 'description',
+        'quotation_id', 'client_id', 'project_code', 'name', 'logo_path', 'url', 'description',
         'project_type', 'technologies', 'start_date', 'deadline', 'completed_date',
         'budget', 'project_value', 'advance_amount', 'balance_amount',
         'manager_id', 'team_leader_id', 'priority', 'status',
         'progress_percentage', 'notes', 'created_by', 'company_id',
+        'domain_provider', 'domain_valid_till', 'hosting_provider_id', 'hosting_valid_till', 'domain_registration_id',
     ];
 
     protected $casts = [
@@ -27,6 +35,8 @@ class Project extends Model
         'balance_amount' => 'decimal:2',
         'budget' => 'decimal:2',
         'technology' => 'array',
+        'domain_valid_till' => 'date',
+        'hosting_valid_till' => 'date',
     ];
 
     public function getTechnologiesAttribute()
@@ -52,6 +62,8 @@ class Project extends Model
     public function client() { return $this->belongsTo(Client::class); }
     public function manager() { return $this->belongsTo(User::class, 'manager_id'); }
     public function teamLeader() { return $this->belongsTo(User::class, 'team_leader_id'); }
+    public function hostingProvider() { return $this->belongsTo(HostingProvider::class); }
+    public function domainRegistration() { return $this->belongsTo(DomainRegistration::class); }
     public function quotation() { return $this->belongsTo(Quotation::class); }
     public function tasks() { return $this->hasMany(Task::class); }
     public function members() { return $this->belongsToMany(User::class, 'project_members')->withPivot('role')->withTimestamps(); }
@@ -62,7 +74,7 @@ class Project extends Model
 
     public function getIsDelayedAttribute(): bool
     {
-        return $this->deadline && $this->deadline->isPast() && !in_array($this->status, ['completed', 'delivered', 'cancelled']);
+        return $this->deadline && $this->deadline->isPast() && !in_array($this->status, ['completed', 'delivered', 'cancelled', 'completed_started_amc']);
     }
 
     public function getTotalExpenseAttribute(): float
@@ -94,7 +106,29 @@ class Project extends Model
             'delivered' => 'success',
             'on_hold' => 'warning',
             'cancelled' => 'danger',
+            'completed_started_amc' => 'success',
+            'discontinued' => 'secondary',
             default => 'secondary',
+        };
+    }
+
+    public function getStatusLabelAttribute(): string
+    {
+        return match($this->status) {
+            'not_started' => 'Not Started',
+            'planning' => 'Planning',
+            'design' => 'Design',
+            'development' => 'Development',
+            'testing' => 'Testing',
+            'client_review' => 'Client Review',
+            'rework' => 'Rework',
+            'completed' => 'Completed',
+            'delivered' => 'Delivered',
+            'on_hold' => 'On Hold',
+            'cancelled' => 'Cancelled',
+            'completed_started_amc' => 'Completed & Started AMC',
+            'discontinued' => 'Discontinued',
+            default => ucwords(str_replace('_', ' ', $this->status)),
         };
     }
 
@@ -115,5 +149,10 @@ class Project extends Model
     public function setBudgetAttribute($value): void
     {
         $this->attributes['project_value'] = $value;
+    }
+
+    public function amc()
+    {
+        return $this->hasOne(ProjectAmc::class);
     }
 }

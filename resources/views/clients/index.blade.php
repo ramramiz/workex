@@ -11,9 +11,19 @@
 <div class="card">
     <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-3">
         <h5 class="mb-0">Client Directory</h5>
-        <a href="{{ route('clients.create') }}" class="btn btn-primary btn-sm">
-            <i class="bi bi-building-add me-1"></i> Add Client
-        </a>
+        <div class="d-flex gap-2">
+            @if(auth()->user()->isSuperAdmin())
+                <a href="{{ route('clients.import.template') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-download me-1"></i> Download Template
+                </a>
+                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#importClientsModal">
+                    <i class="bi bi-file-earmark-arrow-up me-1"></i> Import Excel
+                </button>
+            @endif
+            <a href="{{ route('clients.create') }}" class="btn btn-primary btn-sm">
+                <i class="bi bi-building-add me-1"></i> Add Client
+            </a>
+        </div>
     </div>
 
     <!-- Filters -->
@@ -120,4 +130,33 @@
         </div>
     @endif
 </div>
+
+@if(auth()->user()->isSuperAdmin())
+<div class="modal fade" id="importClientsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow" style="border-radius: 12px;">
+            <div class="modal-header bg-dark text-white border-0 py-3" style="border-radius: 12px 12px 0 0;">
+                <h6 class="modal-title fw-bold"><i class="bi bi-file-earmark-arrow-up me-2"></i>Import Clients</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ route('clients.import.preview') }}" enctype="multipart/form-data">
+                @csrf
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-medium text-secondary">Upload Excel File (.xlsx, .xls, .csv)</label>
+                        <input type="file" name="file" class="form-control" accept=".xlsx,.xls,.csv" required style="border-radius: 8px;">
+                        <small class="text-muted d-block mt-2">
+                            Download the template first. The fields <strong>Company Name</strong>, <strong>Contact Person</strong>, and <strong>Email</strong> (which must be unique) are required.
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 p-3 bg-light" style="border-radius: 0 0 12px 12px;">
+                    <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal" style="border-radius:6px;">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm px-4" style="border-radius:6px;">Upload & Import</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
 @endsection

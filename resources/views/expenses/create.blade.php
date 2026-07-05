@@ -27,10 +27,10 @@
 
                     <div class="mb-3">
                         <label class="form-label">Project Allocation <span class="text-muted">(Optional)</span></label>
-                        <select name="project_id" class="form-select @error('project_id') is-invalid @enderror">
+                        <select name="project_id" class="form-select select-search @error('project_id') is-invalid @enderror">
                             <option value="">-- Office Expense (No Project linked) --</option>
                             @foreach($projects as $p)
-                                <option value="{{ $p->id }}" {{ old('project_id') == $p->id ? 'selected' : '' }}>{{ $p->name }}</option>
+                                <option value="{{ $p->id }}" {{ old('project_id') == $p->id ? 'selected' : '' }}>{{ $p->name }} ({{ $p->client?->company_name ?? 'Internal Project' }})</option>
                             @endforeach
                         </select>
                         @error('project_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -55,6 +55,17 @@
                             </select>
                             @error('category')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Payment Mode <span class="text-danger">*</span></label>
+                        <select name="payment_mode" class="form-select @error('payment_mode') is-invalid @enderror" required>
+                            <option value="Cash" {{ old('payment_mode') === 'Cash' ? 'selected' : '' }}>Cash</option>
+                            @foreach($banks as $bank)
+                                <option value="{{ $bank->name }}" {{ old('payment_mode') === $bank->name ? 'selected' : '' }}>{{ $bank->name }} - {{ $bank->branch }} - ****{{ substr($bank->account_number, -4) }}</option>
+                            @endforeach
+                        </select>
+                        @error('payment_mode')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
                     <div class="mb-3">

@@ -87,7 +87,12 @@
                                         <i class="bi bi-door-open-fill fs-4"></i>
                                     </div>
                                     <div>
-                                        <h5 class="fw-bold text-dark mb-0" style="font-size: 16px;">{{ $room->name }}</h5>
+                                        <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-1.5" style="font-size: 16px;">
+                                            {{ $room->name }}
+                                            @if(($room->leads_count > 0) && ($room->user_calls_count ?? 0) == 0)
+                                                <span class="new-flash-badge ms-2">New</span>
+                                            @endif
+                                        </h5>
                                         <span class="badge bg-secondary-subtle text-secondary mt-1" style="font-size: 10px;">{{ $room->leads_count }} Leads</span>
                                     </div>
                                 </div>
@@ -154,6 +159,31 @@
     .animate-bell {
         display: inline-block;
         animation: bellRing 3s ease infinite;
+    }
+    @keyframes flash-badge {
+        0%, 100% {
+            background-color: #ef4444;
+            color: #ffffff;
+            box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
+        }
+        50% {
+            background-color: #f59e0b;
+            color: #ffffff;
+            box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
+        }
+    }
+    .new-flash-badge {
+        animation: flash-badge 0.8s infinite;
+        font-size: 10px;
+        font-weight: 800;
+        padding: 1.5px 5px;
+        border-radius: 4px;
+        letter-spacing: 0.5px;
+        display: inline-block;
+        vertical-align: middle;
+        text-transform: uppercase;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        line-height: 1.2;
     }
 </style>
 @endsection

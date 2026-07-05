@@ -8,6 +8,11 @@ use App\Models\Client;
 use App\Models\LeadFollowUp;
 use App\Models\User;
 use App\Models\LeadCall;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Writer\Xls;
+use PhpOffice\PhpSpreadsheet\Writer\Csv;
+use Illuminate\Support\Str;
 
 class LeadController extends Controller
 {
@@ -45,22 +50,26 @@ class LeadController extends Controller
 
             $todayFollowUpCount = $room->leads()->whereDate('follow_up_date', today())->count();
             $interestedCount = $room->leads()->where('status', 'interested')->count();
-            $notConnectedCount = $room->leads()->whereHas('latestCall', function($q) {
-                $q->whereIn('status', ['Not Connected', 'Busy', 'Switched Off']);
-            })->count();
+            $notConnectedCount = $room->leads()
+                ->where('status', '!=', 'permanently_not_connected')
+                ->whereHas('latestCall', function($q) {
+                    $q->whereIn('status', ['Not Connected', 'Busy', 'Switched Off']);
+                })->count();
             $allContactsCount = $room->leads()->count();
 
             if ($tab === 'interested') {
-                $leads = $room->leads()->where('status', 'interested')->latest()->paginate(15);
+                $leads = $room->leads()->where('status', 'interested')->with(['calls', 'latestCall'])->latest()->paginate(15);
             } elseif ($tab === 'not_connected') {
-                $leads = $room->leads()->whereHas('latestCall', function($q) {
-                    $q->whereIn('status', ['Not Connected', 'Busy', 'Switched Off']);
-                })->latest()->paginate(15);
+                $leads = $room->leads()
+                    ->where('status', '!=', 'permanently_not_connected')
+                    ->whereHas('latestCall', function($q) {
+                        $q->whereIn('status', ['Not Connected', 'Busy', 'Switched Off']);
+                    })->with(['calls', 'latestCall'])->latest()->paginate(15);
             } elseif ($tab === 'all_contacts') {
-                $leads = $room->leads()->latest()->paginate(15);
+                $leads = $room->leads()->with(['calls', 'latestCall'])->latest()->paginate(15);
             } else {
                 $tab = 'today_follow_up';
-                $leads = $room->leads()->whereDate('follow_up_date', today())->latest()->paginate(15);
+                $leads = $room->leads()->whereDate('follow_up_date', today())->with(['calls', 'latestCall'])->latest()->paginate(15);
             }
 
             return view('leads.index', compact(
@@ -81,17 +90,18 @@ class LeadController extends Controller
         if ($request->has('type') && !empty($request->type)) {
             $type = $request->type;
             if ($type === 'today_follow_up') {
-                $leads = Lead::with(['assignedTo', 'createdBy', 'client', 'room'])
+                $leads = Lead::with(['assignedTo', 'createdBy', 'client', 'room', 'calls', 'latestCall'])
                     ->whereDate('follow_up_date', today())
                     ->latest()->paginate(15);
                 $title = "Today's Follow-up Leads";
             } elseif ($type === 'interested') {
-                $leads = Lead::with(['assignedTo', 'createdBy', 'client', 'room'])
+                $leads = Lead::with(['assignedTo', 'createdBy', 'client', 'room', 'calls', 'latestCall'])
                     ->where('status', 'interested')
                     ->latest()->paginate(15);
                 $title = "Interested Leads";
             } elseif ($type === 'not_connected') {
-                $leads = Lead::with(['assignedTo', 'createdBy', 'client', 'room'])
+                $leads = Lead::with(['assignedTo', 'createdBy', 'client', 'room', 'calls', 'latestCall'])
+                    ->where('status', '!=', 'permanently_not_connected')
                     ->whereHas('latestCall', function($q) {
                         $q->whereIn('status', ['Not Connected', 'Busy', 'Switched Off']);
                     })
@@ -127,7 +137,17 @@ class LeadController extends Controller
             ));
         }
 
-        $rooms = \App\Models\LeadRoom::with('client')->withCount('leads')->latest()->get();
+        $rooms = \App\Models\LeadRoom::with('client')->withCount([
+            'leads',
+            'leads as contacted_leads_count' => function ($query) {
+                $query->whereHas('calls', function ($q) {
+                    $q->where('status', 'Connected');
+                });
+            },
+            'leads as interested_leads_count' => function ($query) {
+                $query->where('status', 'interested');
+            }
+        ])->latest()->get();
 
         return view('leads.index', compact(
             'rooms',
@@ -228,5 +248,76 @@ class LeadController extends Controller
         ]));
 
         return back()->with('success', 'Customer requirements updated!');
+    }
+
+    public function exportCustomerLeads(Request $request)
+    {
+        $request->validate([
+            'client_id' => 'required|integer',
+            'room_ids' => 'required|array',
+            'room_ids.*' => 'integer',
+            'format' => 'required|in:xlsx,xls,csv',
+        ]);
+
+        $client = Client::findOrFail($request->client_id);
+        
+        // Fetch leads belonging to selected rooms
+        $leads = Lead::whereIn('lead_room_id', $request->room_ids)
+            ->select('client_name', 'client_phone')
+            ->get();
+
+        if ($leads->isEmpty()) {
+            return back()->with('error', 'No leads found in the selected rooms.');
+        }
+
+        // Create spreadsheet
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+
+        // Headers
+        $sheet->setCellValue('A1', 'Name');
+        $sheet->setCellValue('B1', 'Contact Number');
+
+        // Style the headers
+        $sheet->getStyle('A1:B1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:B1')->getFill()
+            ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+            ->getStartColor()->setARGB('FFE0E0E0');
+
+        $row = 2;
+        foreach ($leads as $lead) {
+            $sheet->setCellValue('A' . $row, $lead->client_name);
+            // Explicitly set as string to preserve format and leading zeros
+            $sheet->setCellValueExplicit('B' . $row, $lead->client_phone, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+            $row++;
+        }
+
+        // Set width
+        $sheet->getColumnDimension('A')->setAutoSize(true);
+        $sheet->getColumnDimension('B')->setAutoSize(true);
+
+        $format = $request->format;
+        $filename = Str::slug($client->company_name) . '-numbers-' . date('Ymd-His');
+
+        if ($format === 'xls') {
+            $writer = new Xls($spreadsheet);
+            $contentType = 'application/vnd.ms-excel';
+            $extension = 'xls';
+        } elseif ($format === 'csv') {
+            $writer = new Csv($spreadsheet);
+            $contentType = 'text/csv';
+            $extension = 'csv';
+        } else {
+            $writer = new Xlsx($spreadsheet);
+            $contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+            $extension = 'xlsx';
+        }
+
+        return response()->streamDownload(function() use ($writer) {
+            $writer->save('php://output');
+        }, $filename . '.' . $extension, [
+            'Content-Type' => $contentType,
+            'Cache-Control' => 'max-age=0',
+        ]);
     }
 }

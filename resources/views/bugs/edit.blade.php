@@ -34,9 +34,9 @@
                     <div class="row g-3 mb-3">
                         <div class="col-12 col-md-6">
                             <label class="form-label">Project board <span class="text-danger">*</span></label>
-                            <select name="project_id" id="project_id" class="form-select @error('project_id') is-invalid @enderror" required>
+                            <select name="project_id" id="project_id" class="form-select select-search @error('project_id') is-invalid @enderror" required>
                                 @foreach($projects as $p)
-                                    <option value="{{ $p->id }}" {{ old('project_id', $bug->project_id) == $p->id ? 'selected' : '' }}>{{ $p->name }}</option>
+                                    <option value="{{ $p->id }}" {{ old('project_id', $bug->project_id) == $p->id ? 'selected' : '' }}>{{ $p->name }} ({{ $p->client?->company_name ?? 'Internal Project' }})</option>
                                 @endforeach
                             </select>
                             @error('project_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -63,6 +63,22 @@
                                 <option value="critical" {{ old('priority', $bug->priority) === 'critical' ? 'selected' : '' }}>Critical</option>
                             </select>
                             @error('priority')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">Bug Status <span class="text-danger">*</span></label>
+                            <select name="status" class="form-select @error('status') is-invalid @enderror" required>
+                                <option value="open" {{ old('status', $bug->status) === 'open' ? 'selected' : '' }}>Open</option>
+                                <option value="assigned" {{ old('status', $bug->status) === 'assigned' ? 'selected' : '' }}>Assigned</option>
+                                <option value="in_progress" {{ old('status', $bug->status) === 'in_progress' ? 'selected' : '' }}>In Progress</option>
+                                <option value="under_review" {{ old('status', $bug->status) === 'under_review' ? 'selected' : '' }}>Under Review</option>
+                                <option value="resolved" {{ old('status', $bug->status) === 'resolved' ? 'selected' : '' }}>Resolved</option>
+                                <option value="completed" {{ old('status', $bug->status) === 'completed' ? 'selected' : '' }}>Completed</option>
+                                <option value="approved" {{ old('status', $bug->status) === 'approved' ? 'selected' : '' }}>Approved</option>
+                                <option value="cleared" {{ old('status', $bug->status) === 'cleared' ? 'selected' : '' }}>Cleared</option>
+                                <option value="closed" {{ old('status', $bug->status) === 'closed' ? 'selected' : '' }}>Closed</option>
+                                <option value="rejected" {{ old('status', $bug->status) === 'rejected' ? 'selected' : '' }}>Rejected</option>
+                            </select>
+                            @error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                     </div>
 

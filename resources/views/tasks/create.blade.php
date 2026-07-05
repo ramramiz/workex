@@ -42,10 +42,10 @@
 
                     <div class="mb-3">
                         <label class="form-label fw-semibold text-dark">Do you want to add this task to any project?</label>
-                        <select name="project_id" id="project_id" class="form-select @error('project_id') is-invalid @enderror">
+                        <select name="project_id" id="project_id" class="form-select select-search @error('project_id') is-invalid @enderror">
                             <option value="">-- No, do not link to any project --</option>
                             @foreach($projects as $p)
-                                <option value="{{ $p->id }}" {{ (old('project_id') == $p->id || ($selectedProject && $selectedProject->id == $p->id)) ? 'selected' : '' }}>{{ $p->name }}</option>
+                                <option value="{{ $p->id }}" {{ (old('project_id') == $p->id || ($selectedProject && $selectedProject->id == $p->id)) ? 'selected' : '' }}>{{ $p->name }} ({{ $p->client?->company_name ?? 'Internal Project' }})</option>
                             @endforeach
                         </select>
                         @error('project_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -64,11 +64,11 @@
                         </div>
                         <div class="col-12 col-md-6">
                             <label class="form-label">Priority Level <span class="text-danger">*</span></label>
-                            <select name="priority" class="form-select @error('priority') is-invalid @enderror" required>
                                 <option value="low" {{ old('priority') === 'low' ? 'selected' : '' }}>Low</option>
                                 <option value="medium" {{ old('priority', 'medium') === 'medium' ? 'selected' : '' }}>Medium</option>
                                 <option value="high" {{ old('priority') === 'high' ? 'selected' : '' }}>High</option>
                                 <option value="critical" {{ old('priority') === 'critical' ? 'selected' : '' }}>Critical</option>
+                                <option value="special" {{ old('priority') === 'special' ? 'selected' : '' }}>Special</option>
                             </select>
                             @error('priority')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>

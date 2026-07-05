@@ -13,11 +13,18 @@ class BugController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
+        $filter = $request->input('filter', 'pending');
         $bugs = Bug::with(['project', 'reportedBy', 'assignedTo'])
             ->when($request->project, fn($q) => $q->where('project_id', $request->project))
             ->when($request->priority, fn($q) => $q->where('priority', $request->priority))
-            ->when($request->filter === 'solved', fn($q) => $q->whereIn('status', ['approved', 'cleared']))
             ->when($request->status, fn($q) => $q->where('status', $request->status))
+            ->when(!$request->status, function($q) use ($filter) {
+                if ($filter === 'completed') {
+                    $q->whereIn('status', ['completed', 'approved', 'cleared', 'closed']);
+                } else {
+                    $q->whereNotIn('status', ['completed', 'approved', 'cleared', 'closed']);
+                }
+            })
             ->latest()->paginate(20);
         $projects = Project::whereNotIn('status', ['completed','cancelled'])->get();
         return view('bugs.index', compact('bugs', 'projects'));
@@ -139,18 +146,34 @@ class BugController extends Controller
             'title' => 'required|string|max:255',
             'project_id' => 'required|exists:projects,id',
             'priority' => 'required|in:low,medium,high,critical',
+            'status' => 'required|string|max:100',
             'description' => 'required|string',
             'link' => 'nullable|string|max:1000',
         ]);
-        $bug->update($request->only(['title','description','link','project_id','task_id','assigned_to','priority','browser_info','os_info','steps_to_reproduce']));
+        $bug->update($request->only(['title','description','link','project_id','task_id','assigned_to','priority','status','browser_info','os_info','steps_to_reproduce']));
         
         if ($bug->task) {
             $oldAssignedTo = $bug->task->assigned_to;
+            
+            $taskStatus = $bug->task->status;
+            if ($bug->status === 'closed' || $bug->status === 'completed' || $bug->status === 'approved' || $bug->status === 'cleared') {
+                $taskStatus = 'completed';
+            } elseif ($bug->status === 'under_review') {
+                $taskStatus = 'review';
+            } elseif ($bug->status === 'in_progress') {
+                $taskStatus = 'in_progress';
+            } elseif ($bug->status === 'reopened' || $bug->status === 'rejected') {
+                $taskStatus = 'rework';
+            } elseif ($bug->status === 'open' || $bug->status === 'assigned') {
+                $taskStatus = 'pending';
+            }
+
             $bug->task->update([
                 'title' => 'Bug: ' . $bug->title,
                 'project_id' => $bug->project_id,
                 'assigned_to' => $bug->assigned_to,
                 'priority' => $bug->priority,
+                'status' => $taskStatus,
             ]);
             $bug->task->touch();
             
@@ -214,7 +237,7 @@ class BugController extends Controller
     }
     public function updateStatus(Request $request, Bug $bug)
     {
-        $request->validate(['status' => 'required|in:open,assigned,in_progress,resolved,closed,rejected,completed,approved,cleared']);
+        $request->validate(['status' => 'required|string|max:100']);
         $bug->update(['status' => $request->status]);
         return response()->json(['success' => true]);
     }

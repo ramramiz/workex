@@ -7,6 +7,8 @@ use App\Models\Payment;
 use App\Models\Invoice;
 use App\Models\Client;
 
+use App\Models\Bank;
+
 class PaymentController extends Controller
 {
     public function index(Request $request)
@@ -15,13 +17,15 @@ class PaymentController extends Controller
             ->when($request->client, fn($q) => $q->where('client_id', $request->client))
             ->latest()->paginate(20);
         $clients = Client::where('status', 'active')->get();
-        return view('payments.index', compact('payments', 'clients'));
+        $banks = Bank::all();
+        return view('payments.index', compact('payments', 'clients', 'banks'));
     }
     public function create(Request $request)
     {
         $invoices = Invoice::with('client')->whereIn('status', ['sent','pending','partially_paid'])->get();
         $selectedInvoice = $request->invoice_id ? Invoice::with('client')->find($request->invoice_id) : null;
-        return view('payments.create', compact('invoices', 'selectedInvoice'));
+        $banks = Bank::where('status', 'active')->get();
+        return view('payments.create', compact('invoices', 'selectedInvoice', 'banks'));
     }
     public function store(Request $request)
     {

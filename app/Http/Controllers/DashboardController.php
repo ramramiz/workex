@@ -10,6 +10,7 @@ use App\Models\WorkSession;
 use App\Models\DailyReport;
 use App\Models\Invoice;
 use App\Models\Leave;
+use App\Models\TaskTimeLog;
 use App\Models\Attendance;
 use App\Models\Bug;
 use App\Models\SalaryDisbursal;
@@ -45,6 +46,11 @@ class DashboardController extends Controller
     private function adminDashboard($user)
     {
         $today = Carbon::today();
+        $showProjectsModal = false;
+        if ($user->isSuperAdmin() && !session()->has('has_seen_projects_modal')) {
+            session(['has_seen_projects_modal' => true]);
+            $showProjectsModal = true;
+        }
 
         $stats = [
             'total_employees' => \App\Models\Employee::where('status', 'active')->count(),
@@ -54,19 +60,62 @@ class DashboardController extends Controller
             })->distinct('user_id')->count(),
             'total_projects'  => Project::count(),
             'active_projects' => Project::whereIn('status', ['planning', 'design', 'development', 'testing', 'client_review'])->count(),
-            'delayed_projects' => Project::whereNotIn('status', ['completed', 'delivered', 'cancelled'])->whereDate('deadline', '<', $today)->count(),
-            'completed_projects' => Project::where('status', 'completed')->orWhere('status', 'delivered')->count(),
+            'delayed_projects' => Project::whereNotIn('status', ['completed', 'delivered', 'cancelled', 'completed_started_amc'])->whereDate('deadline', '<', $today)->count(),
+            'completed_projects' => Project::whereIn('status', ['completed', 'delivered', 'completed_started_amc'])->count(),
             'pending_tasks'   => Task::whereNotIn('status', ['completed', 'cancelled'])->count(),
             'completed_tasks' => Task::where('status', 'completed')->whereDate('updated_at', $today)->count(),
             'pending_leaves'  => Leave::where('status', 'pending')->count(),
             'pending_reports' => DailyReport::where('status', 'pending')->whereDate('date', $today)->count(),
             'open_bugs'       => Bug::whereIn('status', ['open', 'assigned', 'in_progress'])->count(),
             'pending_invoices' => Invoice::whereIn('status', ['pending', 'partially_paid'])->count(),
+            'tasks_in_review'  => Task::where('status', 'review')->count(),
         ];
 
-        $recentProjects = Project::with(['client', 'teamLeader'])->latest()->take(6)->get();
-        $activeEmployees = WorkSession::with(['user.role', 'timeLogs' => fn($q) => $q->where('status', 'running')->with('task')])
-            ->where('status', 'active')->take(8)->get();
+        $recentProjects = Project::with(['client', 'teamLeader'])->latest()->take(15)->get();
+        // 1. Get active work sessions (for normal employees who start their day)
+        $sessions = WorkSession::with(['user.role', 'timeLogs' => fn($q) => $q->where('status', 'running')->with('task')])
+            ->where('status', 'active')
+            ->whereHas('user', function($query) {
+                $query->whereNotIn('role_id', function($sub) {
+                    $sub->select('id')->from('roles')->whereIn('slug', ['admin', 'super-admin']);
+                });
+            })
+            ->get();
+
+        // 2. Get running task logs for Admins (excluding Super Admin)
+        $adminRunningLogs = TaskTimeLog::where('status', 'running')
+            ->whereHas('user', function($query) {
+                $query->whereIn('role_id', function($sub) {
+                    $sub->select('id')->from('roles')->where('slug', 'admin');
+                });
+            })
+            ->with(['user.role', 'task.project'])
+            ->get();
+
+        // 3. Map to a unified format
+        $activeList = collect();
+
+        foreach ($sessions as $s) {
+            $activeList->push((object)[
+                'user'            => $s->user,
+                'activeTaskLog'   => $s->activeTaskLog, // WorkSession model helper gets activeTaskLog
+                'timeLogs'        => $s->timeLogs,
+                'total_hours'     => $s->total_hours,
+                'is_admin'        => false,
+            ]);
+        }
+
+        foreach ($adminRunningLogs as $log) {
+            $activeList->push((object)[
+                'user'            => $log->user,
+                'activeTaskLog'   => $log,
+                'timeLogs'        => collect([$log]),
+                'total_hours'     => null,
+                'is_admin'        => true,
+            ]);
+        }
+
+        $activeEmployees = $activeList->take(8);
         $pendingReports = DailyReport::with('user')->where('status', 'pending')->latest()->take(5)->get();
         $employees = User::whereHas('role', fn($q) => $q->whereIn('slug', ['employee', 'team-leader']))
             ->where('status', 'active')
@@ -76,22 +125,43 @@ class DashboardController extends Controller
                 'todayWorkSession.timeLogs' => fn($q) => $q->where('status', 'running')->with('task.project'),
             ])
             ->get();
+        $underReviewTasks = Task::with(['project', 'assignee'])
+            ->where('status', 'review')
+            ->latest()
+            ->take(10)
+            ->get();
 
-        return view('dashboard.admin', compact('stats', 'recentProjects', 'activeEmployees', 'pendingReports', 'user', 'employees'));
+        $upcomingAmcs = \App\Models\ProjectAmc::with(['project.client'])
+            ->where('status', 'active')
+            ->whereBetween('end_date', [$today, Carbon::today()->addDays(20)])
+            ->orderBy('end_date', 'asc')
+            ->get();
+ 
+        return view('dashboard.admin', compact('stats', 'recentProjects', 'activeEmployees', 'pendingReports', 'user', 'employees', 'underReviewTasks', 'upcomingAmcs', 'showProjectsModal'));
     }
 
     private function teamLeaderDashboard($user)
     {
         $today = Carbon::today();
+        $showProjectsModal = false;
+        if (!session()->has('has_seen_projects_modal')) {
+            session(['has_seen_projects_modal' => true]);
+            $showProjectsModal = true;
+        }
 
         $myProjects = Project::where('team_leader_id', $user->id)
-            ->whereNotIn('status', ['completed', 'delivered', 'cancelled'])->get();
+            ->whereNotIn('status', ['completed', 'delivered', 'cancelled', 'completed_started_amc'])->get();
 
         $myTasks = Task::whereHas('project', fn($q) => $q->where('team_leader_id', $user->id))
             ->whereNotIn('status', ['completed', 'cancelled'])->with(['project', 'assignee'])->latest()->take(10)->get();
 
         $teamMembers = User::whereHas('employee', fn($q) => $q->where('team_leader_id', $user->id))
-            ->with(['todayWorkSession'])->get();
+            ->where('status', 'active')
+            ->with([
+                'role',
+                'employee.department',
+                'todayWorkSession.timeLogs' => fn($q) => $q->where('status', 'running')->with('task.project')
+            ])->get();
 
         $pendingReports = DailyReport::where('status', 'pending')
             ->whereHas('user.employee', fn($q) => $q->where('team_leader_id', $user->id))
@@ -101,7 +171,56 @@ class DashboardController extends Controller
             ->whereHas('user.employee', fn($q) => $q->where('team_leader_id', $user->id))
             ->with('user')->latest()->take(5)->get();
 
-        return view('dashboard.team-leader', compact('user', 'myProjects', 'myTasks', 'teamMembers', 'pendingReports', 'pendingLeaves'));
+        $stats = [
+            'my_projects' => Project::where('team_leader_id', $user->id)->count(),
+            'active_projects' => $myProjects->count(),
+            'delayed_projects' => Project::where('team_leader_id', $user->id)
+                ->whereNotIn('status', ['completed', 'delivered', 'cancelled', 'completed_started_amc'])
+                ->whereDate('deadline', '<', $today)->count(),
+            'completed_projects' => Project::where('team_leader_id', $user->id)
+                ->whereIn('status', ['completed', 'delivered', 'completed_started_amc'])->count(),
+            'team_members' => $teamMembers->count(),
+            'working_today' => $teamMembers->filter(fn($m) => $m->todayWorkSession && $m->todayWorkSession->status === 'active')->count(),
+            'pending_tasks' => Task::whereHas('project', fn($q) => $q->where('team_leader_id', $user->id))
+                ->whereNotIn('status', ['completed', 'cancelled'])->count(),
+            'completed_tasks_today' => Task::whereHas('project', fn($q) => $q->where('team_leader_id', $user->id))
+                ->where('status', 'completed')->whereDate('updated_at', $today)->count(),
+            'pending_leaves' => Leave::where('team_leader_status', null)
+                ->whereHas('user.employee', fn($q) => $q->where('team_leader_id', $user->id))->count(),
+            'pending_reports' => DailyReport::where('status', 'pending')
+                ->whereHas('user.employee', fn($q) => $q->where('team_leader_id', $user->id))
+                ->whereDate('date', $today)->count(),
+            'tasks_in_review' => Task::whereHas('project', fn($q) => $q->where('team_leader_id', $user->id))
+                ->where('status', 'review')->count(),
+        ];
+
+        // Format active employees for the live view component
+        $activeEmployees = collect();
+        foreach ($teamMembers as $member) {
+            $session = $member->todayWorkSession;
+            if ($session && $session->status === 'active') {
+                $activeEmployees->push((object)[
+                    'user' => $member,
+                    'activeTaskLog' => $session->activeTaskLog,
+                    'timeLogs' => $session->timeLogs,
+                    'total_hours' => $session->total_hours,
+                    'is_admin' => false,
+                ]);
+            }
+        }
+        $activeEmployees = $activeEmployees->take(8);
+
+        $underReviewTasks = Task::with(['project', 'assignee'])
+            ->whereHas('project', fn($q) => $q->where('team_leader_id', $user->id))
+            ->where('status', 'review')
+            ->latest()
+            ->take(10)
+            ->get();
+
+        return view('dashboard.team-leader', compact(
+            'user', 'myProjects', 'myTasks', 'teamMembers', 'pendingReports', 
+            'pendingLeaves', 'stats', 'activeEmployees', 'underReviewTasks', 'showProjectsModal'
+        ));
     }
 
     private function employeeDashboard($user)

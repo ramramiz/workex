@@ -84,6 +84,48 @@ class PermissionSeeder extends Seeder
             ['name' => 'Export Reports',         'slug' => 'reports.export',           'module' => 'Reports'],
             ['name' => 'View Live Status Board', 'slug' => 'status-board.view',        'module' => 'Status Board'],
             ['name' => 'View Activity Logs',     'slug' => 'activity-logs.view',       'module' => 'Activity Logs'],
+
+            // Hosting Providers
+            ['name' => 'View Hosting Providers',   'slug' => 'hosting-providers.view',   'module' => 'Hosting Providers'],
+            ['name' => 'Create Hosting Providers', 'slug' => 'hosting-providers.create', 'module' => 'Hosting Providers'],
+            ['name' => 'Edit Hosting Providers',   'slug' => 'hosting-providers.edit',   'module' => 'Hosting Providers'],
+            ['name' => 'Delete Hosting Providers', 'slug' => 'hosting-providers.delete', 'module' => 'Hosting Providers'],
+
+            // Domain Registrations
+            ['name' => 'View Domain Registrations',   'slug' => 'domain-registrations.view',   'module' => 'Domain Registrations'],
+            ['name' => 'Create Domain Registrations', 'slug' => 'domain-registrations.create', 'module' => 'Domain Registrations'],
+            ['name' => 'Edit Domain Registrations',   'slug' => 'domain-registrations.edit',   'module' => 'Domain Registrations'],
+            ['name' => 'Delete Domain Registrations', 'slug' => 'domain-registrations.delete', 'module' => 'Domain Registrations'],
+
+            // Project AMC
+            ['name' => 'View Project AMC',   'slug' => 'project-amcs.view',   'module' => 'Project AMC'],
+            ['name' => 'Create Project AMC', 'slug' => 'project-amcs.create', 'module' => 'Project AMC'],
+            ['name' => 'Edit Project AMC',   'slug' => 'project-amcs.edit',   'module' => 'Project AMC'],
+            ['name' => 'Delete Project AMC', 'slug' => 'project-amcs.delete', 'module' => 'Project AMC'],
+
+            // Proforma Invoices
+            ['name' => 'View Proforma Invoices',   'slug' => 'proforma-invoices.view',   'module' => 'Proforma Invoices'],
+            ['name' => 'Create Proforma Invoices', 'slug' => 'proforma-invoices.create', 'module' => 'Proforma Invoices'],
+            ['name' => 'Edit Proforma Invoices',   'slug' => 'proforma-invoices.edit',   'module' => 'Proforma Invoices'],
+            ['name' => 'Delete Proforma Invoices', 'slug' => 'proforma-invoices.delete', 'module' => 'Proforma Invoices'],
+
+            // Investors
+            ['name' => 'View Investors',   'slug' => 'investors.view',   'module' => 'Investors'],
+            ['name' => 'Create Investors', 'slug' => 'investors.create', 'module' => 'Investors'],
+            ['name' => 'Edit Investors',   'slug' => 'investors.edit',   'module' => 'Investors'],
+            ['name' => 'Delete Investors', 'slug' => 'investors.delete', 'module' => 'Investors'],
+
+            // Hiring & Vacancies
+            ['name' => 'View Job Vacancies',   'slug' => 'job-vacancies.view',   'module' => 'Hiring & Vacancies'],
+            ['name' => 'Create Job Vacancies', 'slug' => 'job-vacancies.create', 'module' => 'Hiring & Vacancies'],
+            ['name' => 'Edit Job Vacancies',   'slug' => 'job-vacancies.edit',   'module' => 'Hiring & Vacancies'],
+            ['name' => 'Delete Job Vacancies', 'slug' => 'job-vacancies.delete', 'module' => 'Hiring & Vacancies'],
+
+            // Interns
+            ['name' => 'View Interns',   'slug' => 'interns.view',   'module' => 'Interns'],
+            ['name' => 'Create Interns', 'slug' => 'interns.create', 'module' => 'Interns'],
+            ['name' => 'Edit Interns',   'slug' => 'interns.edit',   'module' => 'Interns'],
+            ['name' => 'Delete Interns', 'slug' => 'interns.delete', 'module' => 'Interns'],
         ];
 
         foreach ($permissions as $perm) {

@@ -38,6 +38,7 @@
                     <option value="medium" {{ request('priority') === 'medium' ? 'selected' : '' }}>Medium</option>
                     <option value="high" {{ request('priority') === 'high' ? 'selected' : '' }}>High</option>
                     <option value="critical" {{ request('priority') === 'critical' ? 'selected' : '' }}>Critical</option>
+                    <option value="special" {{ request('priority') === 'special' ? 'selected' : '' }}>Special</option>
                 </select>
             </div>
             <div class="col-12 col-md-2 d-grid">

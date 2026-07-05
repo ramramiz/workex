@@ -114,4 +114,30 @@ class TaskProjectAssociationTest extends TestCase
         $task->refresh();
         $this->assertEquals($this->project->id, $task->project_id);
     }
+
+    public function test_task_in_completed_project_forces_special_priority()
+    {
+        // 1. Create a completed project
+        $completedProject = Project::create([
+            'project_code' => 'PRJ-COMP-123',
+            'name'         => 'Completed Project X',
+            'status'       => 'completed_started_amc',
+        ]);
+
+        // 2. Create a task via HTTP request under this project
+        $response = $this->actingAs($this->adminUser)
+            ->post(route('tasks.store'), [
+                'title'       => 'AMC Followup Task',
+                'project_id'  => $completedProject->id,
+                'assigned_to' => $this->employeeUser->id,
+                'priority'    => 'medium', // Request passes 'medium' priority
+                'description' => 'Will be overridden to special',
+            ]);
+
+        $response->assertSessionHasNoErrors();
+        
+        $task = Task::where('title', 'AMC Followup Task')->first();
+        $this->assertNotNull($task);
+        $this->assertEquals('special', $task->priority); // Overridden to special!
+    }
 }

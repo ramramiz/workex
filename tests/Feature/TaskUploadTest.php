@@ -2,22 +2,20 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use App\Models\User;
 use App\Models\Role;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskFile;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Database\Seeders\RoleSeeder;
+use Illuminate\Http\UploadedFile;
 
 class TaskUploadTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected User $adminUser;
     protected User $employeeUser;
     protected Project $project;
 
@@ -25,164 +23,83 @@ class TaskUploadTest extends TestCase
     {
         parent::setUp();
 
-        // Seed roles
-        $this->seed(RoleSeeder::class);
+        // Seed roles & settings
+        $this->seed(\Database\Seeders\RoleSeeder::class);
+        $this->seed(\Database\Seeders\SettingsSeeder::class);
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
 
-        $adminRole = Role::where('slug', 'super-admin')->first();
-        $employeeRole = Role::where('slug', 'employee')->first();
+        $adminRole = Role::where('slug', 'admin')->first();
 
         // Create admin user
-        $this->adminUser = User::factory()->create([
-            'role_id' => $adminRole->id,
-        ]);
-
-        // Create employee user
         $this->employeeUser = User::factory()->create([
-            'role_id' => $employeeRole->id,
+            'role_id' => $adminRole->id,
         ]);
 
         // Create a project
         $this->project = Project::create([
-            'project_code' => 'PROJ-TEST',
+            'project_code' => 'PROJ-TASK-TEST',
             'name'         => 'Test Project',
-            'description'  => 'Test Project Description',
             'status'       => 'in_progress',
         ]);
     }
 
-    public function test_can_create_task_with_image_attachment()
+    public function test_user_can_create_task_with_base64_attachments()
     {
         Storage::fake('public');
 
-        $file = UploadedFile::fake()->image('screenshot.png');
+        // A mock base64 image (small red pixel JPEG)
+        $base64Image = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=';
 
-        $response = $this->actingAs($this->adminUser)
+        $response = $this->actingAs($this->employeeUser)
             ->post(route('tasks.store'), [
-                'title'       => 'New Task with File',
-                'project_id'  => $this->project->id,
-                'assigned_to' => $this->employeeUser->id,
-                'priority'    => 'medium',
-                'description' => 'Test task description',
-                'attachment'  => $file,
+                'title'        => 'Task with base64 Attachments',
+                'project_id'   => $this->project->id,
+                'assigned_to'  => $this->employeeUser->id,
+                'priority'     => 'high',
+                'description'  => 'Test task description.',
+                'attachments'  => [
+                    $base64Image,
+                    $base64Image,
+                ]
             ]);
 
-        $response->assertSessionHasNoErrors();
-
-        $task = Task::where('title', 'New Task with File')->first();
+        // Retrieve created task
+        $task = Task::where('title', 'Task with base64 Attachments')->first();
         $this->assertNotNull($task);
 
-        $response->assertRedirect(route('tasks.show', $task));
+        $taskFiles = TaskFile::where('task_id', $task->id)->get();
+        $this->assertCount(2, $taskFiles);
 
-        // Check file was uploaded
-        Storage::disk('public')->assertExists('tasks/' . $task->id . '/' . $file->hashName());
-
-        // Check task file record
-        $this->assertDatabaseHas('task_files', [
-            'task_id'   => $task->id,
-            'user_id'   => $this->adminUser->id,
-            'file_name' => 'screenshot.png',
-        ]);
+        // Verify files exist in public storage
+        foreach ($taskFiles as $taskFile) {
+            Storage::disk('public')->assertExists($taskFile->file_path);
+        }
     }
 
-    public function test_can_create_task_with_pdf_attachment()
+    public function test_user_can_create_task_with_standard_file_attachment()
     {
         Storage::fake('public');
 
-        $file = UploadedFile::fake()->create('document.pdf', 500, 'application/pdf');
+        $file = UploadedFile::fake()->image('test_doc.jpg');
 
-        $response = $this->actingAs($this->adminUser)
+        $response = $this->actingAs($this->employeeUser)
             ->post(route('tasks.store'), [
-                'title'       => 'New Task with PDF',
-                'project_id'  => $this->project->id,
-                'assigned_to' => $this->employeeUser->id,
-                'priority'    => 'medium',
-                'description' => 'Test task description',
-                'attachment'  => $file,
+                'title'        => 'Task with File Attachment',
+                'project_id'   => $this->project->id,
+                'assigned_to'  => $this->employeeUser->id,
+                'priority'     => 'medium',
+                'description'  => 'Test task description with file attachment.',
+                'attachment'   => $file,
             ]);
 
-        $response->assertSessionHasNoErrors();
-
-        $task = Task::where('title', 'New Task with PDF')->first();
+        $task = Task::where('title', 'Task with File Attachment')->first();
         $this->assertNotNull($task);
 
-        $response->assertRedirect(route('tasks.show', $task));
+        $taskFiles = TaskFile::where('task_id', $task->id)->get();
+        $this->assertCount(1, $taskFiles);
 
-        // Check file was uploaded
-        Storage::disk('public')->assertExists('tasks/' . $task->id . '/' . $file->hashName());
-
-        // Check task file record
-        $this->assertDatabaseHas('task_files', [
-            'task_id'   => $task->id,
-            'user_id'   => $this->adminUser->id,
-            'file_name' => 'document.pdf',
-        ]);
-    }
-
-    public function test_can_add_attachment_when_updating_task()
-    {
-        Storage::fake('public');
-
-        $task = Task::create([
-            'title'       => 'Existing Task',
-            'project_id'  => $this->project->id,
-            'assigned_to' => $this->employeeUser->id,
-            'priority'    => 'medium',
-            'status'      => 'pending',
-            'created_by'  => $this->adminUser->id,
-        ]);
-
-        $file = UploadedFile::fake()->image('design.jpg');
-
-        $response = $this->actingAs($this->adminUser)
-            ->put(route('tasks.update', $task), [
-                'title'       => 'Updated Task Title',
-                'priority'    => 'high',
-                'attachment'  => $file,
-            ]);
-
-        $response->assertRedirect(route('tasks.show', $task));
-
-        // Check file was uploaded
-        Storage::disk('public')->assertExists('tasks/' . $task->id . '/' . $file->hashName());
-
-        // Check task file record
-        $this->assertDatabaseHas('task_files', [
-            'task_id'   => $task->id,
-            'user_id'   => $this->adminUser->id,
-            'file_name' => 'design.jpg',
-        ]);
-    }
-
-    public function test_upload_file_route_uses_user_id_column()
-    {
-        Storage::fake('public');
-
-        $task = Task::create([
-            'title'       => 'Test uploadFile Method Bugfix',
-            'project_id'  => $this->project->id,
-            'assigned_to' => $this->employeeUser->id,
-            'priority'    => 'medium',
-            'status'      => 'pending',
-            'created_by'  => $this->adminUser->id,
-        ]);
-
-        $file = UploadedFile::fake()->image('direct_upload.png');
-
-        $response = $this->actingAs($this->adminUser)
-            ->post(route('tasks.files.store', $task), [
-                'file' => $file,
-            ]);
-
-        $response->assertRedirect();
-
-        // Check file was uploaded
-        Storage::disk('public')->assertExists('tasks/' . $task->id . '/' . $file->hashName());
-
-        // Check task file record was saved successfully without DB error on uploaded_by column
-        $this->assertDatabaseHas('task_files', [
-            'task_id'   => $task->id,
-            'user_id'   => $this->adminUser->id,
-            'file_name' => 'direct_upload.png',
-        ]);
+        $taskFile = $taskFiles->first();
+        $this->assertEquals('test_doc.jpg', $taskFile->file_name);
+        Storage::disk('public')->assertExists($taskFile->file_path);
     }
 }

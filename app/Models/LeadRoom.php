@@ -29,4 +29,9 @@ class LeadRoom extends Model
     {
         return $this->hasMany(Lead::class, 'lead_room_id');
     }
+
+    public function calls()
+    {
+        return $this->hasManyThrough(LeadCall::class, Lead::class, 'lead_room_id', 'lead_id');
+    }
 }

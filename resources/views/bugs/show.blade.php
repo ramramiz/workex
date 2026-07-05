@@ -118,19 +118,24 @@
             <div class="card-header bg-white"><h6 class="mb-0">Bug Status & Priority</h6></div>
             <div class="card-body">
                 <div class="mb-3">
-                    <label class="form-label fs-7">Bug Status</label>
-                    <select name="status" class="form-select form-select-sm" id="bugStatusSelect" onchange="updateBugStatus()">
-                        <option value="open" {{ $bug->status === 'open' ? 'selected' : '' }}>Open</option>
-                        <option value="assigned" {{ $bug->status === 'assigned' ? 'selected' : '' }}>Assigned</option>
-                        <option value="in_progress" {{ $bug->status === 'in_progress' ? 'selected' : '' }}>In Progress</option>
-                        <option value="resolved" {{ $bug->status === 'resolved' ? 'selected' : '' }}>Resolved</option>
-                        <option value="completed" {{ $bug->status === 'completed' ? 'selected' : '' }}>Completed</option>
-                        <option value="approved" {{ $bug->status === 'approved' ? 'selected' : '' }}>Approved</option>
-                        <option value="cleared" {{ $bug->status === 'cleared' ? 'selected' : '' }}>Cleared</option>
-                        <option value="closed" {{ $bug->status === 'closed' ? 'selected' : '' }}>Closed</option>
-                        <option value="rejected" {{ $bug->status === 'rejected' ? 'selected' : '' }}>Rejected</option>
-                    </select>
-                    <div id="statusAlert" class="mt-2 d-none alert alert-success py-1 px-2 fs-8" style="font-size: 11px;">Bug status updated!</div>
+                    <small class="text-muted d-block mb-1 fs-7">Bug Status</small>
+                    @php
+                        $statusBg = 'bg-secondary-subtle text-secondary border-secondary-subtle';
+                        if ($bug->status === 'open' || str_starts_with($bug->status, 'open ')) {
+                            $statusBg = 'bg-danger-subtle text-danger border border-danger-subtle';
+                        } elseif ($bug->status === 'assigned') {
+                            $statusBg = 'bg-primary-subtle text-primary border border-primary-subtle';
+                        } elseif ($bug->status === 'in_progress') {
+                            $statusBg = 'bg-warning-subtle text-warning border border-warning-subtle';
+                        } elseif ($bug->status === 'resolved' || $bug->status === 'under_review') {
+                            $statusBg = 'bg-info-subtle text-info border border-info-subtle';
+                        } elseif (in_array($bug->status, ['completed', 'approved', 'cleared', 'closed'])) {
+                            $statusBg = 'bg-success-subtle text-success border border-success-subtle';
+                        }
+                    @endphp
+                    <span class="badge {{ $statusBg }} text-capitalize px-2 py-1.5 fw-semibold" style="font-size: 11.5px;">
+                        {{ str_replace('_', ' ', $bug->status) }}
+                    </span>
                 </div>
 
                 <div class="mb-3">
@@ -162,31 +167,4 @@
 </div>
 @endsection
 
-@push('scripts')
-<script>
-    function updateBugStatus() {
-        const select = document.getElementById('bugStatusSelect');
-        const alertBox = document.getElementById('statusAlert');
-        const status = select.value;
-        
-        alertBox.classList.add('d-none');
 
-        fetch("{{ route('bugs.update-status', $bug) }}", {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            },
-            body: JSON.stringify({ status: status })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alertBox.classList.remove('d-none');
-                setTimeout(() => alertBox.classList.add('d-none'), 3000);
-            }
-        })
-        .catch(error => console.error('Error:', error));
-    }
-</script>
-@endpush

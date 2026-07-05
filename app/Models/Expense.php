@@ -11,7 +11,7 @@ class Expense extends Model
     use SoftDeletes, BelongsToCompany;
 
     protected $fillable = [
-        'project_id', 'category', 'title', 'description', 'amount', 'date', 'attachment', 'added_by', 'status', 'company_id',
+        'project_id', 'category', 'title', 'description', 'amount', 'payment_mode', 'date', 'attachment', 'added_by', 'status', 'company_id',
     ];
 
     protected $casts = [

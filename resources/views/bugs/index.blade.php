@@ -1,14 +1,14 @@
 @extends('layouts.app')
 
-@section('title', request('filter') === 'solved' ? 'Solved Bugs' : 'Bug Tracker')
-@section('page-title', request('filter') === 'solved' ? 'Solved Bugs' : 'Bug Tracker')
+@section('title', request('filter') === 'completed' ? 'Completed Bugs' : 'Pending Bugs')
+@section('page-title', request('filter') === 'completed' ? 'Completed Bugs' : 'Pending Bugs')
 
 @section('breadcrumb')
-    @if(request('filter') === 'solved')
+    @if(request('filter') === 'completed')
         <li class="breadcrumb-item"><a href="{{ route('bugs.index') }}">Bugs</a></li>
-        <li class="breadcrumb-item active">Solved</li>
+        <li class="breadcrumb-item active">Completed</li>
     @else
-        <li class="breadcrumb-item active">Bug Tracker</li>
+        <li class="breadcrumb-item active">Pending</li>
     @endif
 @endsection
 
@@ -19,7 +19,7 @@
 @section('content')
 <div class="card">
     <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-3">
-        <h5 class="mb-0">{{ request('filter') === 'solved' ? 'Solved Bugs' : 'Logged Issues & Bugs' }}</h5>
+        <h5 class="mb-0">{{ request('filter') === 'completed' ? 'Completed Bugs' : 'Pending Bugs & Logged Issues' }}</h5>
         @if(auth()->user()->isLeaderOrAbove())
             <a href="{{ route('bugs.create') }}" class="btn btn-danger btn-sm">
                 <i class="bi bi-bug me-1"></i> Log a Bug
@@ -112,27 +112,23 @@
                         </td>
                         <td>{{ $bug->reportedBy->name ?? 'System' }}</td>
                         <td>
-                            @if($bug->status === 'open')
-                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle text-capitalize">Open</span>
-                            @elseif($bug->status === 'assigned')
-                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle text-capitalize">Assigned</span>
-                            @elseif($bug->status === 'in_progress')
-                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle text-capitalize">In Progress</span>
-                            @elseif($bug->status === 'resolved')
-                                <span class="badge bg-info-subtle text-info border border-info-subtle text-capitalize">Resolved</span>
-                            @elseif($bug->status === 'completed')
-                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle text-capitalize">Completed</span>
-                            @elseif($bug->status === 'approved')
-                                <span class="badge bg-success-subtle text-success border border-success-subtle text-capitalize">Approved</span>
-                            @elseif($bug->status === 'cleared')
-                                <span class="badge bg-success text-white text-capitalize">Cleared</span>
-                            @elseif($bug->status === 'closed')
-                                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle text-capitalize">Closed</span>
-                            @else
-                                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle text-capitalize">
-                                    {{ str_replace('_', ' ', $bug->status) }}
-                                </span>
-                            @endif
+                            @php
+                                $statusBg = 'bg-secondary-subtle text-secondary border-secondary-subtle';
+                                if ($bug->status === 'open' || str_starts_with($bug->status, 'open ')) {
+                                    $statusBg = 'bg-danger-subtle text-danger border border-danger-subtle';
+                                } elseif ($bug->status === 'assigned') {
+                                    $statusBg = 'bg-primary-subtle text-primary border border-primary-subtle';
+                                } elseif ($bug->status === 'in_progress') {
+                                    $statusBg = 'bg-warning-subtle text-warning border border-warning-subtle';
+                                } elseif ($bug->status === 'resolved' || $bug->status === 'under_review') {
+                                    $statusBg = 'bg-info-subtle text-info border border-info-subtle';
+                                } elseif (in_array($bug->status, ['completed', 'approved', 'cleared', 'closed'])) {
+                                    $statusBg = 'bg-success-subtle text-success border border-success-subtle';
+                                }
+                            @endphp
+                            <span class="badge {{ $statusBg }} text-capitalize px-2 py-1.5 fw-semibold" style="font-size: 11px;">
+                                {{ str_replace('_', ' ', $bug->status) }}
+                            </span>
                         </td>
                         <td class="text-end">
                             <div class="d-inline-flex gap-2">
@@ -174,3 +170,5 @@
     @endif
 </div>
 @endsection
+
+

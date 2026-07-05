@@ -38,7 +38,7 @@
                         <div class="col-12 col-md-4">
                             <label class="form-label">Project board</label>
                             <select name="project_id" class="form-select @error('project_id') is-invalid @enderror" disabled>
-                                <option value="">{{ $support->project->name ?? 'General / AMC support' }}</option>
+                                <option value="">{{ $support->project ? $support->project->name . ' (' . ($support->project->client?->company_name ?? 'Internal Project') . ')' : 'General / AMC support' }}</option>
                             </select>
                         </div>
                         <div class="col-12 col-md-4">

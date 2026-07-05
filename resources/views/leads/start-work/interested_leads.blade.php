@@ -134,7 +134,10 @@
                                         data-bs-toggle="modal" data-bs-target="#logCallModal" 
                                         data-bs-action="{{ route('leads.calls.store', $lead) }}"
                                         data-bs-client-name="{{ $lead->client_name }}"
-                                        data-bs-client-phone="{{ $lead->client_phone ?? '—' }}">
+                                        data-bs-client-phone="{{ $lead->client_phone ?? '—' }}"
+                                        data-bs-calls-count="{{ $lead->calls->count() }}"
+                                        data-bs-last-contacted-at="{{ $lead->latestCall ? $lead->latestCall->call_date_time->format('d M Y, h:i A') : '' }}"
+                                        data-bs-first-remarks="{{ $lead->calls->sortBy('id')->first() ? e($lead->calls->sortBy('id')->first()->remarks) : '' }}">
                                         <i class="bi bi-telephone-outbound"></i> Log Call
                                     </button>
 

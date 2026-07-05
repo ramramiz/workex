@@ -14,7 +14,12 @@ class Company extends Model
         'auth_person_email',
         'phone',
         'address',
-        'gst'
+        'gst',
+        'salary_cycle',
+        'salary_payment_date',
+        'salary_payment_date_1',
+        'salary_payment_date_2',
+        'salary_dispersal_start_date'
     ];
 
     public function users()

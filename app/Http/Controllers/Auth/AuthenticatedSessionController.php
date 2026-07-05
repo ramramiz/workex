@@ -61,6 +61,7 @@ class AuthenticatedSessionController extends Controller
             if ($user) {
                 $otp = rand(100000, 999999);
                 Cache::put('login_otp_' . $email, $otp, now()->addMinutes(10));
+                \Illuminate\Support\Facades\Log::info("Generated Login OTP (Resend) for {$email}: {$otp}");
                 
                 try {
                     Mail::to($email)->send(new OtpMail($otp));
@@ -111,6 +112,7 @@ class AuthenticatedSessionController extends Controller
                 if ($user) {
                     $otp = rand(100000, 999999);
                     Cache::put('login_otp_' . $email, $otp, now()->addMinutes(10));
+                    \Illuminate\Support\Facades\Log::info("Generated Login OTP (Lockout/New) for {$email}: {$otp}");
                     
                     try {
                         Mail::to($email)->send(new OtpMail($otp));
@@ -144,6 +146,7 @@ class AuthenticatedSessionController extends Controller
                 if ($user) {
                     $otp = rand(100000, 999999);
                     Cache::put('login_otp_' . $email, $otp, now()->addMinutes(10));
+                    \Illuminate\Support\Facades\Log::info("Generated Login OTP (CAPTCHA failure) for {$email}: {$otp}");
                     
                     try {
                         Mail::to($email)->send(new OtpMail($otp));

@@ -38,10 +38,10 @@
                         </div>
                         <div class="col-12 col-md-6">
                             <label class="form-label">Project board</label>
-                            <select name="project_id" class="form-select @error('project_id') is-invalid @enderror">
+                            <select name="project_id" class="form-select select-search @error('project_id') is-invalid @enderror">
                                 <option value="">-- General / AMC support --</option>
                                 @foreach($projects as $p)
-                                    <option value="{{ $p->id }}" {{ old('project_id') == $p->id ? 'selected' : '' }}>{{ $p->name }}</option>
+                                    <option value="{{ $p->id }}" {{ old('project_id') == $p->id ? 'selected' : '' }}>{{ $p->name }} ({{ $p->client?->company_name ?? 'Internal Project' }})</option>
                                 @endforeach
                             </select>
                             @error('project_id')<div class="invalid-feedback">{{ $message }}</div>@enderror

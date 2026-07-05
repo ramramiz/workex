@@ -507,6 +507,53 @@ class TelecallerWorkflowTest extends TestCase
         ]);
     }
 
+    public function test_telecaller_marking_second_unconnected_call_permanently_not_connected(): void
+    {
+        $room = \App\Models\LeadRoom::create([
+            'name' => 'Assigned Room',
+            'description' => 'Test room',
+            'created_by' => $this->admin->id
+        ]);
+        $room->users()->attach($this->telecaller1->id);
+
+        $lead = Lead::create([
+            'client_name' => 'My Lead',
+            'requirement' => 'Design',
+            'assigned_to' => $this->telecaller1->id,
+            'lead_room_id' => $room->id,
+            'created_by' => $this->admin->id,
+            'source' => 'direct',
+            'status' => 'new'
+        ]);
+
+        // First unconnected call
+        $this->actingAs($this->telecaller1)
+            ->post(route('leads.calls.store', $lead), [
+                'status' => 'Busy',
+                'duration' => 5,
+                'source' => 'room_work'
+            ]);
+
+        $this->assertDatabaseHas('leads', [
+            'id' => $lead->id,
+            'status' => 'new'
+        ]);
+
+        // Second unconnected call
+        $this->actingAs($this->telecaller1)
+            ->post(route('leads.calls.store', $lead), [
+                'status' => 'Not Connected',
+                'duration' => 8,
+                'source' => 'room_work'
+            ]);
+
+        // Lead should now be marked as permanently_not_connected
+        $this->assertDatabaseHas('leads', [
+            'id' => $lead->id,
+            'status' => 'permanently_not_connected'
+        ]);
+    }
+
     public function test_telecaller_cannot_log_connected_call_without_lead_status(): void
     {
         $room = \App\Models\LeadRoom::create([

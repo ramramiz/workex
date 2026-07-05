@@ -76,6 +76,53 @@
                                         @endif
                                     </div>
                                 @endforeach
+
+                                <div class="col-12">
+                                    <hr class="my-4 text-muted">
+                                    <h5 class="fw-bold text-dark mb-3">
+                                        <i class="bi bi-calendar-range me-2 text-primary"></i>Salary Distribution Cycle
+                                    </h5>
+                                </div>
+
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label fw-medium">Salary Distribution Cycle</label>
+                                    <select name="salary_cycle" id="salary_cycle" class="form-select">
+                                        <option value="monthly" {{ ($company->salary_cycle ?? 'monthly') === 'monthly' ? 'selected' : '' }}>Monthly</option>
+                                        <option value="twice_monthly" {{ ($company->salary_cycle ?? 'monthly') === 'twice_monthly' ? 'selected' : '' }}>2 Times in Monthly</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-12 col-md-6">
+                                     <label class="form-label fw-medium">Salary Dispersal Start Date</label>
+                                     <input type="date" name="salary_dispersal_start_date" class="form-control" value="{{ $company->salary_dispersal_start_date ?? '' }}">
+                                </div>
+                                
+                                <div class="col-12 col-md-6" id="monthly_date_container">
+                                    <label class="form-label fw-medium">Salary Payment Date</label>
+                                    <select name="salary_payment_date" class="form-select">
+                                        @for($day = 1; $day <= 31; $day++)
+                                            <option value="{{ $day }}" {{ ($company->salary_payment_date ?? 5) == $day ? 'selected' : '' }}>Day {{ $day }}</option>
+                                        @endfor
+                                    </select>
+                                </div>
+
+                                <div class="col-12 col-md-3" id="twice_monthly_date_container_1" style="display:none;">
+                                    <label class="form-label fw-medium">First Salary Payment Date</label>
+                                    <select name="salary_payment_date_1" class="form-select">
+                                        @for($day = 1; $day <= 31; $day++)
+                                            <option value="{{ $day }}" {{ ($company->salary_payment_date_1 ?? 15) == $day ? 'selected' : '' }}>Day {{ $day }}</option>
+                                        @endfor
+                                    </select>
+                                </div>
+
+                                <div class="col-12 col-md-3" id="twice_monthly_date_container_2" style="display:none;">
+                                    <label class="form-label fw-medium">Second Salary Payment Date</label>
+                                    <select name="salary_payment_date_2" class="form-select">
+                                        @for($day = 1; $day <= 31; $day++)
+                                            <option value="{{ $day }}" {{ ($company->salary_payment_date_2 ?? 30) == $day ? 'selected' : '' }}>Day {{ $day }}</option>
+                                        @endfor
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
@@ -192,4 +239,31 @@
         </div>
     </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const salaryCycleSelect = document.getElementById('salary_cycle');
+    const monthlyContainer = document.getElementById('monthly_date_container');
+    const twiceMonthlyContainer1 = document.getElementById('twice_monthly_date_container_1');
+    const twiceMonthlyContainer2 = document.getElementById('twice_monthly_date_container_2');
+
+    function toggleSalaryCycleFields() {
+        if (!salaryCycleSelect) return;
+        const cycle = salaryCycleSelect.value;
+        if (cycle === 'monthly') {
+            if (monthlyContainer) monthlyContainer.style.display = 'block';
+            if (twiceMonthlyContainer1) twiceMonthlyContainer1.style.display = 'none';
+            if (twiceMonthlyContainer2) twiceMonthlyContainer2.style.display = 'none';
+        } else {
+            if (monthlyContainer) monthlyContainer.style.display = 'none';
+            if (twiceMonthlyContainer1) twiceMonthlyContainer1.style.display = 'block';
+            if (twiceMonthlyContainer2) twiceMonthlyContainer2.style.display = 'block';
+        }
+    }
+
+    if (salaryCycleSelect) {
+        salaryCycleSelect.addEventListener('change', toggleSalaryCycleFields);
+        toggleSalaryCycleFields(); // Run on load
+    }
+});
+</script>
 @endsection

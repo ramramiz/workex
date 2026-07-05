@@ -118,7 +118,10 @@
         width: 48px;
         height: 48px;
         border-radius: 50%;
-        object-fit: cover;
+        object-fit: contain;
+        background-color: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        padding: 2px;
         box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
     .chat-task-item .task-info {
@@ -606,6 +609,24 @@
     }
 
     @media (max-width: 767.98px) {
+        body.mobile-chat-opened #topnav {
+            display: none !important;
+        }
+        body.mobile-chat-opened #sidebar {
+            display: none !important;
+        }
+        body.mobile-chat-opened #main-content {
+            margin-top: 0 !important;
+            padding: 0 !important;
+            height: 100vh !important;
+        }
+        body.mobile-chat-opened .chat-layout {
+            height: 100vh !important;
+            margin: 0 !important;
+            border-radius: 0 !important;
+            border: none !important;
+        }
+
         .chat-sidebar {
             width: 100% !important;
             border-right: none !important;
@@ -1114,9 +1135,11 @@
                 <!-- Filters -->
                 <div class="chat-sidebar-filters px-3 pb-2 d-flex align-items-center gap-2 flex-wrap" style="border-bottom: 1px solid rgba(0,0,0,0.05); margin-bottom: 8px;">
                     <button class="chat-filter-btn active" data-filter="all" onclick="filterChats('all')">All</button>
+                    <button class="chat-filter-btn" data-filter="telecaller" onclick="filterChats('telecaller')">Telecaller</button>
                     <button class="chat-filter-btn" data-filter="unread" onclick="filterChats('unread')">Unread</button>
                     <button class="chat-filter-btn" data-filter="bugs" onclick="filterChats('bugs')">Bugs</button>
                     <button class="chat-filter-btn" data-filter="review" onclick="filterChats('review')">Review</button>
+                    <button class="chat-filter-btn" data-filter="pending" onclick="filterChats('pending')">Pending</button>
                 </div>
 
                 <!-- Unified Chat List -->
@@ -1133,8 +1156,10 @@
                                data-project="{{ strtolower($t->project->name ?? '') }}"
                                data-unread-count="{{ $item->unread_count }}"
                                data-is-bug="{{ $item->is_bug ? '1' : '0' }}"
+                               data-is-telecaller="{{ $item->is_room_calling ? '1' : '0' }}"
                                data-priority="{{ $t->priority }}"
                                data-status="{{ $t->status }}"
+                               data-timestamp="{{ $item->timestamp }}"
                                onclick="selectTask({{ $t->id }})">
                                 <div class="position-relative" style="margin-left: 5px;">
                                     <img src="{{ $t->avatar_url }}" alt="" class="avatar-circle">
@@ -1174,7 +1199,7 @@
                                             @endif
                                             {{ $t->title }}
                                         </div>
-                                        <span class="text-muted flex-shrink-0 ms-2" style="font-size: 10px;">{{ $t->updated_at->diffForHumans(null, true) }}</span>
+                                        <span class="text-muted flex-shrink-0 ms-2 chat-item-time" style="font-size: 10px;">{{ $item->time_formatted }}</span>
                                     </div>
                                     <div class="d-flex align-items-center justify-content-between mt-1" id="badge-container-{{ $t->id }}">
                                         <div class="text-truncate fs-8 d-flex align-items-center gap-1 flex-wrap" style="color: #667781; max-width: 80%;">
@@ -1183,17 +1208,17 @@
                                             <span class="text-secondary" style="font-size: 11px;">{{ $t->assignee->name ?? 'Unassigned' }}</span>
                                             <span>-</span>
                                             @if($t->status === 'completed')
-                                                <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 8px; padding: 1px 3px;">Completed</span>
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle sidebar-status-badge" style="font-size: 8px; padding: 1px 3px;">Completed</span>
                                             @elseif($t->status === 'in_progress')
-                                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle" style="font-size: 8px; padding: 1px 3px;">In Progress</span>
+                                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle sidebar-status-badge" style="font-size: 8px; padding: 1px 3px;">In Progress</span>
                                             @elseif($t->status === 'review')
-                                                <span class="badge bg-info-subtle text-info border border-info-subtle" style="font-size: 8px; padding: 1px 3px;">Review</span>
+                                                <span class="badge bg-info-subtle text-info border border-info-subtle sidebar-status-badge" style="font-size: 8px; padding: 1px 3px;">Review</span>
                                             @elseif($t->status === 'rework')
-                                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size: 8px; padding: 1px 3px;">Rework</span>
+                                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle sidebar-status-badge" style="font-size: 8px; padding: 1px 3px;">Rework</span>
                                             @elseif($t->status === 'rejected')
-                                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size: 8px; padding: 1px 3px;">Rejected</span>
+                                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle sidebar-status-badge" style="font-size: 8px; padding: 1px 3px;">Rejected</span>
                                             @else
-                                                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle" style="font-size: 8px; padding: 1px 3px;">Pending</span>
+                                                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle sidebar-status-badge" style="font-size: 8px; padding: 1px 3px;">Pending</span>
                                             @endif
 
                                             @if(auth()->user()->isSuperAdmin() || auth()->user()->isTeamLeader())
@@ -1224,7 +1249,9 @@
                                data-avatar="{{ $u->avatar_url }}"
                                data-unread-count="{{ $item->unread_count }}"
                                data-is-bug="0"
+                               data-is-telecaller="0"
                                data-priority="low"
+                               data-timestamp="{{ $item->timestamp }}"
                                onclick="selectDirectUser({{ $u->id }}, '{{ addslashes($u->name) }}', '{{ addslashes($u->employee->designation->name ?? ($u->role?->name ?? 'Staff')) }}', '{{ $u->avatar_url }}')">
                                 <div class="position-relative" style="margin-left: 5px;">
                                     <img src="{{ $u->avatar_url }}" alt="" class="avatar-circle" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover;">
@@ -1236,7 +1263,7 @@
                                     <div class="d-flex align-items-center justify-content-between">
                                         <span class="user-name fw-semibold text-dark fs-7 text-truncate" title="{{ $u->name }}">{{ $u->name }}</span>
                                         @if($u->last_message)
-                                            <span class="text-muted flex-shrink-0 ms-2" style="font-size: 10px;">{{ $u->last_message->created_at->diffForHumans(null, true) }}</span>
+                                            <span class="text-muted flex-shrink-0 ms-2 chat-item-time" style="font-size: 10px;">{{ $item->time_formatted }}</span>
                                         @endif
                                     </div>
                                     <div class="last-msg text-muted text-truncate mt-1" id="last-msg-{{ $u->id }}" style="font-size: 12px;">
@@ -1583,6 +1610,11 @@
                                         <input type="file" name="logo" class="form-control form-control-sm" accept="image/*">
                                         <div class="invalid-feedback" id="project_logo_error"></div>
                                     </div>
+                                    <div class="col-12">
+                                        <label class="form-label fw-semibold text-dark">Project URL (Optional)</label>
+                                        <input type="text" name="url" class="form-control form-control-sm" placeholder="e.g. https://myproject.com">
+                                        <div class="invalid-feedback" id="project_url_error"></div>
+                                    </div>
                                     
                                     <div class="col-12 col-md-6">
                                         <label class="form-label fw-semibold text-dark">Select Client</label>
@@ -1640,6 +1672,50 @@
                                         <input type="text" name="technologies" class="form-control form-control-sm" placeholder="e.g. PHP, Laravel, MySQL">
                                         <div class="invalid-feedback" id="project_technologies_error"></div>
                                     </div>
+
+                                    <h6 class="text-uppercase text-primary fs-7 mb-3 border-bottom pb-2 mt-4">Project AMC Contract (Optional)</h6>
+                                    <div class="col-12 col-md-4">
+                                        <label class="form-label fw-semibold text-dark">AMC Start Date</label>
+                                        <input type="date" name="amc_start_date" id="chat_amc_start_date" class="form-control form-control-sm">
+                                        <div class="invalid-feedback" id="project_amc_start_date_error"></div>
+                                    </div>
+                                    <div class="col-12 col-md-4">
+                                        <label class="form-label fw-semibold text-dark">Billing Frequency <span class="text-danger">*</span></label>
+                                        <select name="amc_frequency" id="chat_amc_frequency" class="form-select form-select-sm" required>
+                                            <option value="annually" selected>Annually</option>
+                                            <option value="semi-annually">Semi-Annually</option>
+                                            <option value="quarterly">Quarterly</option>
+                                            <option value="monthly">Monthly</option>
+                                        </select>
+                                        <div class="invalid-feedback" id="project_amc_frequency_error"></div>
+                                    </div>
+                                    <div class="col-12 col-md-4">
+                                        <label class="form-label fw-semibold text-dark">AMC Value (₹)</label>
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-text">₹</span>
+                                            <input type="number" step="0.01" name="amc_amount" class="form-control" placeholder="0.00">
+                                        </div>
+                                        <div class="invalid-feedback" id="project_amc_amount_error"></div>
+                                    </div>
+                                    <div class="col-12 col-md-6">
+                                        <label class="form-label fw-semibold text-dark">AMC Due Date</label>
+                                        <input type="date" name="amc_end_date" id="chat_amc_due_date" class="form-control form-control-sm" disabled>
+                                        <div class="invalid-feedback" id="project_amc_end_date_error"></div>
+                                    </div>
+                                    <div class="col-12 col-md-6">
+                                        <label class="form-label fw-semibold text-dark">Contract Status <span class="text-danger">*</span></label>
+                                        <select name="amc_status" class="form-select form-select-sm" required>
+                                            <option value="active" selected>Active</option>
+                                            <option value="pending_renewal">Pending Renewal</option>
+                                            <option value="expired">Expired</option>
+                                        </select>
+                                        <div class="invalid-feedback" id="project_amc_status_error"></div>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label fw-semibold text-dark">Remarks / Description</label>
+                                        <textarea name="amc_remarks" class="form-control form-control-sm" rows="3" placeholder="Contract conditions, notes..."></textarea>
+                                        <div class="invalid-feedback" id="project_amc_remarks_error"></div>
+                                    </div>
                                 </div>
                                 <div class="d-flex align-items-center justify-content-end gap-2 mt-4 pt-3 border-top">
                                     <button type="button" class="btn btn-outline-secondary btn-sm px-3" onclick="cancelCreationForm()">Cancel</button>
@@ -1682,15 +1758,32 @@
                                     </div>
                                     <div class="col-12">
                                         <label class="form-label fw-semibold text-dark">Task Description</label>
-                                        <textarea name="description" class="form-control form-control-sm" rows="3" placeholder="Detailed instructions for this task..."></textarea>
+                                        <!-- Attachment Previews (on top of description input bar) -->
+                                        <div id="task-desc-attachments" class="d-flex flex-wrap gap-2 mb-2"></div>
+                                        
+                                        <!-- Layout with columns -->
+                                        <div class="row g-2 align-items-start">
+                                            <!-- Paperclip button column -->
+                                            <div class="col-auto">
+                                                <label for="task-desc-file-input" class="btn btn-link text-muted p-0 m-0 d-flex align-items-center justify-content-center pt-1" style="font-size: 20px; width: 36px; height: 36px; cursor: pointer;" title="Attach Screenshots">
+                                                    <i class="bi bi-paperclip"></i>
+                                                </label>
+                                                <input type="file" id="task-desc-file-input" accept="image/*" multiple style="display: none;">
+                                            </div>
+                                            
+                                            <!-- Direct Textarea column -->
+                                            <div class="col">
+                                                <textarea name="description" id="task-chat-desc-input" class="form-control form-control-sm" rows="3" placeholder="Detailed instructions for this task... (Paste screenshots directly)"></textarea>
+                                            </div>
+                                        </div>
                                         <div class="invalid-feedback" id="task_description_error"></div>
                                     </div>
                                     <div class="col-12">
                                         <label class="form-label fw-semibold text-dark">Do you want to add this task to any project?</label>
-                                        <select name="project_id" class="form-select form-select-sm">
+                                        <select name="project_id" class="form-select form-select-sm select-search">
                                             <option value="">-- No, do not link to any project --</option>
                                             @foreach($projects as $p)
-                                                <option value="{{ $p->id }}">{{ $p->name }}</option>
+                                                <option value="{{ $p->id }}">{{ $p->name }} ({{ $p->client?->company_name ?? 'Internal Project' }})</option>
                                             @endforeach
                                         </select>
                                         <div class="invalid-feedback" id="task_project_id_error"></div>
@@ -1724,11 +1817,6 @@
                                         <label class="form-label fw-semibold text-dark">Estimated Hours</label>
                                         <input type="number" step="0.5" name="estimated_hours" class="form-control form-control-sm" placeholder="e.g. 8">
                                         <div class="invalid-feedback" id="task_estimated_hours_error"></div>
-                                    </div>
-                                    <div class="col-12">
-                                        <label class="form-label fw-semibold text-dark">Task Attachment <span class="text-muted">(Optional)</span></label>
-                                        <input type="file" name="attachment" class="form-control form-control-sm" accept="image/*,application/pdf">
-                                        <div class="invalid-feedback" id="task_attachment_error"></div>
                                     </div>
                                 </div>
                                 <div class="d-flex align-items-center justify-content-end gap-2 mt-4 pt-3 border-top">
@@ -1773,10 +1861,10 @@
 
                                     <div class="col-12 col-md-6">
                                         <label class="form-label fw-semibold text-dark">Project Board <span class="text-danger">*</span></label>
-                                        <select name="project_id" class="form-select form-select-sm" required>
+                                        <select name="project_id" class="form-select form-select-sm select-search" required>
                                             <option value="">-- Choose Project --</option>
                                             @foreach($projects as $p)
-                                                <option value="{{ $p->id }}">{{ $p->name }}</option>
+                                                <option value="{{ $p->id }}">{{ $p->name }} ({{ $p->client?->company_name ?? 'Internal Project' }})</option>
                                             @endforeach
                                         </select>
                                         <div class="invalid-feedback" id="bug_project_id_error"></div>
@@ -1818,41 +1906,26 @@
 
                                     <div class="col-12">
                                         <label class="form-label fw-semibold text-dark">Detailed Description <span class="text-danger">*</span></label>
-                                        <textarea name="description" class="form-control form-control-sm" rows="3" required placeholder="Provide context or details about the issue..."></textarea>
-                                        <div class="invalid-feedback" id="bug_description_error"></div>
-                                    </div>
-
-                                    <div class="col-12">
-                                        <label class="form-label fw-semibold text-dark">Screenshots / Reference Images <span class="text-muted fs-8">(Optional, Up to 3 images)</span></label>
-                                        <div class="row g-2">
-                                            <div class="col-4">
-                                                <div class="border rounded p-2 text-center" style="background: #f8f9fa; [data-bs-theme='dark'] & { background: #2a3942; }">
-                                                    <span class="fs-8 fw-semibold d-block mb-1">Img 1</span>
-                                                    <input type="file" name="screenshots[]" accept="image/*" class="form-control form-control-xs bug-chat-file-input" data-preview="bug-chat-preview-1" style="font-size: 10px;">
-                                                    <div class="mt-2 d-none" id="bug-chat-preview-container-1">
-                                                        <img id="bug-chat-preview-1" src="" class="img-fluid rounded border" style="max-height: 60px; object-fit: cover;">
-                                                    </div>
-                                                </div>
+                                        
+                                        <!-- Attachment Previews (on top of description input bar) -->
+                                        <div id="bug-desc-attachments" class="d-flex flex-wrap gap-2 mb-2"></div>
+                                        
+                                        <!-- Layout with columns -->
+                                        <div class="row g-2 align-items-start">
+                                            <!-- Paperclip button column -->
+                                            <div class="col-auto">
+                                                <label for="bug-desc-file-input" class="btn btn-link text-muted p-0 m-0 d-flex align-items-center justify-content-center pt-1" style="font-size: 20px; width: 36px; height: 36px; cursor: pointer;" title="Attach Screenshots">
+                                                    <i class="bi bi-paperclip"></i>
+                                                </label>
+                                                <input type="file" id="bug-desc-file-input" accept="image/*" multiple style="display: none;">
                                             </div>
-                                            <div class="col-4">
-                                                <div class="border rounded p-2 text-center" style="background: #f8f9fa; [data-bs-theme='dark'] & { background: #2a3942; }">
-                                                    <span class="fs-8 fw-semibold d-block mb-1">Img 2</span>
-                                                    <input type="file" name="screenshots[]" accept="image/*" class="form-control form-control-xs bug-chat-file-input" data-preview="bug-chat-preview-2" style="font-size: 10px;">
-                                                    <div class="mt-2 d-none" id="bug-chat-preview-container-2">
-                                                        <img id="bug-chat-preview-2" src="" class="img-fluid rounded border" style="max-height: 60px; object-fit: cover;">
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="col-4">
-                                                <div class="border rounded p-2 text-center" style="background: #f8f9fa; [data-bs-theme='dark'] & { background: #2a3942; }">
-                                                    <span class="fs-8 fw-semibold d-block mb-1">Img 3</span>
-                                                    <input type="file" name="screenshots[]" accept="image/*" class="form-control form-control-xs bug-chat-file-input" data-preview="bug-chat-preview-3" style="font-size: 10px;">
-                                                    <div class="mt-2 d-none" id="bug-chat-preview-container-3">
-                                                        <img id="bug-chat-preview-3" src="" class="img-fluid rounded border" style="max-height: 60px; object-fit: cover;">
-                                                    </div>
-                                                </div>
+                                            
+                                            <!-- Direct Textarea column -->
+                                            <div class="col">
+                                                <textarea name="description" id="bug-chat-desc-input" class="form-control form-control-sm" rows="3" required placeholder="Provide context or details about the issue... (Paste screenshots directly)"></textarea>
                                             </div>
                                         </div>
+                                        <div class="invalid-feedback d-block" id="bug_description_error"></div>
                                     </div>
 
                                     <!-- Auto-filled metadata -->
@@ -1884,7 +1957,7 @@
             </div>
             <div class="chat-info-body p-4 overflow-y-auto">
                 <div class="text-center mb-4">
-                    <img src="" id="info-task-avatar" class="avatar-circle mb-3" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; box-shadow: 0 4px 10px rgba(0,0,0,0.08);">
+                    <img src="" id="info-task-avatar" class="avatar-circle mb-3" style="width: 100px; height: 100px; border-radius: 50%; object-fit: contain; background-color: #ffffff; padding: 4px; border: 1px solid rgba(0,0,0,0.06); box-shadow: 0 4px 10px rgba(0,0,0,0.08);">
                     <h5 class="fw-bold text-dark mb-1" id="info-task-title">Task Title</h5>
                     <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 fs-8" id="info-task-project">Project Name</span>
                 </div>
@@ -2098,10 +2171,10 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold text-dark">Project</label>
-                        <select name="project_id" id="edit-task-project-select" class="form-select form-select-sm">
+                        <select name="project_id" id="edit-task-project-select" class="form-select form-select-sm select-search">
                             <option value="">-- No Project --</option>
                             @foreach($projects as $p)
-                                <option value="{{ $p->id }}">{{ $p->name }}</option>
+                                <option value="{{ $p->id }}">{{ $p->name }} ({{ $p->client?->company_name ?? 'Internal Project' }})</option>
                             @endforeach
                         </select>
                     </div>
@@ -2371,11 +2444,13 @@
             }
         }
 
-        // Update time text
-        const timeSpan = item.querySelector('.text-muted.flex-shrink-0.ms-2');
+        // Update time text and timestamp
+        const timeSpan = item.querySelector('.chat-item-time');
         if (timeSpan && timeText) {
             timeSpan.textContent = timeText;
         }
+        // Stamp current time so re-sorting works correctly
+        item.dataset.timestamp = Math.floor(Date.now() / 1000);
 
         // Update unread badge
         if (unreadCount !== undefined) {
@@ -2412,6 +2487,19 @@
 
         // Move to the top of the list
         container.insertBefore(item, container.firstChild);
+    }
+
+    // Re-sort the entire sidebar list by data-timestamp descending
+    function resortChatList() {
+        const container = document.getElementById('chat-unified-container');
+        if (!container) return;
+        const items = Array.from(container.querySelectorAll('.unified-chat-item'));
+        items.sort((a, b) => {
+            const tsA = parseInt(a.dataset.timestamp || '0');
+            const tsB = parseInt(b.dataset.timestamp || '0');
+            return tsB - tsA;
+        });
+        items.forEach(item => container.appendChild(item));
     }
 
     // Direct Message User selection
@@ -2458,6 +2546,7 @@
         const layout = document.querySelector('.chat-layout');
         if (layout) {
             layout.classList.add('chat-show-main');
+            document.body.classList.add('mobile-chat-opened');
         }
 
         // Show window, hide placeholder
@@ -2481,7 +2570,11 @@
         const avatarContainer = document.getElementById('chat-header-avatar-container');
         if (avatarContainer) {
             avatarContainer.style.display = 'block';
-            document.getElementById('chat-header-avatar').src = avatar;
+            const headerAvatar = document.getElementById('chat-header-avatar');
+            headerAvatar.src = avatar;
+            headerAvatar.style.objectFit = 'cover';
+            headerAvatar.style.backgroundColor = 'transparent';
+            headerAvatar.style.padding = '0';
             
             // Check if user is online based on activeItem's online-dot in sidebar
             const activeItem = document.getElementById(`contact-${userId}`);
@@ -3440,6 +3533,13 @@
         // Start polling for direct messages globally
         startGlobalDirectChatPolling();
 
+        let filterParam = new URLSearchParams(window.location.search).get('filter');
+        if (filterParam) {
+            filterChats(filterParam);
+        } else {
+            applySidebarFilters();
+        }
+
         let savedTaskId = '{{ session('select_task_id') }}' || new URLSearchParams(window.location.search).get('select_task');
         let savedDirectUserId = new URLSearchParams(window.location.search).get('select_direct') || new URLSearchParams(window.location.search).get('select_user');
 
@@ -3555,11 +3655,16 @@
             // Category filter validation
             const unreadCount = parseInt(item.getAttribute('data-unread-count') || '0');
             const isBug = item.getAttribute('data-is-bug') === '1';
+            const isTelecaller = item.getAttribute('data-is-telecaller') === '1';
             const priority = item.getAttribute('data-priority') || '';
             const status = item.getAttribute('data-status') || '';
             
             let matchesFilter = true;
-            if (activeChatFilter === 'unread') {
+            if (activeChatFilter === 'all') {
+                matchesFilter = !isTelecaller;
+            } else if (activeChatFilter === 'telecaller') {
+                matchesFilter = isTelecaller;
+            } else if (activeChatFilter === 'unread') {
                 matchesFilter = unreadCount > 0;
             } else if (activeChatFilter === 'bugs') {
                 matchesFilter = isBug;
@@ -3567,6 +3672,8 @@
                 matchesFilter = priority === 'critical';
             } else if (activeChatFilter === 'review') {
                 matchesFilter = status === 'review';
+            } else if (activeChatFilter === 'pending') {
+                matchesFilter = status === 'pending';
             }
 
             if (matchesSearch && matchesFilter) {
@@ -3586,6 +3693,7 @@
         const layout = document.querySelector('.chat-layout');
         if (layout) {
             layout.classList.remove('chat-show-main');
+            document.body.classList.remove('mobile-chat-opened');
         }
         
         closeInfoSidebar();
@@ -3654,6 +3762,7 @@
         const layout = document.querySelector('.chat-layout');
         if (layout) {
             layout.classList.add('chat-show-main');
+            document.body.classList.add('mobile-chat-opened');
         }
 
         // Show window, hide placeholder
@@ -3709,8 +3818,28 @@
                     toggleInfoSidebar(e);
                 };
 
-                // Sync sidebar working badge state
+                // Sync sidebar working badge state and task status
                 const sidebarItem = document.getElementById(`chat-task-item-${taskId}`);
+                if (sidebarItem) {
+                    sidebarItem.setAttribute('data-status', data.status);
+                    const statusBadge = sidebarItem.querySelector('.sidebar-status-badge');
+                    if (statusBadge) {
+                        const statusMap = {
+                            'completed': { text: 'Completed', class: 'bg-success-subtle text-success border border-success-subtle' },
+                            'in_progress': { text: 'In Progress', class: 'bg-warning-subtle text-warning border border-warning-subtle' },
+                            'review': { text: 'Review', class: 'bg-info-subtle text-info border border-info-subtle' },
+                            'rework': { text: 'Rework', class: 'bg-danger-subtle text-danger border border-danger-subtle' },
+                            'rejected': { text: 'Rejected', class: 'bg-danger-subtle text-danger border border-danger-subtle' },
+                            'pending': { text: 'Pending', class: 'bg-secondary-subtle text-secondary border border-secondary-subtle' }
+                        };
+                        const statusInfo = statusMap[data.status] || { text: 'Pending', class: 'bg-secondary-subtle text-secondary border border-secondary-subtle' };
+                        statusBadge.className = `badge ${statusInfo.class} sidebar-status-badge`;
+                        statusBadge.textContent = statusInfo.text;
+                    }
+                    if (typeof applySidebarFilters === 'function') {
+                        applySidebarFilters();
+                    }
+                }
                 if (sidebarItem && isLeaderOrAbove) {
                     const badgeContainer = sidebarItem.querySelector('.text-truncate');
                     if (badgeContainer) {
@@ -3745,7 +3874,11 @@
                 const avatarContainer = document.getElementById('chat-header-avatar-container');
                 if (avatarContainer) {
                     avatarContainer.style.display = 'block';
-                    document.getElementById('chat-header-avatar').src = data.assignee_avatar;
+                    const headerAvatar = document.getElementById('chat-header-avatar');
+                    headerAvatar.src = data.assignee_avatar;
+                    headerAvatar.style.objectFit = 'contain';
+                    headerAvatar.style.backgroundColor = '#ffffff';
+                    headerAvatar.style.padding = '2px';
                     document.getElementById('chat-header-online-dot').style.display = 'none';
                 }
                 
@@ -3919,6 +4052,7 @@
                     const taskId = parseInt(item.id.replace('chat-task-item-', ''));
                     if (isNaN(taskId)) return;
 
+                    const prevCount = previousUnreadCounts[taskId] || 0;
                     const count = (taskId === activeTaskId) ? 0 : (parseInt(unreadCounts[taskId]) || 0);
                     totalTaskUnread += count;
                     const container = document.getElementById('badge-container-' + taskId);
@@ -3935,8 +4069,10 @@
                             }
                             badge.textContent = count;
                             
-                            // Move to top since it has unread comments
-                            moveThreadToTop('task', taskId, null, 'Just now', count);
+                            // Only move to top if this is a NEW unread (count increased)
+                            if (count > prevCount) {
+                                moveThreadToTop('task', taskId, null, 'Just now', count);
+                            }
                         } else {
                             if (badge) {
                                 badge.remove();
@@ -3945,14 +4081,11 @@
                     }
 
                     // Only play sound for tasks OTHER than the active task
-                    if (taskId !== activeTaskId) {
-                        const prevCount = previousUnreadCounts[taskId] || 0;
-                        if (count > prevCount) {
-                            shouldPlaySound = true;
-                        }
+                    if (taskId !== activeTaskId && count > prevCount) {
+                        shouldPlaySound = true;
                     }
-                    
-                    // Update tracked counts
+
+                    // Update tracked counts AFTER comparisons above
                     previousUnreadCounts[taskId] = count;
                 });
 
@@ -4679,11 +4812,19 @@
         const layout = document.querySelector('.chat-layout');
         if (layout) {
             layout.classList.add('chat-show-main');
+            document.body.classList.add('mobile-chat-opened');
         }
     }
 
     function showCreateTaskForm() {
         hideCreationForms();
+        
+        // Reset attached images for tasks
+        window.taskAttachedImages = [];
+        if (typeof window.renderTaskAttachments === 'function') {
+            window.renderTaskAttachments();
+        }
+
         // Hide chat content & placeholder
         document.getElementById('chat-no-task-placeholder').classList.add('d-none');
         document.getElementById('chat-content-container').classList.add('d-none');
@@ -4704,11 +4845,19 @@
         const layout = document.querySelector('.chat-layout');
         if (layout) {
             layout.classList.add('chat-show-main');
+            document.body.classList.add('mobile-chat-opened');
         }
     }
 
     function showCreateBugForm() {
         hideCreationForms();
+        
+        // Reset attached images
+        window.bugAttachedImages = [];
+        if (typeof window.renderBugAttachments === 'function') {
+            window.renderBugAttachments();
+        }
+
         // Hide chat content & placeholder
         document.getElementById('chat-no-task-placeholder').classList.add('d-none');
         document.getElementById('chat-content-container').classList.add('d-none');
@@ -4729,6 +4878,7 @@
         const layout = document.querySelector('.chat-layout');
         if (layout) {
             layout.classList.add('chat-show-main');
+            document.body.classList.add('mobile-chat-opened');
         }
     }
 
@@ -4754,6 +4904,7 @@
             const layout = document.querySelector('.chat-layout');
             if (layout) {
                 layout.classList.remove('chat-show-main');
+                document.body.classList.remove('mobile-chat-opened');
             }
         }
     }
@@ -4871,6 +5022,58 @@
             });
         }
 
+        // AMC Due Date dynamic enabling and calculation in Chat
+        const chatAmcStartInput = document.getElementById('chat_amc_start_date');
+        const chatAmcFreqSelect = document.getElementById('chat_amc_frequency');
+        const chatAmcDueInput = document.getElementById('chat_amc_due_date');
+
+        function checkEnableChatAmcDue() {
+            if (chatAmcStartInput && chatAmcFreqSelect && chatAmcDueInput) {
+                if (chatAmcStartInput.value && chatAmcFreqSelect.value) {
+                    chatAmcDueInput.disabled = false;
+                    
+                    // Auto-calculate default due date if it is empty
+                    if (!chatAmcDueInput.value) {
+                        const startVal = new Date(chatAmcStartInput.value);
+                        if (!isNaN(startVal.getTime())) {
+                            let endVal = new Date(startVal);
+                            const freq = chatAmcFreqSelect.value;
+                            
+                            if (freq === 'annually') {
+                                endVal.setFullYear(endVal.getFullYear() + 1);
+                            } else if (freq === 'semi-annually') {
+                                endVal.setMonth(endVal.getMonth() + 6);
+                            } else if (freq === 'quarterly') {
+                                endVal.setMonth(endVal.getMonth() + 3);
+                            } else if (freq === 'monthly') {
+                                endVal.setMonth(endVal.getMonth() + 1);
+                            }
+                            
+                            endVal.setDate(endVal.getDate() - 1);
+                            
+                            const yyyy = endVal.getFullYear();
+                            const mm = String(endVal.getMonth() + 1).padStart(2, '0');
+                            const dd = String(endVal.getDate()).padStart(2, '0');
+                            chatAmcDueInput.value = `${yyyy}-${mm}-${dd}`;
+                        }
+                    }
+                } else {
+                    chatAmcDueInput.disabled = true;
+                }
+            }
+        }
+
+        if (chatAmcStartInput && chatAmcFreqSelect) {
+            chatAmcStartInput.addEventListener('change', checkEnableChatAmcDue);
+            chatAmcFreqSelect.addEventListener('change', function() {
+                if (chatAmcStartInput.value) {
+                    chatAmcDueInput.value = '';
+                }
+                checkEnableChatAmcDue();
+            });
+            checkEnableChatAmcDue();
+        }
+
         // Submit Project Form
         const chatProjectForm = document.getElementById('chat-project-create-form');
         if (chatProjectForm) {
@@ -4881,7 +5084,15 @@
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
 
+                // Temporarily enable amc_end_date so its value gets included in FormData
+                const tempDisabled = chatAmcDueInput && chatAmcDueInput.disabled;
+                if (tempDisabled) {
+                    chatAmcDueInput.disabled = false;
+                }
                 const formData = new FormData(chatProjectForm);
+                if (tempDisabled) {
+                    chatAmcDueInput.disabled = true;
+                }
 
                 fetch("{{ route('projects.store') }}", {
                     method: 'POST',
@@ -4926,6 +5137,11 @@
                 submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
 
                 const formData = new FormData(chatTaskForm);
+                if (window.taskAttachedImages && window.taskAttachedImages.length > 0) {
+                    window.taskAttachedImages.forEach(base64 => {
+                        formData.append('attachments[]', base64);
+                    });
+                }
 
                 fetch("{{ route('tasks.store') }}", {
                     method: 'POST',
@@ -5083,27 +5299,173 @@
         if (bugBrowserInput) bugBrowserInput.value = browser;
         if (bugOsInput) bugOsInput.value = os + " (Agent: " + navigator.platform + ")";
 
-        // Image preview logic for Bug Form
-        document.querySelectorAll('.bug-chat-file-input').forEach(input => {
-            input.addEventListener('change', function() {
-                const previewId = this.dataset.preview;
-                const index = previewId.split('-')[3];
-                const container = document.getElementById('bug-chat-preview-container-' + index);
-                const previewImg = document.getElementById(previewId);
+        // Image preview and paste logic for Bug Form
+        window.bugAttachedImages = [];
 
-                if (this.files && this.files[0]) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        previewImg.src = e.target.result;
-                        container.classList.remove('d-none');
+        window.addBugAttachment = function(base64) {
+            if (window.bugAttachedImages.length >= 3) {
+                alert('You can upload up to 3 screenshots.');
+                return;
+            }
+            window.bugAttachedImages.push(base64);
+            window.renderBugAttachments();
+        };
+
+        window.renderBugAttachments = function() {
+            const container = document.getElementById('bug-desc-attachments');
+            const counter = document.getElementById('bug-attachment-counter');
+            if (!container) return;
+            container.innerHTML = '';
+            
+            window.bugAttachedImages.forEach((img, index) => {
+                const item = document.createElement('div');
+                item.className = 'position-relative border rounded';
+                item.style.width = '60px';
+                item.style.height = '60px';
+                item.style.backgroundImage = `url(${img})`;
+                item.style.backgroundSize = 'cover';
+                item.style.backgroundPosition = 'center';
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'btn btn-danger btn-sm p-0 d-flex align-items-center justify-content-center position-absolute';
+                removeBtn.style.width = '16px';
+                removeBtn.style.height = '16px';
+                removeBtn.style.borderRadius = '50%';
+                removeBtn.style.top = '-6px';
+                removeBtn.style.right = '-6px';
+                removeBtn.style.fontSize = '9px';
+                removeBtn.innerHTML = '<i class="bi bi-x"></i>';
+                removeBtn.onclick = function() {
+                    window.bugAttachedImages.splice(index, 1);
+                    window.renderBugAttachments();
+                };
+                
+                item.appendChild(removeBtn);
+                container.appendChild(item);
+            });
+
+            if (counter) {
+                counter.textContent = `${window.bugAttachedImages.length} / 3 images`;
+            }
+        }
+
+        const bugDescInput = document.getElementById('bug-chat-desc-input');
+        if (bugDescInput) {
+            bugDescInput.addEventListener('paste', function(e) {
+                const items = (e.clipboardData || window.clipboardData || e.originalEvent.clipboardData).items;
+                for (let i = 0; i < items.length; i++) {
+                    if (items[i].type.indexOf('image') !== -1) {
+                        const file = items[i].getAsFile();
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            window.addBugAttachment(event.target.result);
+                        };
+                        reader.readAsDataURL(file);
+                        e.preventDefault();
+                        break;
                     }
-                    reader.readAsDataURL(this.files[0]);
-                } else {
-                    previewImg.src = '';
-                    container.classList.add('d-none');
                 }
             });
-        });
+        }
+
+        const bugFileInput = document.getElementById('bug-desc-file-input');
+        if (bugFileInput) {
+            bugFileInput.addEventListener('change', function(e) {
+                const files = Array.from(e.target.files);
+                files.forEach(file => {
+                    if (file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            window.addBugAttachment(event.target.result);
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+                bugFileInput.value = '';
+            });
+        }
+
+        // Task attachment functionality
+        window.taskAttachedImages = [];
+        window.addTaskAttachment = function(base64) {
+            if (window.taskAttachedImages.length >= 3) {
+                alert('You can upload up to 3 attachments.');
+                return;
+            }
+            window.taskAttachedImages.push(base64);
+            window.renderTaskAttachments();
+        };
+
+        window.renderTaskAttachments = function() {
+            const container = document.getElementById('task-desc-attachments');
+            if (!container) return;
+            container.innerHTML = '';
+            
+            window.taskAttachedImages.forEach((img, index) => {
+                const item = document.createElement('div');
+                item.className = 'position-relative border rounded';
+                item.style.width = '60px';
+                item.style.height = '60px';
+                item.style.backgroundImage = `url(${img})`;
+                item.style.backgroundSize = 'cover';
+                item.style.backgroundPosition = 'center';
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'btn btn-danger btn-sm p-0 d-flex align-items-center justify-content-center position-absolute';
+                removeBtn.style.width = '16px';
+                removeBtn.style.height = '16px';
+                removeBtn.style.borderRadius = '50%';
+                removeBtn.style.top = '-6px';
+                removeBtn.style.right = '-6px';
+                removeBtn.style.fontSize = '9px';
+                removeBtn.innerHTML = '<i class="bi bi-x"></i>';
+                removeBtn.onclick = function() {
+                    window.taskAttachedImages.splice(index, 1);
+                    window.renderTaskAttachments();
+                };
+                
+                item.appendChild(removeBtn);
+                container.appendChild(item);
+            });
+        }
+
+        const taskDescInput = document.getElementById('task-chat-desc-input');
+        if (taskDescInput) {
+            taskDescInput.addEventListener('paste', function(e) {
+                const items = (e.clipboardData || window.clipboardData || e.originalEvent.clipboardData).items;
+                for (let i = 0; i < items.length; i++) {
+                    if (items[i].type.indexOf('image') !== -1) {
+                        const file = items[i].getAsFile();
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            window.addTaskAttachment(event.target.result);
+                        };
+                        reader.readAsDataURL(file);
+                        e.preventDefault();
+                        break;
+                    }
+                }
+            });
+        }
+
+        const taskFileInput = document.getElementById('task-desc-file-input');
+        if (taskFileInput) {
+            taskFileInput.addEventListener('change', function(e) {
+                const files = Array.from(e.target.files);
+                files.forEach(file => {
+                    if (file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            window.addTaskAttachment(event.target.result);
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+                taskFileInput.value = '';
+            });
+        }
 
         // Submit Bug Form
         const chatBugForm = document.getElementById('chat-bug-create-form');
@@ -5116,6 +5478,9 @@
                 submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Filing...';
 
                 const formData = new FormData(chatBugForm);
+                window.bugAttachedImages.forEach(base64 => {
+                    formData.append('screenshots[]', base64);
+                });
 
                 fetch("{{ route('bugs.store') }}", {
                     method: 'POST',

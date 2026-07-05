@@ -20,6 +20,14 @@
                         <div class="mt-2 text-muted fs-8">
                             <i class="bi bi-stopwatch me-1 text-danger"></i>Call Duration: <span id="logCallTimerVal" class="fw-bold text-dark font-monospace">00:00</span>
                         </div>
+                        <!-- Previous Call Details -->
+                        <div id="logCallPreviousCallSection" class="d-none mt-3 pt-2.5 border-top">
+                            <div class="text-secondary" style="font-size: 11px; font-weight: 500;">
+                                <i class="bi bi-clock-history text-primary me-1"></i>Last Contacted: <span id="logCallLastContactedVal" class="text-dark fw-semibold"></span>
+                            </div>
+                            <div class="text-muted mt-1.5 px-2" style="font-size: 13px; font-weight: 400; line-height: 1.4;" id="logCallLastRemarksVal">
+                            </div>
+                        </div>
                     </div>
                     <div class="row g-3">
                         <div class="col-12">
@@ -175,6 +183,66 @@
     </div>
 </div>
 
+<!-- Export Leads Modal -->
+<div class="modal fade" id="exportCustomerLeadsModal" tabindex="-1" aria-labelledby="exportCustomerLeadsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow" style="border-radius: 16px;">
+            <form id="exportCustomerLeadsForm" method="POST" action="{{ route('leads.export-customer-leads') }}">
+                @csrf
+                <input type="hidden" name="client_id" id="exportClientId">
+                <div class="modal-header border-bottom">
+                    <h5 class="modal-title fw-bold text-dark" id="exportCustomerLeadsModalLabel">
+                        <i class="bi bi-file-earmark-arrow-down me-2 text-primary"></i>Export Numbers
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-4">
+                    <div class="mb-4">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <label class="form-label fw-bold text-secondary fs-7 mb-0">Select Rooms to Export</label>
+                            <button type="button" class="btn btn-link text-primary p-0 fs-8 text-decoration-none" id="btnSelectAllRooms" onclick="toggleSelectAllRooms()">Select All</button>
+                        </div>
+                        <div class="p-3 border rounded-3 bg-light-subtle overflow-y-auto" style="max-height: 200px;" id="exportRoomsContainer">
+                            <!-- Rooms list checkboxes will be populated dynamically -->
+                        </div>
+                        <div class="invalid-feedback d-block text-danger mt-1 d-none" id="exportRoomsError">
+                            Please select at least one room to export.
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-secondary fs-7 mb-2">Select Export Format</label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="format" id="formatXlsx" value="xlsx" checked>
+                                <label class="form-check-label fw-semibold" for="formatXlsx">
+                                    <i class="bi bi-filetype-xlsx text-success fs-5 me-1"></i>xlsx
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="format" id="formatXls" value="xls">
+                                <label class="form-check-label fw-semibold" for="formatXls">
+                                    <i class="bi bi-filetype-xls text-success fs-5 me-1"></i>xls
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="format" id="formatCsv" value="csv">
+                                <label class="form-check-label fw-semibold" for="formatCsv">
+                                    <i class="bi bi-filetype-csv text-info fs-5 me-1"></i>csv
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4 fw-bold"><i class="bi bi-download me-1"></i> Export</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -228,6 +296,22 @@
                             sourceInput.value = 'room_work';
                             durationInput.value = '0';
                             timerValEl.textContent = '00:00';
+
+                            // Previous Call History details (displays if 2nd or subsequent call)
+                            const callsCount = parseInt(button.getAttribute('data-bs-calls-count') || '0');
+                            const lastContactedAt = button.getAttribute('data-bs-last-contacted-at');
+                            const firstRemarks = button.getAttribute('data-bs-first-remarks');
+                            const previousCallSection = modalEl.querySelector('#logCallPreviousCallSection');
+
+                            if (previousCallSection) {
+                                if (callsCount >= 1 && lastContactedAt) {
+                                    previousCallSection.classList.remove('d-none');
+                                    modalEl.querySelector('#logCallLastContactedVal').textContent = lastContactedAt;
+                                    modalEl.querySelector('#logCallLastRemarksVal').textContent = firstRemarks || 'No remarks recorded.';
+                                } else {
+                                    previousCallSection.classList.add('d-none');
+                                }
+                            }
 
                             // Clear any active timer first
                             if (window.callTimerInterval) {
@@ -333,6 +417,95 @@
                     toggleStatusFields();
                 });
             }
+        }
+    });
+
+    function openExportModal(clientId, clientName, rooms) {
+        document.getElementById('exportClientId').value = clientId;
+        document.getElementById('exportCustomerLeadsModalLabel').innerHTML = '<i class="bi bi-file-earmark-arrow-down me-2 text-primary"></i>Export Numbers - ' + clientName;
+        
+        const container = document.getElementById('exportRoomsContainer');
+        container.innerHTML = '';
+        
+        if (rooms && rooms.length > 0) {
+            rooms.forEach((room) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'form-check mb-2';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'form-check-input room-export-checkbox';
+                checkbox.name = 'room_ids[]';
+                checkbox.value = room.id;
+                checkbox.id = 'exportRoom_' + room.id;
+                checkbox.checked = true;
+                
+                const label = document.createElement('label');
+                label.className = 'form-check-label text-dark fw-medium';
+                label.htmlFor = 'exportRoom_' + room.id;
+                label.textContent = room.name;
+                
+                wrapper.appendChild(checkbox);
+                wrapper.appendChild(label);
+                container.appendChild(wrapper);
+            });
+            document.getElementById('btnSelectAllRooms').textContent = 'Deselect All';
+        } else {
+            container.innerHTML = '<div class="text-muted fs-7">No rooms found for this customer.</div>';
+        }
+
+        document.getElementById('exportRoomsError').classList.add('d-none');
+        
+        const modalEl = document.getElementById('exportCustomerLeadsModal');
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+
+    function toggleSelectAllRooms() {
+        const btn = document.getElementById('btnSelectAllRooms');
+        const checkboxes = document.querySelectorAll('.room-export-checkbox');
+        const shouldCheck = btn.textContent === 'Select All';
+        
+        checkboxes.forEach(cb => cb.checked = shouldCheck);
+        btn.textContent = shouldCheck ? 'Deselect All' : 'Select All';
+    }
+
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('room-export-checkbox')) {
+            const checkboxes = document.querySelectorAll('.room-export-checkbox');
+            const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+            const btn = document.getElementById('btnSelectAllRooms');
+            if (checkedCount === checkboxes.length) {
+                btn.textContent = 'Deselect All';
+            } else {
+                btn.textContent = 'Select All';
+            }
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('exportCustomerLeadsForm');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                const checkboxes = document.querySelectorAll('.room-export-checkbox');
+                const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+                const errorDiv = document.getElementById('exportRoomsError');
+                
+                if (checkedCount === 0) {
+                    e.preventDefault();
+                    errorDiv.classList.remove('d-none');
+                } else {
+                    errorDiv.classList.add('d-none');
+                    
+                    setTimeout(() => {
+                        const modalEl = document.getElementById('exportCustomerLeadsModal');
+                        const modal = bootstrap.Modal.getInstance(modalEl);
+                        if (modal) {
+                            modal.hide();
+                        }
+                    }, 1000);
+                }
+            });
         }
     });
 </script>

@@ -37,15 +37,17 @@ class EmployeeController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name'          => 'required|string|max:255',
-            'email'         => 'required|email|unique:users,email',
-            'role_id'       => 'required|exists:roles,id',
-            'department_id' => 'required|exists:departments,id',
-            'designation_id'=> 'nullable|exists:designations,id',
-            'joining_date'  => 'required|date',
-            'employee_code' => 'nullable|unique:employees,employee_code',
-            'salary'        => 'nullable|numeric',
-            'avatar'        => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'name'           => 'required|string|max:255',
+            'email'          => 'required|email|unique:users,email',
+            'personal_email' => 'nullable|email|max:255',
+            'role_id'        => 'required|exists:roles,id',
+            'department_id'  => 'required|exists:departments,id',
+            'designation_id' => 'nullable|exists:designations,id',
+            'joining_date'   => 'required|date',
+            'employee_code'  => 'nullable|unique:employees,employee_code',
+            'salary'         => 'nullable|numeric',
+            'avatar'         => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'google_drive_link' => 'nullable|url',
         ]);
 
         $plainPassword = $request->password ?? 'Password@123';
@@ -82,8 +84,11 @@ class EmployeeController extends Controller
                 'joining_date'   => $request->joining_date,
                 'team_leader_id' => $request->team_leader_id,
                 'phone'          => $request->phone,
+                'personal_email' => $request->personal_email,
                 'salary'         => $request->salary ?? 0,
+                'is_applicable_for_salary' => $request->boolean('is_applicable_for_salary', true),
                 'salary_type'    => $request->salary_type ?? 'monthly',
+                'google_drive_link' => $request->google_drive_link,
                 'status'         => 'active',
             ]
         );
@@ -95,7 +100,7 @@ class EmployeeController extends Controller
 
     public function show(Employee $employee)
     {
-        $employee->load(['user.role', 'department', 'designation', 'teamLeader', 'user.workSessions', 'user.leaves', 'user.dailyReports']);
+        $employee->load(['user.role', 'department', 'designation', 'teamLeader', 'user.workSessions.timeLogs', 'user.leaves', 'user.dailyReports']);
         
         $user = $employee->user;
         $month = now()->month;
@@ -149,11 +154,13 @@ class EmployeeController extends Controller
     public function update(Request $request, Employee $employee)
     {
         $request->validate([
-            'name'          => 'required|string|max:255',
-            'email'         => 'required|email|unique:users,email,' . $employee->user_id,
-            'department_id' => 'required|exists:departments,id',
-            'password'      => 'nullable|string|min:8',
-            'avatar'        => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'name'           => 'required|string|max:255',
+            'email'          => 'required|email|unique:users,email,' . $employee->user_id,
+            'personal_email' => 'nullable|email|max:255',
+            'department_id'  => 'required|exists:departments,id',
+            'password'       => 'nullable|string|min:8',
+            'avatar'         => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'google_drive_link' => 'nullable|url',
         ]);
 
         $userData = [
@@ -175,13 +182,16 @@ class EmployeeController extends Controller
 
         $employee->user->update($userData);
 
-        $employee->update([
+         $employee->update([
             'department_id'  => $request->department_id,
             'designation_id' => $request->designation_id,
             'team_leader_id' => $request->team_leader_id,
             'phone'          => $request->phone,
+            'personal_email' => $request->personal_email,
             'salary'         => $request->salary ?? 0,
+            'is_applicable_for_salary' => $request->boolean('is_applicable_for_salary', true),
             'joining_date'   => $request->joining_date,
+            'google_drive_link' => $request->google_drive_link,
         ]);
 
         return redirect()->route('employees.index')->with('success', 'Employee updated successfully!');
@@ -266,5 +276,60 @@ class EmployeeController extends Controller
             'success' => true,
             'message' => 'Roles and permissions updated successfully!'
         ]);
+    }
+
+    public function loginAs(Employee $employee)
+    {
+        if (!auth()->user()->isSuperAdmin()) {
+            abort(403, 'Only super admins can use this feature.');
+        }
+
+        $targetUser = $employee->user;
+
+        if (!$targetUser) {
+            return back()->with('error', 'No user account linked to this employee.');
+        }
+
+        if ($targetUser->isSuperAdmin()) {
+            return back()->with('error', 'Cannot impersonate another super admin account.');
+        }
+
+        // Store the original admin ID so they can return to their account later
+        session(['impersonating_from' => auth()->id()]);
+
+        \App\Models\ActivityLog::log(
+            'impersonation_started',
+            'Super admin logged in as: ' . $targetUser->name . ' (' . $targetUser->email . ')'
+        );
+
+        auth()->login($targetUser);
+
+        return redirect('/dashboard')->with('info', 'You are now logged in as ' . $targetUser->name . '. Use "Return to my account" to switch back.');
+    }
+    public function returnAccount()
+    {
+        $originalAdminId = session('impersonating_from');
+
+        if (!$originalAdminId) {
+            return redirect('/dashboard')->with('error', 'No impersonation session found.');
+        }
+
+        $adminUser = \App\Models\User::find($originalAdminId);
+
+        if (!$adminUser || !$adminUser->isSuperAdmin()) {
+            session()->forget('impersonating_from');
+            return redirect()->route('login')->with('error', 'Original admin account not found.');
+        }
+
+        \App\Models\ActivityLog::log(
+            'impersonation_ended',
+            'Super admin returned from impersonating: ' . auth()->user()->name . ' (' . auth()->user()->email . ')'
+        );
+
+        session()->forget('impersonating_from');
+
+        auth()->login($adminUser);
+
+        return redirect('/dashboard')->with('success', 'Welcome back, ' . $adminUser->name . '!');
     }
 }

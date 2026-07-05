@@ -10,6 +10,26 @@
 
 @section('content')
 <div class="row g-4">
+    @if($project->url)
+        @php
+            $projectUrl = $project->url;
+            if ($projectUrl && !preg_match("~^(?:f|ht)tps?://~i", $projectUrl)) {
+                $projectUrl = "http://" . $projectUrl;
+            }
+        @endphp
+        <div class="col-12">
+            <div class="card overflow-hidden shadow-sm border-0" style="border-radius: 16px;">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center py-2 px-3">
+                    <span class="fw-semibold text-dark fs-7"><i class="bi bi-laptop me-1"></i> Project Landing Page Cover</span>
+                    <a href="{{ $projectUrl }}" target="_blank" class="btn btn-outline-primary btn-xs text-xs py-0 px-2 rounded-pill"><i class="bi bi-box-arrow-up-right me-1"></i> Open in New Tab</a>
+                </div>
+                <div class="position-relative" style="height: 350px; background: #f8fafc;">
+                    <iframe src="{{ $projectUrl }}" style="width: 100%; height: 100%; border: none;" title="Project Cover Page"></iframe>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <!-- Project Overview Details -->
     <div class="col-12 col-lg-4">
         <div class="card mb-4">
@@ -61,9 +81,16 @@
                 <div class="mb-3">
                     <small class="text-muted d-block">Status</small>
                     <span class="badge bg-primary-subtle text-primary border border-primary-subtle text-capitalize mt-1">
-                        {{ str_replace('_', ' ', $project->status) }}
+                        {{ $project->status_label }}
                     </span>
                 </div>
+
+                @if($project->url)
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Project Link</small>
+                        <a href="{{ $projectUrl }}" target="_blank" class="text-decoration-none text-primary fw-medium text-break fs-7"><i class="bi bi-link-45deg"></i> {{ $project->url }}</a>
+                    </div>
+                @endif
 
                 <div class="mb-3">
                     <small class="text-muted d-block">Technologies</small>
@@ -86,6 +113,199 @@
                                 <small class="text-muted fs-8">{{ $project->teamLeader->role->name ?? 'Team Leader' }}</small>
                             </div>
                         </div>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        {{-- Domain & Hosting Details Card --}}
+        <div class="card mt-4 border-0 shadow-sm">
+            <div class="card-header bg-white py-3 px-4">
+                <h6 class="mb-0 fw-bold"><i class="bi bi-server me-1"></i> Domain & Hosting</h6>
+            </div>
+            <div class="card-body p-4">
+                <!-- Domain Details -->
+                <div class="mb-3">
+                    <small class="text-muted d-block fs-8 text-uppercase font-monospace">Domain Details</small>
+                    <div class="mt-1">
+                        @if($project->domainRegistration)
+                            <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                                <span class="fw-semibold text-primary"><i class="bi bi-globe"></i> {{ $project->domainRegistration->name }}</span>
+                                @if($project->domain_valid_till)
+                                    @php
+                                        $domainDaysLeft = (int) now()->diffInDays($project->domain_valid_till, false);
+                                        $domainBadgeColor = $domainDaysLeft < 30 ? 'danger' : ($domainDaysLeft < 90 ? 'warning' : 'success');
+                                    @endphp
+                                    <span class="badge bg-{{ $domainBadgeColor }}-subtle text-{{ $domainBadgeColor }} border border-{{ $domainBadgeColor }}-subtle fs-8">
+                                        Valid Till: {{ $project->domain_valid_till->format('d M Y') }} ({{ $domainDaysLeft }} days left)
+                                    </span>
+                                @endif
+                            </div>
+                            @if($project->domainRegistration->url && (auth()->user()->isAdminOrAbove() || auth()->user()->isTeamLeader()))
+                                <div class="fs-8 text-muted mt-1">
+                                    <strong>Control Panel:</strong> <a href="{{ $project->domainRegistration->url }}" target="_blank">{{ $project->domainRegistration->url }} <i class="bi bi-box-arrow-up-right fs-9"></i></a>
+                                </div>
+                            @endif
+                            @if(auth()->user()->isAdminOrAbove() || auth()->user()->isTeamLeader())
+                                @if($project->domainRegistration->username)
+                                    <div class="fs-8 text-muted mt-1">
+                                        <strong>Username:</strong> <code>{{ $project->domainRegistration->username }}</code>
+                                    </div>
+                                @endif
+                                @if($project->domainRegistration->password)
+                                    <div class="fs-8 text-muted mt-1 d-flex align-items-center gap-2">
+                                        <strong>Password:</strong>
+                                        <div class="input-group input-group-sm" style="max-width: 160px; display: inline-flex;">
+                                            <input type="password" class="form-control border-end-0 bg-transparent font-monospace p-0 px-1 text-muted border-0" value="{{ $project->domainRegistration->password }}" readonly style="font-size: 11px; height: 20px;">
+                                            <button class="btn btn-link text-secondary p-0 px-1 border-0" type="button" onclick="toggleShowPassword(this)" style="height: 20px;">
+                                                <i class="bi bi-eye"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                @endif
+                            @endif
+                        @elseif($project->domain_provider)
+                            <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                                <span class="fw-semibold text-dark">{{ $project->domain_provider }}</span>
+                                @if($project->domain_valid_till)
+                                    @php
+                                        $domainDaysLeft = (int) now()->diffInDays($project->domain_valid_till, false);
+                                        $domainBadgeColor = $domainDaysLeft < 30 ? 'danger' : ($domainDaysLeft < 90 ? 'warning' : 'success');
+                                    @endphp
+                                    <span class="badge bg-{{ $domainBadgeColor }}-subtle text-{{ $domainBadgeColor }} border border-{{ $domainBadgeColor }}-subtle fs-8">
+                                        Valid Till: {{ $project->domain_valid_till->format('d M Y') }} ({{ $domainDaysLeft }} days left)
+                                    </span>
+                                @endif
+                            </div>
+                        @else
+                            <span class="text-muted">No Domain Provider linked.</span>
+                        @endif
+                    </div>
+                </div>
+
+                <hr class="my-3 text-muted">
+
+                <!-- Hosting Details -->
+                <div class="mb-2">
+                    <small class="text-muted d-block fs-8 text-uppercase font-monospace">Hosting Details</small>
+                    <div class="mt-1">
+                        @if($project->hostingProvider)
+                            <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                                <span class="fw-semibold text-primary"><i class="bi bi-server"></i> {{ $project->hostingProvider->name }}</span>
+                                @if($project->hosting_valid_till)
+                                    @php
+                                        $hostingDaysLeft = (int) now()->diffInDays($project->hosting_valid_till, false);
+                                        $hostingBadgeColor = $hostingDaysLeft < 30 ? 'danger' : ($hostingDaysLeft < 90 ? 'warning' : 'success');
+                                    @endphp
+                                    <span class="badge bg-{{ $hostingBadgeColor }}-subtle text-{{ $hostingBadgeColor }} border border-{{ $hostingBadgeColor }}-subtle fs-8">
+                                        Valid Till: {{ $project->hosting_valid_till->format('d M Y') }} ({{ $hostingDaysLeft }} days left)
+                                    </span>
+                                @endif
+                            </div>
+                            @if($project->hostingProvider->url && (auth()->user()->isAdminOrAbove() || auth()->user()->isTeamLeader()))
+                                <div class="fs-8 text-muted mt-1">
+                                    <strong>CPanel URL:</strong> <a href="{{ $project->hostingProvider->url }}" target="_blank">{{ $project->hostingProvider->url }} <i class="bi bi-box-arrow-up-right fs-9"></i></a>
+                                </div>
+                            @endif
+                            @if(auth()->user()->isAdminOrAbove() || auth()->user()->isTeamLeader())
+                                @if($project->hostingProvider->username)
+                                    <div class="fs-8 text-muted mt-1">
+                                        <strong>Username:</strong> <code>{{ $project->hostingProvider->username }}</code>
+                                    </div>
+                                @endif
+                                @if($project->hostingProvider->password)
+                                    <div class="fs-8 text-muted mt-1 d-flex align-items-center gap-2">
+                                        <strong>Password:</strong>
+                                        <div class="input-group input-group-sm" style="max-width: 160px; display: inline-flex;">
+                                            <input type="password" class="form-control border-end-0 bg-transparent font-monospace p-0 px-1 text-muted border-0" value="{{ $project->hostingProvider->password }}" readonly style="font-size: 11px; height: 20px;">
+                                            <button class="btn btn-link text-secondary p-0 px-1 border-0" type="button" onclick="toggleShowPassword(this)" style="height: 20px;">
+                                                <i class="bi bi-eye"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                @endif
+                            @endif
+                        @else
+                            <span class="text-muted">No Hosting Provider linked.</span>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Project AMC Card --}}
+        @php
+            $amc = \App\Models\ProjectAmc::where('project_id', $project->id)->first();
+        @endphp
+        <script>
+            function toggleShowPassword(button) {
+                const input = button.parentElement.querySelector('input');
+                const icon = button.querySelector('i');
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.className = 'bi bi-eye-slash';
+                } else {
+                    input.type = 'password';
+                    icon.className = 'bi bi-eye';
+                }
+            }
+        </script>
+        <div class="card mt-4 border-0 shadow-sm">
+            <div class="card-header bg-white py-3 px-4 d-flex align-items-center justify-content-between">
+                <h6 class="mb-0 fw-bold"><i class="bi bi-clock-history me-1"></i> AMC Details</h6>
+                @if($amc && (auth()->user()->isAdminOrAbove() || auth()->user()->isAccounts() || auth()->user()->isTeamLeader()))
+                    <a href="{{ route('project-amcs.show', $amc) }}" class="btn btn-link btn-sm p-0 text-decoration-none">View Statement</a>
+                @endif
+            </div>
+            <div class="card-body p-4">
+                @if($amc)
+                    <div class="mb-3">
+                        <small class="text-muted d-block fs-8 text-uppercase font-monospace">AMC Value</small>
+                        <span class="fw-bold text-primary fs-6">₹{{ number_format($amc->amount, 2) }}</span>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <small class="text-muted d-block fs-8">Start Date</small>
+                            <span class="fw-semibold fs-7">{{ $amc->start_date->format('d M Y') }}</span>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block fs-8">End Date</small>
+                            <span class="fw-semibold fs-7">{{ $amc->end_date->format('d M Y') }}</span>
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <small class="text-muted d-block fs-8">Billing Cycle</small>
+                            <span class="badge bg-light text-secondary border text-capitalize fs-8 mt-1">{{ str_replace('_', ' ', $amc->frequency) }}</span>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted d-block fs-8">Status</small>
+                            <span class="badge bg-{{ $amc->status_badge }}-subtle text-{{ $amc->status_badge }} border border-{{ $amc->status_badge }}-subtle fs-8 mt-1">
+                                @if($amc->status === 'pending_renewal')
+                                    Pending Renewal
+                                @else
+                                    {{ ucfirst($amc->status) }}
+                                @endif
+                            </span>
+                        </div>
+                    </div>
+                @else
+                    <div class="text-center py-3">
+                        <p class="text-muted fs-7 mb-2">No AMC registered for this project.</p>
+                        @if(auth()->user()->isAdminOrAbove() || auth()->user()->isAccounts())
+                            <a href="{{ route('project-amcs.index', ['project_id' => $project->id]) }}" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                                <i class="bi bi-plus-circle me-1"></i> Register AMC
+                            </a>
+                        @endif
+                    </div>
+                @endif
+
+                @if(auth()->user()->isAdminOrAbove())
+                    <hr class="my-3 text-muted">
+                    <div class="d-grid">
+                        <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#discontinueProjectModal">
+                            <i class="bi bi-folder-x"></i> Discontinue Project
+                        </button>
                     </div>
                 @endif
             </div>
@@ -440,6 +660,35 @@
                     <button type="submit" class="btn btn-primary">Save Changes</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+@endif
+
+@if(auth()->user()->isAdminOrAbove())
+<div class="modal fade" id="discontinueProjectModal" tabindex="-1" aria-labelledby="discontinueProjectModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-danger fw-bold" id="discontinueProjectModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill"></i> Discontinue Project?
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-dark">Are you sure you want to discontinue the project <strong>{{ $project->name }}</strong>?</p>
+                <div class="alert alert-warning border-warning-subtle text-warning-emphasis">
+                    <i class="bi bi-info-circle-fill me-1"></i>
+                    <strong>Important:</strong> Discontinuing this project will hide it from the entire system (including tasks, bugs, time logs, reports, and search filters). It will only be visible in the Company Settings under the "Discontinued Projects" section.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" action="{{ route('projects.discontinue', $project->id) }}">
+                    @csrf
+                    <button type="submit" class="btn btn-danger">Yes, Discontinue Project</button>
+                </form>
+            </div>
         </div>
     </div>
 </div>

@@ -31,6 +31,7 @@ class SettingsSeeder extends Seeder
             ['key' => 'invoice_tax',        'value' => '18',                    'group' => 'invoice',   'label' => 'Default Tax %',         'type' => 'text'],
             ['key' => 'invoice_prefix',     'value' => 'INV',                   'group' => 'invoice',   'label' => 'Invoice Prefix',        'type' => 'text'],
             ['key' => 'quotation_prefix',   'value' => 'QUO',                   'group' => 'invoice',   'label' => 'Quotation Prefix',      'type' => 'text'],
+            ['key' => 'proforma_prefix',    'value' => 'PRO',                   'group' => 'invoice',   'label' => 'Proforma Prefix',       'type' => 'text'],
             // Notifications
             ['key' => 'notify_task_assign',         'value' => '1', 'group' => 'notifications', 'label' => 'Notify on Task Assign',    'type' => 'boolean'],
             ['key' => 'notify_deadline',            'value' => '1', 'group' => 'notifications', 'label' => 'Notify on Deadline',        'type' => 'boolean'],

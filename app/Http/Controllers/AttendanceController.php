@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
  
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use App\Models\Attendance;
+use App\Models\TaskTimeLog;
 use App\Models\User;
 use App\Models\Holiday;
 use App\Models\Setting;
@@ -128,13 +130,18 @@ class AttendanceController extends Controller
                 ['path' => \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPath()]
             );
         } else {
-            // View all employee logs list
+            // View all employee logs list (exclude super admin)
             $records = Attendance::with('user')
+                ->whereHas('user', fn($q) => $q->whereHas('role', fn($r) => $r->where('slug', '!=', 'super-admin')))
                 ->whereMonth('date', $month)->whereYear('date', $year)
                 ->orderBy('date', 'desc')->paginate(30);
         }
 
-        return view('attendance.index', compact('records', 'month', 'year', 'employees'));
+        // Attach task-based IN/OUT times to every record
+        // Collect user_ids and dates from the current page
+        $taskInOut = $this->buildTaskInOutMap($records);
+
+        return view('attendance.index', compact('records', 'month', 'year', 'employees', 'taskInOut'));
     }
     public function show(Attendance $attendance)
     {
@@ -175,7 +182,57 @@ class AttendanceController extends Controller
         }
         $month = $request->month ?? now()->month;
         $year  = $request->year  ?? now()->year;
-        $records = Attendance::with('user')->whereMonth('date', $month)->whereYear('date', $year)->get()->groupBy('user_id');
+        $records = Attendance::with('user')
+            ->whereHas('user', fn($q) => $q->whereHas('role', fn($r) => $r->where('slug', '!=', 'super-admin')))
+            ->whereMonth('date', $month)->whereYear('date', $year)->get()->groupBy('user_id');
         return view('attendance.report', compact('records', 'month', 'year'));
+    }
+
+    /**
+     * Build a map of task-based IN/OUT times keyed by "{user_id}_{date}".
+     * IN  = earliest started_at among all task_time_logs for that user/day.
+     * OUT = latest   ended_at   among all task_time_logs for that user/day.
+     */
+    private function buildTaskInOutMap($records): array
+    {
+        // Gather pairs of (user_id, date) from the records
+        $pairs = [];
+        foreach ($records as $rec) {
+            $userId  = $rec->user_id ?? null;
+            $dateStr = ($rec->date instanceof \Carbon\Carbon)
+                ? $rec->date->format('Y-m-d')
+                : \Carbon\Carbon::parse($rec->date)->format('Y-m-d');
+            if ($userId) {
+                $pairs[] = ['user_id' => $userId, 'date' => $dateStr];
+            }
+        }
+
+        if (empty($pairs)) {
+            return [];
+        }
+
+        $userIds = array_unique(array_column($pairs, 'user_id'));
+        $dates   = array_unique(array_column($pairs, 'date'));
+
+        // Single query: get min started_at and max ended_at per user per date
+        $logs = TaskTimeLog::selectRaw(
+                'user_id, DATE(started_at) as log_date, MIN(started_at) as first_start, MAX(ended_at) as last_end'
+            )
+            ->whereIn('user_id', $userIds)
+            ->whereIn(\DB::raw('DATE(started_at)'), $dates)
+            ->whereNotNull('started_at')
+            ->groupBy('user_id', 'log_date')
+            ->get();
+
+        $map = [];
+        foreach ($logs as $log) {
+            $key = $log->user_id . '_' . $log->log_date;
+            $map[$key] = [
+                'in'  => $log->first_start ? \Carbon\Carbon::parse($log->first_start) : null,
+                'out' => $log->last_end    ? \Carbon\Carbon::parse($log->last_end)    : null,
+            ];
+        }
+
+        return $map;
     }
 }

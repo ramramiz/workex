@@ -23,4 +23,12 @@ class DailyReport extends Model
 
     public function user() { return $this->belongsTo(User::class); }
     public function reviewer() { return $this->belongsTo(User::class, 'reviewer_id'); }
+
+    public function checkedProjectPreviews()
+    {
+        return \App\Models\ActivityLog::where('user_id', $this->user_id)
+            ->where('action', 'view_project_previews')
+            ->whereDate('created_at', $this->date)
+            ->exists();
+    }
 }

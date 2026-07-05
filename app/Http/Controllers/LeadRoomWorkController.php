@@ -224,12 +224,16 @@ class LeadRoomWorkController extends Controller
             }
         }
 
-        $roomsQuery = $user->rooms()->with('client')->withCount(['leads' => function($q) use ($user) {
-            $q->where(function($sq) use ($user) {
-                $sq->where('assigned_to', $user->id)
-                  ->orWhereNull('assigned_to');
-            });
-        }]);
+        $roomsQuery = $user->rooms()->with('client')
+            ->withCount(['leads' => function($q) use ($user) {
+                $q->where(function($sq) use ($user) {
+                    $sq->where('assigned_to', $user->id)
+                      ->orWhereNull('assigned_to');
+                });
+            }])
+            ->withCount(['calls as user_calls_count' => function($q) use ($user) {
+                $q->where('telecaller_id', $user->id);
+            }]);
 
         if ($selectedClientId) {
             $roomsQuery->where('client_id', $selectedClientId);
@@ -251,6 +255,7 @@ class LeadRoomWorkController extends Controller
 
         // Fetch not connected leads (any time, matching room calling counts)
         $notConnectedLeadsQuery = Lead::forUser($user)
+            ->where('status', '!=', 'permanently_not_connected')
             ->whereHas('latestCall', function($q) {
                 $q->whereIn('status', ['Not Connected', 'Busy', 'Switched Off']);
             })
@@ -496,7 +501,7 @@ class LeadRoomWorkController extends Controller
 
         $leadsQuery = Lead::forUser($user)
             ->whereDate('follow_up_date', today())
-            ->with('room');
+            ->with(['room', 'calls', 'latestCall']);
             
         $leadsQuery->forClient($selectedClientId)->latest();
 
@@ -512,6 +517,7 @@ class LeadRoomWorkController extends Controller
         // Fetch today's not connected calls (across all rooms/direct since follow-ups is a global view)
         // Fetch not connected leads logged by this telecaller (any time, matching room calling counts)
         $notConnectedLeadsQuery = Lead::forUser($user)
+            ->where('status', '!=', 'permanently_not_connected')
             ->whereHas('latestCall', function($q) {
                 $q->whereIn('status', ['Not Connected', 'Busy', 'Switched Off']);
             })
@@ -808,22 +814,29 @@ class LeadRoomWorkController extends Controller
 
         $tab = $request->query('tab', 'uncalled');
         
-        $leadsBase = $room->leads()->forUser($user);
+        $leadsBase = $room->leads()->forUser($user)->with(['calls', 'latestCall']);
 
         $uncalledCount = (clone $leadsBase)->whereDoesntHave('calls')->count();
         $todayFollowUpCount = (clone $leadsBase)->whereDate('follow_up_date', today())->count();
         $interestedCount = (clone $leadsBase)->where('status', 'interested')->count();
-        $notConnectedCount = (clone $leadsBase)->whereHas('latestCall', function($q) {
-            $q->whereIn('status', ['Not Connected', 'Busy', 'Switched Off']);
-        })->count();
+        $notConnectedCount = (clone $leadsBase)
+            ->where('status', '!=', 'permanently_not_connected')
+            ->whereHas('latestCall', function($q) {
+                $q->whereIn('status', ['Not Connected', 'Busy', 'Switched Off']);
+            })->count();
+        $permanentlyNotConnectedCount = (clone $leadsBase)->where('status', 'permanently_not_connected')->count();
         $allContactsCount = (clone $leadsBase)->count();
 
         if ($tab === 'interested') {
             $leads = (clone $leadsBase)->where('status', 'interested')->latest()->paginate(15);
         } elseif ($tab === 'not_connected') {
-            $leads = (clone $leadsBase)->whereHas('latestCall', function($q) {
-                $q->whereIn('status', ['Not Connected', 'Busy', 'Switched Off']);
-            })->latest()->paginate(15);
+            $leads = (clone $leadsBase)
+                ->where('status', '!=', 'permanently_not_connected')
+                ->whereHas('latestCall', function($q) {
+                    $q->whereIn('status', ['Not Connected', 'Busy', 'Switched Off']);
+                })->latest()->paginate(15);
+        } elseif ($tab === 'permanently_not_connected') {
+            $leads = (clone $leadsBase)->where('status', 'permanently_not_connected')->latest()->paginate(15);
         } elseif ($tab === 'all_contacts') {
             $leads = (clone $leadsBase)->latest()->paginate(15);
         } elseif ($tab === 'today_follow_up') {
@@ -850,7 +863,8 @@ class LeadRoomWorkController extends Controller
             'uncalledCount',
             'todayFollowUpCount', 
             'interestedCount', 
-            'notConnectedCount', 
+            'notConnectedCount',
+            'permanentlyNotConnectedCount', 
             'allContactsCount', 
             'notConnectedCalls'
         ));
@@ -1251,7 +1265,7 @@ class LeadRoomWorkController extends Controller
         $leadsQuery = Lead::forUser($user)
             ->where('status', 'interested')
             ->forClient($selectedClientId)
-            ->with('room');
+            ->with(['room', 'calls', 'latestCall']);
         $leadsQuery->latest();
 
         $leads = $leadsQuery->paginate(15);
@@ -1267,6 +1281,7 @@ class LeadRoomWorkController extends Controller
 
         // Fetch not connected leads (any time, matching room calling counts)
         $notConnectedLeadsQuery = Lead::forUser($user)
+            ->where('status', '!=', 'permanently_not_connected')
             ->whereHas('latestCall', function($q) {
                 $q->whereIn('status', ['Not Connected', 'Busy', 'Switched Off']);
             })
@@ -1293,11 +1308,12 @@ class LeadRoomWorkController extends Controller
 
         // Get leads where their latest call was not connected
         $leadsQuery = Lead::forUser($user)
+            ->where('status', '!=', 'permanently_not_connected')
             ->whereHas('latestCall', function($q) {
                 $q->whereIn('status', ['Not Connected', 'Busy', 'Switched Off']);
             })
             ->forClient($selectedClientId);
-        $leadsQuery->with('room')->latest();
+        $leadsQuery->with(['room', 'calls', 'latestCall'])->latest();
 
         $leads = $leadsQuery->paginate(15);
         $totalLeads = $leadsQuery->count();
@@ -1315,6 +1331,7 @@ class LeadRoomWorkController extends Controller
 
         // Fetch not connected leads (any time, matching room calling counts)
         $notConnectedLeadsQuery = Lead::forUser($user)
+            ->where('status', '!=', 'permanently_not_connected')
             ->whereHas('latestCall', function($q) {
                 $q->whereIn('status', ['Not Connected', 'Busy', 'Switched Off']);
             })

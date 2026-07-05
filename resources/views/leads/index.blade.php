@@ -340,7 +340,16 @@
                                                 <i class="bi bi-person-fill fs-4"></i>
                                             </div>
                                             <div>
-                                                <h5 class="fw-bold text-dark mb-0" style="font-size: 18px;">{{ $clientName }}</h5>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <h5 class="fw-bold text-dark mb-0" style="font-size: 18px;">{{ $clientName }}</h5>
+                                                    @if($firstRoom->client)
+                                                        <button type="button" class="btn btn-outline-success btn-sm px-2.5 py-1 text-success d-inline-flex align-items-center gap-1" 
+                                                                style="font-size: 11px; border-radius: 20px; font-weight: 600; line-height: 1;" 
+                                                                onclick="event.stopPropagation(); openExportModal({{ json_encode($clientId) }}, {{ json_encode($clientName) }}, {{ json_encode($clientRooms->map(fn($r) => ['id' => $r->id, 'name' => $r->name])->values()) }})">
+                                                            <i class="bi bi-file-earmark-arrow-down"></i> Export Numbers
+                                                        </button>
+                                                    @endif
+                                                </div>
                                                 @if($firstRoom->client)
                                                     <small class="text-secondary d-flex align-items-center gap-2 mt-1" style="font-size: 13px;">
                                                         <span><i class="bi bi-person-circle"></i> {{ $contactPerson }}</span>
@@ -375,8 +384,18 @@
                                                                         </div>
                                                                         <div>
                                                                             <h6 class="fw-bold text-dark mb-0" style="font-size: 14.5px;">{{ $room->name }}</h6>
-                                                                            <span class="badge bg-secondary-subtle text-secondary mt-0.5" style="font-size: 10px;">{{ $room->leads_count }} Leads</span>
                                                                         </div>
+                                                                    </div>
+                                                                    <div class="d-flex flex-wrap gap-1.5 mb-3">
+                                                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle" style="font-size: 9.5px; border-radius: 6px; padding: 3.5px 7px;">
+                                                                            Total: {{ $room->leads_count }}
+                                                                        </span>
+                                                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 9.5px; border-radius: 6px; padding: 3.5px 7px;">
+                                                                            Contacted: {{ $room->contacted_leads_count ?? 0 }}
+                                                                        </span>
+                                                                        <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size: 9.5px; border-radius: 6px; padding: 3.5px 7px;">
+                                                                            Interested: {{ $room->interested_leads_count ?? 0 }}
+                                                                        </span>
                                                                     </div>
                                                                     <p class="text-secondary fs-8 mb-3">{{ Str::limit($room->description ?? 'No description provided for this room.', 90) }}</p>
                                                                 </div>

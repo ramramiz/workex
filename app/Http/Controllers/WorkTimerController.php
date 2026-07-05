@@ -153,46 +153,49 @@ class WorkTimerController extends Controller
     {
         $user = auth()->user();
         
-        $session = WorkSession::where('user_id', $user->id)
-            ->where(function($q) {
-                $q->where('status', 'active')
-                  ->orWhereDate('date', today());
-            })
-            ->latest()
-            ->first();
+        $session = null;
+        if (!$user->isSuperAdmin() && !$user->isAdmin()) {
+            $session = WorkSession::where('user_id', $user->id)
+                ->where(function($q) {
+                    $q->where('status', 'active')
+                      ->orWhereDate('date', today());
+                })
+                ->latest()
+                ->first();
 
-        if (!$session) {
-            $session = WorkSession::create([
-                'user_id'     => $user->id,
-                'date'        => today(),
-                'started_at'  => now(),
-                'ip_address'  => $request->ip(),
-                'device_type' => $this->getDeviceType($request),
-                'browser'     => $this->getBrowser($request),
-                'device_info' => $request->userAgent(),
-                'status'      => 'active',
-            ]);
-        } elseif ($session->status !== 'active') {
-            $session->update(['status' => 'active']);
-        }
+            if (!$session) {
+                $session = WorkSession::create([
+                    'user_id'     => $user->id,
+                    'date'        => today(),
+                    'started_at'  => now(),
+                    'ip_address'  => $request->ip(),
+                    'device_type' => $this->getDeviceType($request),
+                    'browser'     => $this->getBrowser($request),
+                    'device_info' => $request->userAgent(),
+                    'status'      => 'active',
+                ]);
+            } elseif ($session->status !== 'active') {
+                $session->update(['status' => 'active']);
+            }
 
-        // Mark attendance if not already marked
-        $attendance = Attendance::where('user_id', $user->id)->whereDate('date', $session->date)->first();
+            // Mark attendance if not already marked
+            $attendance = Attendance::where('user_id', $user->id)->whereDate('date', $session->date)->first();
 
-        if (!$attendance) {
-            Attendance::create([
-                'user_id'      => $user->id,
-                'date'         => $session->date,
-                'login_time'   => now(),
-                'type'         => 'office',
-                'status'       => 'present',
-                'late_minutes' => $this->calcLateMinutes(),
-            ]);
-        } elseif (is_null($attendance->login_time)) {
-            $attendance->update([
-                'login_time'   => now(),
-                'late_minutes' => $this->calcLateMinutes(),
-            ]);
+            if (!$attendance) {
+                Attendance::create([
+                    'user_id'      => $user->id,
+                    'date'         => $session->date,
+                    'login_time'   => now(),
+                    'type'         => 'office',
+                    'status'       => 'present',
+                    'late_minutes' => $this->calcLateMinutes(),
+                ]);
+            } elseif (is_null($attendance->login_time)) {
+                $attendance->update([
+                    'login_time'   => now(),
+                    'late_minutes' => $this->calcLateMinutes(),
+                ]);
+            }
         }
 
         // Starting task timer (allows multiple active tasks simultaneously)
@@ -216,6 +219,19 @@ class WorkTimerController extends Controller
 
         $task->update(['status' => 'in_progress']);
 
+        $bug = \App\Models\Bug::where('task_id', $task->id)->first();
+        if ($bug) {
+            $bug->update(['status' => 'open (' . $user->name . ')']);
+        }
+
+        if ($user->isSuperAdmin() || $user->isAdmin()) {
+            \App\Models\TaskComment::create([
+                'task_id' => $task->id,
+                'user_id' => $user->id,
+                'comment' => "⏱️ **Started work timer** — started at **" . now()->format('h:i A') . "**",
+            ]);
+        }
+
         return redirect()->route('chat.index', ['select_task' => $task->id])->with('success', 'Timer started for: ' . $task->title);
     }
 
@@ -231,6 +247,13 @@ class WorkTimerController extends Controller
         // Resuming task timer (allows multiple active tasks simultaneously)
 
         $log->update(['resumed_at' => now(), 'status' => 'running']);
+
+        $task = $log->task;
+        $bug = \App\Models\Bug::where('task_id', $task->id)->first();
+        if ($bug) {
+            $bug->update(['status' => 'open (' . auth()->user()->name . ')']);
+        }
+
         return back()->with('success', 'Task resumed!');
     }
 
@@ -251,6 +274,9 @@ class WorkTimerController extends Controller
 
         $newStatus = $request->status;
         $task = $log->task;
+        $startTimeFormatted = $log->started_at->format('h:i A');
+        $endTimeFormatted = now()->format('h:i A');
+        $userName = auth()->user()->name;
 
         if ($newStatus && $task->status !== $newStatus) {
             if ($newStatus === 'completed') {
@@ -272,18 +298,35 @@ class WorkTimerController extends Controller
                 'rejected' => 'Rejected',
             ];
             $newLabel = $statusLabels[$newStatus] ?? ucfirst($newStatus);
-            $userName = auth()->user()->name;
-            \App\Models\TaskComment::create([
-                'task_id' => $task->id,
-                'user_id' => auth()->id(),
-                'comment' => "🔄 status changed to **{$newLabel}** by **{$userName}** (on ending work timer)\n\n**Notes:** " . ($request->note ?? 'None'),
-            ]);
-        } elseif ($request->note) {
-            \App\Models\TaskComment::create([
-                'task_id' => $task->id,
-                'user_id' => auth()->id(),
-                'comment' => "⏱️ **Completed time log** — worked **{$mins} mins**\n\n**Notes:** {$request->note}",
-            ]);
+
+            if (auth()->user()->isSuperAdmin() || auth()->user()->isAdmin()) {
+                $timeText = "worked **{$mins} mins** (started at **{$startTimeFormatted}**, ended at **{$endTimeFormatted}**)";
+                \App\Models\TaskComment::create([
+                    'task_id' => $task->id,
+                    'user_id' => auth()->id(),
+                    'comment' => "🔄 status changed to **{$newLabel}** by **{$userName}** (on ending work timer, {$timeText})\n\n**Notes:** " . ($request->note ?? 'None'),
+                ]);
+            } else {
+                \App\Models\TaskComment::create([
+                    'task_id' => $task->id,
+                    'user_id' => auth()->id(),
+                    'comment' => "🔄 status changed to **{$newLabel}** by **{$userName}** (on ending work timer)\n\n**Notes:** " . ($request->note ?? 'None'),
+                ]);
+            }
+        } else {
+            if (auth()->user()->isSuperAdmin() || auth()->user()->isAdmin()) {
+                \App\Models\TaskComment::create([
+                    'task_id' => $task->id,
+                    'user_id' => auth()->id(),
+                    'comment' => "⏱️ **Completed time log** — worked **{$mins} mins** (started at **{$startTimeFormatted}**, ended at **{$endTimeFormatted}**)\n\n**Notes:** " . ($request->note ?? 'None'),
+                ]);
+            } elseif ($request->note) {
+                \App\Models\TaskComment::create([
+                    'task_id' => $task->id,
+                    'user_id' => auth()->id(),
+                    'comment' => "⏱️ **Completed time log** — worked **{$mins} mins**\n\n**Notes:** {$request->note}",
+                ]);
+            }
         }
 
         return back()->with('success', 'Task time recorded: ' . $mins . ' minutes.');

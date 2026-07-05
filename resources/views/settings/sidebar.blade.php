@@ -16,7 +16,18 @@
         <i class="bi bi-people-fill"></i> Employee Settings
     </a>
     @endif
+    @if(auth()->user()->isAdminOrAbove() || auth()->user()->isTeamLeader())
+    <a href="{{ route('hosting-providers.index') }}" class="list-group-item list-group-item-action {{ request()->routeIs('hosting-providers*') ? 'active' : '' }} d-flex align-items-center gap-2">
+        <i class="bi bi-server"></i> Hosting Providers
+    </a>
+    <a href="{{ route('domain-registrations.index') }}" class="list-group-item list-group-item-action {{ request()->routeIs('domain-registrations*') ? 'active' : '' }} d-flex align-items-center gap-2">
+        <i class="bi bi-globe"></i> Domain Registrations
+    </a>
+    @endif
     <a href="{{ route('users.index') }}" class="list-group-item list-group-item-action {{ request()->routeIs('users*') ? 'active' : '' }} d-flex align-items-center gap-2">
         <i class="bi bi-people"></i> User Logins
+    </a>
+    <a href="{{ route('settings.discontinued-projects') }}" class="list-group-item list-group-item-action {{ request()->routeIs('settings.discontinued-projects*') ? 'active' : '' }} d-flex align-items-center gap-2">
+        <i class="bi bi-folder-x"></i> Discontinued Projects
     </a>
 </div>

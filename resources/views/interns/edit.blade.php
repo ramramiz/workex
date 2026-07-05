@@ -97,6 +97,90 @@
                 </form>
             </div>
         </div>
+
+        <!-- Documents Manager Card -->
+        <div class="card shadow-sm border-0 mt-4">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 fw-bold text-dark">Uploaded Documents</h5>
+            </div>
+            <div class="card-body p-4">
+                <!-- List existing documents -->
+                <div class="table-responsive mb-4">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Title / Description</th>
+                                <th>File Name</th>
+                                <th>Size</th>
+                                <th>Upload Date</th>
+                                <th>Uploaded By</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($intern->uploadedDocuments as $doc)
+                                <tr>
+                                    <td><span class="fw-semibold text-dark">{{ $doc->title }}</span></td>
+                                    <td><code class="text-muted">{{ $doc->file_name }}</code></td>
+                                    <td>{{ $doc->file_size_human }}</td>
+                                    <td>{{ $doc->created_at->format('d M Y h:i A') }}</td>
+                                    <td>{{ $doc->uploader->name ?? 'System' }}</td>
+                                    <td class="text-end">
+                                        <div class="d-flex justify-content-end gap-2">
+                                            <a href="{{ route('documents.view', $doc) }}" target="_blank" class="btn btn-outline-info btn-sm" title="View Document">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <a href="{{ route('documents.download', $doc) }}" class="btn btn-outline-primary btn-sm" title="Download">
+                                                <i class="bi bi-download"></i>
+                                            </a>
+                                            <form method="POST" action="{{ route('documents.destroy', $doc) }}" onsubmit="return confirm('Are you sure you want to delete this document?')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="6" class="text-center py-4 text-muted">
+                                        <i class="bi bi-folder2-open text-primary fs-3 d-block mb-2"></i>
+                                        No documents uploaded yet.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Document Upload Form -->
+                <h6 class="text-uppercase text-primary fs-7 mb-3 border-bottom pb-2 fw-semibold">Upload New Document</h6>
+                <form method="POST" action="{{ route('documents.store') }}" enctype="multipart/form-data">
+                    @csrf
+                    <input type="hidden" name="documentable_type" value="intern">
+                    <input type="hidden" name="documentable_id" value="{{ $intern->id }}">
+
+                    <div class="row g-3 align-items-end">
+                        <div class="col-12 col-md-5">
+                            <label class="form-label fw-medium">Document Title <span class="text-muted">(Optional)</span></label>
+                            <input type="text" name="title" class="form-control" placeholder="e.g. Offer Letter, ID Proof">
+                        </div>
+                        <div class="col-12 col-md-5">
+                            <label class="form-label fw-medium">Select File <span class="text-danger">*</span></label>
+                            <input type="file" name="document" class="form-control" required>
+                        </div>
+                        <div class="col-12 col-md-2">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-upload me-1"></i> Upload
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-text fs-8 text-muted mt-2" style="font-size: 11px;">Supported formats: PDF, DOC, DOCX, XLS, XLSX, Images. Max: 10MB.</div>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 @endsection

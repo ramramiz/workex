@@ -11,13 +11,14 @@ class Employee extends Model
 
     protected $fillable = [
         'user_id', 'employee_code', 'department_id', 'designation_id', 'team_leader_id',
-        'phone', 'joining_date', 'salary', 'salary_type', 'hourly_rate', 'work_type',
-        'address', 'emergency_contact', 'blood_group', 'documents', 'status',
+        'phone', 'personal_email', 'joining_date', 'salary', 'is_applicable_for_salary', 'salary_type', 'hourly_rate', 'work_type',
+        'address', 'emergency_contact', 'blood_group', 'documents', 'google_drive_link', 'status',
     ];
 
     protected $casts = [
         'joining_date' => 'date',
         'salary' => 'decimal:2',
+        'is_applicable_for_salary' => 'boolean',
         'hourly_rate' => 'decimal:2',
         'documents' => 'array',
     ];
@@ -25,7 +26,9 @@ class Employee extends Model
     protected static function booted()
     {
         static::addGlobalScope('company', function ($builder) {
-            $builder->whereHas('user');
+            $builder->whereHas('user', function ($q) {
+                $q->whereHas('role', fn($r) => $r->where('slug', '!=', 'super-admin'));
+            });
         });
     }
 
@@ -57,5 +60,10 @@ class Employee extends Model
     public function getEmailAttribute(): string
     {
         return $this->user?->email ?? '';
+    }
+
+    public function uploadedDocuments()
+    {
+        return $this->morphMany(Document::class, 'documentable');
     }
 }

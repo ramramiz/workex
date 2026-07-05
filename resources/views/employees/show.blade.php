@@ -22,6 +22,12 @@
                     <i class="bi bi-shield-check me-1"></i> Roles & Permissions
                 </button>
                 @endif
+                {{-- Login to Account (Super Admin Impersonation) --}}
+                <button type="button" class="btn btn-sm btn-dark"
+                    title="Login as this employee"
+                    onclick="confirmLoginAs({{ $employee->id }}, '{{ addslashes($employee->name) }}')">
+                    <i class="bi bi-box-arrow-in-right me-1"></i> Login to Account
+                </button>
                 {{-- Session Tracking Icon --}}
                 <button type="button" class="btn btn-teal btn-sm session-track-btn"
                     title="View Login Sessions"
@@ -68,17 +74,29 @@
                         <span class="fw-semibold">{{ $employee->employee_code }}</span>
                     </div>
                     <div class="mb-3">
-                        <small class="text-muted d-block">Email Address</small>
+                        <small class="text-muted d-block">Work Email</small>
                         <span class="fw-semibold">{{ $employee->user->email }}</span>
                     </div>
                     <div class="mb-3">
+                        <small class="text-muted d-block">Personal Email</small>
+                        <span class="fw-semibold">{{ $employee->personal_email ?? '—' }}</span>
+                    </div>
+                    <div class="mb-3">
                         <small class="text-muted d-block">Phone Number</small>
-                        <span class="fw-semibold">{{ $employee->phone ?? $employee->user->phone ?? '—' }}</span>
+                        <span class="fw-semibold">{{ $employee->phone ?? $employee->user->phone ?? 'â€”' }}</span>
                     </div>
                     <div class="mb-3">
                         <small class="text-muted d-block">Role</small>
                         <span class="fw-semibold">{{ $employee->user->role->name ?? 'N/A' }}</span>
                     </div>
+                    @if($employee->google_drive_link)
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Google Drive Folder</small>
+                        <a href="{{ $employee->google_drive_link }}" target="_blank" class="btn btn-outline-success btn-xs d-flex align-items-center justify-content-center gap-1.5 mt-1" style="font-size: 11px; border-radius: 6px;">
+                            <i class="bi bi-google"></i> Open Drive Folder
+                        </a>
+                    </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -90,7 +108,7 @@
                     <div class="mb-3">
                         <small class="text-muted d-block">Salary Details</small>
                         @if($employee->salary)
-                            <span class="fw-semibold text-success">₹{{ number_format($employee->salary, 2) }}</span>
+                            <span class="fw-semibold text-success">â‚¹{{ number_format($employee->salary, 2) }}</span>
                             <span class="text-muted fs-7">/ {{ $employee->salary_type }}</span>
                         @else
                             <span class="text-muted">Not Configured</span>
@@ -162,6 +180,9 @@
                     <li class="nav-item">
                         <button class="nav-link py-3" id="payslips-tab" data-bs-toggle="tab" data-bs-target="#payslips" type="button" role="tab">Payslips</button>
                     </li>
+                    <li class="nav-item">
+                        <button class="nav-link py-3" id="documents-tab" data-bs-toggle="tab" data-bs-target="#documents-pane" type="button" role="tab">Documents</button>
+                    </li>
                     @endif
                 </ul>
             </div>
@@ -174,18 +195,24 @@
                                 <thead>
                                     <tr>
                                         <th>Date</th>
-                                        <th>Login</th>
-                                        <th>Logout</th>
+                                        <th>IN</th>
+                                        <th>OUT</th>
                                         <th>Total Duration</th>
                                         <th>Status</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @forelse($employee->user->workSessions as $session)
+                                        @php
+                                            $firstLog = $session->timeLogs->whereNotNull('started_at')->sortBy('started_at')->first();
+                                            $lastLog  = $session->timeLogs->whereNotNull('ended_at')->sortByDesc('ended_at')->first();
+                                            $inTime   = $firstLog ? \Carbon\Carbon::parse($firstLog->started_at)->format('h:i A') : ($session->started_at ? \Carbon\Carbon::parse($session->started_at)->format('h:i A') : '—');
+                                            $outTime  = $lastLog  ? \Carbon\Carbon::parse($lastLog->ended_at)->format('h:i A')   : ($session->ended_at   ? \Carbon\Carbon::parse($session->ended_at)->format('h:i A')   : 'Active');
+                                        @endphp
                                         <tr>
                                             <td>{{ \Carbon\Carbon::parse($session->date)->format('d M Y') }}</td>
-                                            <td>{{ $session->started_at ? \Carbon\Carbon::parse($session->started_at)->format('h:i A') : '—' }}</td>
-                                            <td>{{ $session->ended_at ? \Carbon\Carbon::parse($session->ended_at)->format('h:i A') : 'Active' }}</td>
+                                            <td>{{ $inTime }}</td>
+                                            <td>{{ $outTime }}</td>
                                             <td>{{ number_format($session->total_minutes / 60, 2) }} hrs</td>
                                             <td>
                                                 <span class="badge bg-{{ $session->ended_at ? 'secondary' : 'success' }}-subtle text-{{ $session->ended_at ? 'secondary' : 'success' }} border border-{{ $session->ended_at ? 'secondary' : 'success' }}-subtle">
@@ -265,7 +292,7 @@
                                                 @if($report->git_link)
                                                     <a href="{{ $report->git_link }}" target="_blank" class="text-decoration-none text-truncate d-inline-block" style="max-width: 150px;">{{ $report->git_link }}</a>
                                                 @else
-                                                    —
+                                                    â€”
                                                 @endif
                                             </td>
                                             <td>
@@ -352,7 +379,7 @@
                                             <span class="fw-semibold">{{ date('F', mktime(0, 0, 0, $slip->month, 1)) }}</span>
                                             <small class="text-muted d-block" style="font-size: 10px;">{{ $slip->year }}</small>
                                         </td>
-                                        <td class="fw-bold text-dark">₹{{ number_format($slip->net_salary, 2) }}</td>
+                                        <td class="fw-bold text-dark">â‚¹{{ number_format($slip->net_salary, 2) }}</td>
                                         <td class="text-center">
                                             <span class="badge bg-success-subtle text-success" style="font-size: 10px; padding: 4px 8px; border-radius: 6px;">{{ ucfirst($slip->status) }}</span>
                                         </td>
@@ -372,15 +399,106 @@
                         </div>
                     </div>
                     @endif
+
+                    <!-- Documents -->
+                    @if(auth()->user()->isAdminOrAbove() || auth()->user()->isHR())
+                    <div class="tab-pane fade" id="documents-pane" role="tabpanel">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="fw-bold mb-0">Employee Documents</h6>
+                            @if($employee->google_drive_link)
+                            <a href="{{ $employee->google_drive_link }}" target="_blank" class="btn btn-success btn-sm d-inline-flex align-items-center gap-1.5" style="border-radius: 8px;">
+                                <i class="bi bi-google"></i> Open Google Drive Folder
+                            </a>
+                            @endif
+                        </div>
+
+                        <!-- Documents List Table -->
+                        <div class="table-responsive mb-4">
+                            <table class="table table-hover align-middle table-sm">
+                                <thead>
+                                    <tr class="text-muted" style="font-size: 12px;">
+                                        <th>Title</th>
+                                        <th>File Name</th>
+                                        <th>Size</th>
+                                        <th>Upload Date</th>
+                                        <th>Uploaded By</th>
+                                        <th class="text-end">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse($employee->uploadedDocuments as $doc)
+                                    <tr style="font-size: 13px;">
+                                        <td><span class="fw-semibold text-dark">{{ $doc->title }}</span></td>
+                                        <td><code class="text-muted">{{ $doc->file_name }}</code></td>
+                                        <td>{{ $doc->file_size_human }}</td>
+                                        <td>{{ $doc->created_at->format('d M Y h:i A') }}</td>
+                                        <td>{{ $doc->uploader->name ?? 'System' }}</td>
+                                        <td class="text-end">
+                                            <div class="d-flex justify-content-end gap-2">
+                                                <a href="{{ route('documents.view', $doc) }}" target="_blank" class="btn btn-outline-info btn-xs py-1 px-2" style="font-size: 11px; border-radius: 6px;" title="View Document">
+                                                    <i class="bi bi-eye"></i> View
+                                                </a>
+                                                <a href="{{ route('documents.download', $doc) }}" class="btn btn-outline-primary btn-xs py-1 px-2" style="font-size: 11px; border-radius: 6px;" title="Download">
+                                                    <i class="bi bi-download"></i> Download
+                                                </a>
+                                                <form method="POST" action="{{ route('documents.destroy', $doc) }}" onsubmit="return confirm('Are you sure you want to delete this document?')" class="d-inline">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn btn-outline-danger btn-xs py-1 px-2" style="font-size: 11px; border-radius: 6px;" title="Delete">
+                                                        <i class="bi bi-trash"></i> Delete
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    @empty
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted py-4">No documents uploaded yet.</td>
+                                    </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Upload form for Super Admin/Admin/HR -->
+                        <div class="card bg-light border-0" style="border-radius: 8px;">
+                            <div class="card-body p-3">
+                                <h6 class="fw-bold mb-3" style="font-size: 13.5px;"><i class="bi bi-upload me-1 text-primary"></i> Upload New Document</h6>
+                                <form method="POST" action="{{ route('documents.store') }}" enctype="multipart/form-data">
+                                    @csrf
+                                    <input type="hidden" name="documentable_type" value="employee">
+                                    <input type="hidden" name="documentable_id" value="{{ $employee->id }}">
+
+                                    <div class="row g-2 align-items-end">
+                                        <div class="col-12 col-md-5">
+                                            <label class="form-label mb-1" style="font-size: 12px; font-weight: 500;">Document Title (Optional)</label>
+                                            <input type="text" name="title" class="form-control form-control-sm" placeholder="e.g. Contract, Resume, ID Proof" style="border-radius: 6px;">
+                                        </div>
+                                        <div class="col-12 col-md-5">
+                                            <label class="form-label mb-1" style="font-size: 12px; font-weight: 500;">Select File <span class="text-danger">*</span></label>
+                                            <input type="file" name="document" class="form-control form-control-sm" required style="border-radius: 6px;">
+                                        </div>
+                                        <div class="col-12 col-md-2">
+                                            <button type="submit" class="btn btn-primary btn-sm w-100" style="border-radius: 6px; padding: 7px 10px;">
+                                                Upload
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="form-text mt-2 text-muted" style="font-size: 11px;">Supported formats: PDF, DOC, DOCX, XLS, XLSX, Images. Max: 10MB.</div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-{{-- ═══════════════════════════════════════════════════════════
-     Session Panel — Slide-in overlay from the right
-═══════════════════════════════════════════════════════════ --}}
+{{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     Session Panel â€” Slide-in overlay from the right
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
 <div id="session-panel-backdrop" onclick="closeSessionPanel()"
     style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:9000; backdrop-filter:blur(2px);"
 ></div>
@@ -470,6 +588,28 @@
 
 @push('scripts')
 <script>
+    // Persist active profile tab across page loads/redirects
+    document.addEventListener('DOMContentLoaded', () => {
+        const profileTabs = document.getElementById('profileTabs');
+        if (profileTabs) {
+            const activeTabTarget = sessionStorage.getItem('employee_active_tab');
+            if (activeTabTarget) {
+                const tabButton = document.querySelector(`[data-bs-target="${activeTabTarget}"]`);
+                if (tabButton) {
+                    const tab = new bootstrap.Tab(tabButton);
+                    tab.show();
+                }
+            }
+
+            profileTabs.querySelectorAll('button[data-bs-toggle="tab"]').forEach(btn => {
+                btn.addEventListener('shown.bs.tab', (event) => {
+                    const target = event.target.getAttribute('data-bs-target');
+                    sessionStorage.setItem('employee_active_tab', target);
+                });
+            });
+        }
+    });
+
     let _sessionPanelUserId  = null;
     let _sessionDestroyAllUrl = null;
     let _csrfToken = '{{ csrf_token() }}';
@@ -484,14 +624,14 @@
         const backdrop = document.getElementById('session-panel-backdrop');
 
         // Show skeleton immediately
-        document.getElementById('sp-name').textContent  = 'Loading…';
+        document.getElementById('sp-name').textContent  = 'Loadingâ€¦';
         document.getElementById('sp-email').textContent = '';
         document.getElementById('sp-avatar').src        = '';
-        document.getElementById('sp-session-count').textContent = '…';
+        document.getElementById('sp-session-count').textContent = 'â€¦';
         document.getElementById('sp-session-list').innerHTML = `
             <div class="text-center py-5 text-muted">
                 <div class="spinner-border spinner-border-sm" role="status"></div>
-                <div class="mt-2" style="font-size:13px;">Loading sessions…</div>
+                <div class="mt-2" style="font-size:13px;">Loading sessionsâ€¦</div>
             </div>`;
 
         panel.style.display    = 'flex';
@@ -561,7 +701,7 @@
                     </div>
                     <div class="flex-grow-1 min-w-0">
                         <div class="fw-semibold text-dark d-flex align-items-center gap-1" style="font-size:13px;">
-                            ${s.device} — ${s.browser} ${isCurrent}
+                            ${s.device} â€” ${s.browser} ${isCurrent}
                         </div>
                         <div class="text-muted" style="font-size:11px;">${s.os}</div>
                     </div>
@@ -663,7 +803,7 @@
 
         const btn = document.getElementById('sp-logout-all-btn');
         btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Logging out…';
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Logging outâ€¦';
 
         fetch(_sessionDestroyAllUrl, {
             method: 'DELETE',
@@ -856,5 +996,64 @@
             alert('Failed to save permissions. Please check connection and try again.');
         });
     });
+</script>
+@endpush
+
+{{-- ============================================================ --}}
+{{-- IMPERSONATION MODAL (Super Admin only) --}}
+{{-- ============================================================ --}}
+@if(auth()->user()->isSuperAdmin())
+<div class="modal fade" id="loginAsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+            <div class="modal-body p-0">
+                {{-- Gradient header --}}
+                <div class="d-flex flex-column align-items-center justify-content-center text-white py-5 px-4"
+                    style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%);">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center mb-3 shadow"
+                        style="width:64px; height:64px; background: rgba(255,255,255,0.15); backdrop-filter: blur(4px);">
+                        <i class="bi bi-person-fill-lock" style="font-size: 28px;"></i>
+                    </div>
+                    <h5 class="fw-bold mb-1">Switch Account</h5>
+                    <p class="mb-0 opacity-75 text-center" style="font-size: 13px;">
+                        You are about to log in as <strong id="loginAsName"></strong>
+                    </p>
+                </div>
+                {{-- Warning body --}}
+                <div class="px-4 py-4">
+                    <div class="alert alert-warning border-0 d-flex align-items-start gap-2 mb-4" style="border-radius: 10px; font-size: 13px;">
+                        <i class="bi bi-exclamation-triangle-fill flex-shrink-0 mt-1"></i>
+                        <div>
+                            All actions you perform will be recorded under <strong id="loginAsName2"></strong>'s account.
+                            Use <strong>"Return to my account"</strong> from the top bar to switch back.
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">
+                            Cancel
+                        </button>
+                        <form id="loginAsForm" method="POST" action="" class="flex-fill">
+                            @csrf
+                            <button type="submit" class="btn btn-dark w-100">
+                                <i class="bi bi-box-arrow-in-right me-1"></i> Confirm Login
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
+@push('scripts')
+<script>
+function confirmLoginAs(employeeId, employeeName) {
+    document.getElementById('loginAsName').textContent = employeeName;
+    document.getElementById('loginAsName2').textContent = employeeName;
+    document.getElementById('loginAsForm').action = '/employees/' + employeeId + '/login-as';
+    const modal = new bootstrap.Modal(document.getElementById('loginAsModal'));
+    modal.show();
+}
 </script>
 @endpush

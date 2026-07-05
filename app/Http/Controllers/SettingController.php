@@ -37,7 +37,9 @@ class SettingController extends Controller
         $excludeFields = [
             '_token', '_method', 'company_logo', 'week_off_days', 'week_off_days_present',
             'company_name', 'company_email', 'company_auth_person_name',
-            'company_auth_person_email', 'company_phone', 'company_address', 'company_gst'
+            'company_auth_person_email', 'company_phone', 'company_address', 'company_gst',
+            'salary_cycle', 'salary_payment_date', 'salary_payment_date_1', 'salary_payment_date_2',
+            'salary_dispersal_start_date'
         ];
 
         // Update global settings
@@ -56,6 +58,11 @@ class SettingController extends Controller
                 'phone'             => $request->input('company_phone'),
                 'address'           => $request->input('company_address'),
                 'gst'               => $request->input('company_gst'),
+                'salary_cycle'        => $request->input('salary_cycle', $company->salary_cycle),
+                'salary_payment_date' => $request->input('salary_payment_date', $company->salary_payment_date),
+                'salary_payment_date_1'=> $request->input('salary_payment_date_1', $company->salary_payment_date_1),
+                'salary_payment_date_2'=> $request->input('salary_payment_date_2', $company->salary_payment_date_2),
+                'salary_dispersal_start_date' => $request->input('salary_dispersal_start_date'),
             ]);
         }
 

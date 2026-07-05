@@ -54,9 +54,10 @@ class TaskController extends Controller
             'title'        => 'required|string|max:255',
             'project_id'   => 'nullable|exists:projects,id',
             'assigned_to'  => 'required|exists:users,id',
-            'priority'     => 'required|in:low,medium,high,critical',
+            'priority'     => 'required|in:low,medium,high,critical,special',
             'deadline'     => 'nullable|date',
             'attachment'   => 'nullable|file|mimes:jpeg,png,jpg,gif,pdf|max:10240',
+            'attachments'  => 'nullable|array|max:3',
             'meeting_id'   => 'nullable|exists:meetings,id',
         ]);
 
@@ -83,6 +84,43 @@ class TaskController extends Controller
                 'file_size' => $request->file('attachment')->getSize(),
                 'file_type' => $request->file('attachment')->getMimeType(),
             ]);
+        }
+
+        if ($request->has('attachments') && is_array($request->attachments)) {
+            foreach ($request->attachments as $index => $attachmentData) {
+                if ($attachmentData instanceof \Illuminate\Http\UploadedFile && $attachmentData->isValid()) {
+                    $path = $attachmentData->store('tasks/' . $task->id, 'public');
+                    TaskFile::create([
+                        'task_id'   => $task->id,
+                        'user_id'   => auth()->id(),
+                        'file_name' => $attachmentData->getClientOriginalName(),
+                        'file_path' => $path,
+                        'file_size' => $attachmentData->getSize(),
+                        'file_type' => $attachmentData->getMimeType(),
+                    ]);
+                } elseif (is_string($attachmentData)) {
+                    $image_parts = explode(";base64,", $attachmentData);
+                    if (count($image_parts) === 2) {
+                        $image_type_aux = explode("image/", $image_parts[0]);
+                        $image_type = $image_type_aux[1] ?? 'jpeg';
+                        $image_base64 = base64_decode($image_parts[1]);
+                        
+                        $filename = 'task_attachment_' . time() . '_' . $index . '_' . rand(1000, 9999) . '.' . $image_type;
+                        $path = 'tasks/' . $task->id . '/' . $filename;
+                        
+                        \Illuminate\Support\Facades\Storage::disk('public')->put($path, $image_base64);
+                        
+                        TaskFile::create([
+                            'task_id'   => $task->id,
+                            'user_id'   => auth()->id(),
+                            'file_name' => $filename,
+                            'file_path' => $path,
+                            'file_size' => strlen($image_base64),
+                            'file_type' => 'image/' . $image_type,
+                        ]);
+                    }
+                }
+            }
         }
 
         \App\Models\ActivityLog::log('task_created', "Created task: {$task->title}", $task);
@@ -257,6 +295,21 @@ class TaskController extends Controller
         if ($oldStatus !== $newStatus) {
             $task->update(['status' => $newStatus]);
 
+            $bug = \App\Models\Bug::where('task_id', $task->id)->first();
+            if ($bug) {
+                if ($newStatus === 'review') {
+                    $bug->update(['status' => 'under_review']);
+                } elseif ($newStatus === 'completed' || $newStatus === 'cancelled') {
+                    $bug->update(['status' => 'closed']);
+                } elseif ($newStatus === 'in_progress') {
+                    $bug->update(['status' => 'in_progress']);
+                } elseif ($newStatus === 'rework' || $newStatus === 'rejected') {
+                    $bug->update(['status' => 'reopened']);
+                } elseif ($newStatus === 'pending') {
+                    $bug->update(['status' => 'open']);
+                }
+            }
+
             $statusLabels = [
                 'pending' => 'Pending',
                 'in_progress' => 'In Progress',
@@ -423,6 +476,11 @@ class TaskController extends Controller
             'completed_link' => $request->completed_link,
         ]);
 
+        $bug = \App\Models\Bug::where('task_id', $task->id)->first();
+        if ($bug) {
+            $bug->update(['status' => 'under_review']);
+        }
+
         $commentMsg = "🚀 **Submitted task for completion review**\n\n**Description:** {$request->completed_description}";
         if ($request->filled('completed_link')) {
             $commentMsg .= "\n**Test URL:** [{$request->completed_link}]({$request->completed_link})";
@@ -474,6 +532,11 @@ class TaskController extends Controller
             'completed_date' => now(),
         ]);
 
+        $bug = \App\Models\Bug::where('task_id', $task->id)->first();
+        if ($bug) {
+            $bug->update(['status' => 'closed']);
+        }
+
         TaskComment::create([
             'task_id' => $task->id,
             'user_id' => $user->id,
@@ -512,6 +575,11 @@ class TaskController extends Controller
             'team_leader_approved_by' => null,
             'team_leader_approved_at' => null,
         ]);
+
+        $bug = \App\Models\Bug::where('task_id', $task->id)->first();
+        if ($bug) {
+            $bug->update(['status' => 'reopened']);
+        }
 
         $imagePath = null;
         if ($request->hasFile('image')) {

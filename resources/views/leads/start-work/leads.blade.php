@@ -126,6 +126,19 @@
                 </a>
             </li>
 
+            <!-- 4.5. Permanently Not Connected -->
+            <li class="nav-item">
+                <a class="nav-link {{ ($tab ?? 'uncalled') === 'permanently_not_connected' ? 'active bg-warning text-dark' : 'bg-white text-secondary border border-light-subtle' }} fw-bold px-4 py-2 d-flex align-items-center gap-2" 
+                   href="{{ route('leads.start-work.leads', ['room' => $room->id, 'tab' => 'permanently_not_connected']) }}"
+                   style="border-radius: 20px; transition: all 0.2s ease; font-size: 13px;">
+                    <i class="bi bi-telephone-x-fill text-danger"></i>
+                    Permanently Not Connected
+                    <span class="badge {{ ($tab ?? 'uncalled') === 'permanently_not_connected' ? 'bg-dark text-white' : 'bg-secondary-subtle text-secondary' }} rounded-pill" style="font-size: 11px;">
+                        {{ $permanentlyNotConnectedCount ?? 0 }}
+                    </span>
+                </a>
+            </li>
+
             <!-- 5. All Contacts -->
             <li class="nav-item">
                 <a class="nav-link {{ ($tab ?? 'uncalled') === 'all_contacts' ? 'active bg-warning text-dark' : 'bg-white text-secondary border border-light-subtle' }} fw-bold px-4 py-2 d-flex align-items-center gap-2" 
@@ -231,7 +244,10 @@
                                             data-bs-toggle="modal" data-bs-target="#logCallModal" 
                                             data-bs-action="{{ route('leads.calls.store', $lead) }}"
                                             data-bs-client-name="{{ $lead->client_name }}"
-                                            data-bs-client-phone="{{ $lead->client_phone ?? '—' }}">
+                                            data-bs-client-phone="{{ $lead->client_phone ?? '—' }}"
+                                            data-bs-calls-count="{{ $lead->calls->count() }}"
+                                            data-bs-last-contacted-at="{{ $lead->latestCall ? $lead->latestCall->call_date_time->format('d M Y, h:i A') : '' }}"
+                                            data-bs-first-remarks="{{ $lead->calls->sortBy('id')->first() ? e($lead->calls->sortBy('id')->first()->remarks) : '' }}">
                                             <i class="bi bi-telephone-outbound-fill"></i> Start Next Call
                                         </button>
                                     @else
@@ -239,7 +255,10 @@
                                             data-bs-toggle="modal" data-bs-target="#logCallModal" 
                                             data-bs-action="{{ route('leads.calls.store', $lead) }}"
                                             data-bs-client-name="{{ $lead->client_name }}"
-                                            data-bs-client-phone="{{ $lead->client_phone ?? '—' }}">
+                                            data-bs-client-phone="{{ $lead->client_phone ?? '—' }}"
+                                            data-bs-calls-count="{{ $lead->calls->count() }}"
+                                            data-bs-last-contacted-at="{{ $lead->latestCall ? $lead->latestCall->call_date_time->format('d M Y, h:i A') : '' }}"
+                                            data-bs-first-remarks="{{ $lead->calls->sortBy('id')->first() ? e($lead->calls->sortBy('id')->first()->remarks) : '' }}">
                                             <i class="bi bi-telephone-outbound"></i> Log Call
                                         </button>
                                     @endif

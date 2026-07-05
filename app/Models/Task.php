@@ -11,6 +11,20 @@ class Task extends Model
 {
     use SoftDeletes, BelongsToCompany;
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saving(function ($task) {
+            if ($task->project_id) {
+                $project = Project::find($task->project_id);
+                if ($project && in_array($project->status, ['completed', 'delivered', 'cancelled', 'completed_started_amc'])) {
+                    $task->priority = 'special';
+                }
+            }
+        });
+    }
+
     protected $fillable = [
         'project_id', 'assigned_to', 'created_by', 'title', 'description',
         'priority', 'estimated_hours', 'actual_hours', 'start_date', 'deadline',
@@ -56,6 +70,7 @@ class Task extends Model
             'medium' => 'warning',
             'high' => 'danger',
             'critical' => 'dark',
+            'special' => 'info',
             default => 'secondary',
         };
     }

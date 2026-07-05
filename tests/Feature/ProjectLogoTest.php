@@ -122,4 +122,39 @@ class ProjectLogoTest extends TestCase
 
         $this->assertEquals($this->employeeUser->avatar_url, $task->avatar_url);
     }
+
+    public function test_create_project_with_url_stores_url()
+    {
+        $response = $this->actingAs($this->adminUser)
+            ->post(route('projects.store'), [
+                'name' => 'Project with URL',
+                'priority' => 'high',
+                'url' => 'https://example.com/project-landing',
+            ]);
+
+        $project = Project::where('name', 'Project with URL')->first();
+        $this->assertNotNull($project);
+        $this->assertEquals('https://example.com/project-landing', $project->url);
+    }
+
+    public function test_update_project_url()
+    {
+        $project = Project::create([
+            'project_code' => 'PRJ-URL-TEST',
+            'name' => 'Project to Update URL',
+            'priority' => 'medium',
+            'status' => 'planning',
+            'url' => 'https://oldurl.com',
+        ]);
+
+        $response = $this->actingAs($this->adminUser)
+            ->put(route('projects.update', $project), [
+                'name' => 'Project to Update URL',
+                'priority' => 'high',
+                'url' => 'https://newurl.com',
+            ]);
+
+        $project->refresh();
+        $this->assertEquals('https://newurl.com', $project->url);
+    }
 }

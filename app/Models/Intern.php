@@ -57,4 +57,9 @@ class Intern extends Model
         $data = str_replace(['-', '_'], ['+', '/'], $token);
         return openssl_decrypt($data, 'AES-128-ECB', $key);
     }
+
+    public function uploadedDocuments()
+    {
+        return $this->morphMany(Document::class, 'documentable');
+    }
 }

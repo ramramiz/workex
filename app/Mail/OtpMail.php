@@ -25,7 +25,8 @@ class OtpMail extends Mailable
      */
     public function build()
     {
-        return $this->subject('WorkeX Login: One-Time Password (OTP)')
+        return $this->subject('WorkeX: Verification Code')
+                    ->from(config('mail.from.address'), config('mail.from.name'))
                     ->view('emails.otp');
     }
 }

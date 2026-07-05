@@ -48,6 +48,14 @@ class LeadCallController extends Controller
             }
         }
 
+        $unconnectedStatuses = ['Not Connected', 'Busy', 'Switched Off'];
+        $previousUnconnectedCount = 0;
+        if (in_array($request->status, $unconnectedStatuses)) {
+            $previousUnconnectedCount = $lead->calls()
+                ->whereIn('status', $unconnectedStatuses)
+                ->count();
+        }
+
         LeadCall::create([
             'lead_id' => $lead->id,
             'telecaller_id' => auth()->id(),
@@ -59,6 +67,13 @@ class LeadCallController extends Controller
             'duration' => $request->duration,
             'is_followup' => $isFollowup,
         ]);
+
+        if (in_array($request->status, $unconnectedStatuses) && $previousUnconnectedCount >= 1) {
+            $lead->update([
+                'status' => 'permanently_not_connected',
+                'follow_up_date' => null,
+            ]);
+        }
 
         if ($request->filled('next_follow_up_date')) {
             \App\Models\LeadFollowUp::create([

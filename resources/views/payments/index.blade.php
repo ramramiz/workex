@@ -67,8 +67,14 @@
                             <span class="fw-semibold text-dark">{{ $payment->client->company_name ?? '—' }}</span>
                         </td>
                         <td>
+                            @php
+                                $matchedBank = $banks->firstWhere('name', $payment->payment_mode);
+                                $payModeDisplay = $matchedBank 
+                                    ? ($matchedBank->name . ' - ' . $matchedBank->branch . ' - ****' . substr($matchedBank->account_number, -4)) 
+                                    : $payment->payment_mode;
+                            @endphp
                             <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle text-capitalize fs-8">
-                                {{ $payment->payment_mode }}
+                                {{ $payModeDisplay }}
                             </span>
                         </td>
                         <td>

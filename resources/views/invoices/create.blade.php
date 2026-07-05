@@ -37,10 +37,10 @@
                         </div>
                         <div class="col-12 col-md-6">
                             <label class="form-label">Project board <span class="text-muted">(Optional)</span></label>
-                            <select name="project_id" id="project_id" class="form-select @error('project_id') is-invalid @enderror" onchange="autoselectClient()">
+                            <select name="project_id" id="project_id" class="form-select select-search @error('project_id') is-invalid @enderror" onchange="autoselectClient()">
                                 <option value="">-- Internal / No project board --</option>
                                 @foreach($projects as $p)
-                                    <option value="{{ $p->id }}" data-client-id="{{ $p->client_id }}" {{ old('project_id', request('project_id')) == $p->id ? 'selected' : '' }}>{{ $p->name }}</option>
+                                    <option value="{{ $p->id }}" data-client-id="{{ $p->client_id }}" {{ old('project_id', request('project_id')) == $p->id ? 'selected' : '' }}>{{ $p->name }} ({{ $p->client?->company_name ?? 'Internal Project' }})</option>
                                 @endforeach
                             </select>
                             @error('project_id')<div class="invalid-feedback">{{ $message }}</div>@enderror

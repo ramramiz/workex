@@ -46,6 +46,16 @@
                 </div>
 
                 <div class="mb-3">
+                    @php
+                        $matchedBank = \App\Models\Bank::where('name', $expense->payment_mode)->first();
+                        $payMethodDisplay = $matchedBank 
+                            ? ($matchedBank->name . ' - ' . $matchedBank->branch . ' - ****' . substr($matchedBank->account_number, -4)) 
+                            : ($expense->payment_mode ?? 'Cash');
+                    @endphp
+                    <span class="fw-medium text-dark font-monospace"><i class="bi bi-credit-card me-1"></i>{{ $payMethodDisplay }}</span>
+                </div>
+
+                <div class="mb-3">
                     <small class="text-muted d-block">Allocated Project</small>
                     @if($expense->project)
                         <span class="fw-semibold text-primary"><i class="bi bi-kanban"></i> <a href="{{ route('projects.show', $expense->project) }}">{{ $expense->project->name }}</a></span>

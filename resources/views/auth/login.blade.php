@@ -306,6 +306,12 @@
                 </div>
             </div>
 
+            @if(config('app.env') === 'local' || config('app.debug'))
+                <div class="alert alert-info border-info-subtle mb-3 p-2 text-center" style="font-size: 13.5px; background: rgba(13, 110, 253, 0.05); color: #0d6efd; border-radius: 8px;">
+                    <i class="bi bi-info-circle-fill me-1"></i> <strong>[Local Development]</strong> Verification Code: <strong style="font-size: 15px; color: #0a58ca; letter-spacing: 1px;">{{ \Illuminate\Support\Facades\Cache::get('login_otp_' . $otp_email) }}</strong>
+                </div>
+            @endif
+
             <div class="mb-4">
                 <label class="form-label">One-Time Password (OTP)</label>
                 <div class="input-group-custom">

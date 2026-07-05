@@ -120,6 +120,9 @@
                     @endif
                     <th>Completed Work</th>
                     <th>Git Commit Link</th>
+                    @if(auth()->user()->isSuperAdmin())
+                        <th title="Whether team leader visited the project previews page on this date">Projects Checked</th>
+                    @endif
                     <th>Reviewer</th>
                     <th>Status</th>
                     <th class="text-end">Actions</th>
@@ -142,6 +145,25 @@
                         <td>
                             <span class="text-muted fs-7" title="{{ $rep->completed_work }}">{{ Str::limit($rep->completed_work, 45) }}</span>
                         </td>
+                        @if(auth()->user()->isSuperAdmin())
+                            @php
+                                $checkedPreviews = \App\Models\ActivityLog::where('user_id', $rep->user_id)
+                                    ->where('action', 'view_project_previews')
+                                    ->whereDate('created_at', $rep->date)
+                                    ->exists();
+                            @endphp
+                            <td>
+                                @if($checkedPreviews)
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle fs-8 px-2 py-1">
+                                        <i class="bi bi-check-circle me-1"></i>Checked
+                                    </span>
+                                @else
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle fs-8 px-2 py-1">
+                                        <i class="bi bi-x-circle me-1"></i>Not Checked
+                                    </span>
+                                @endif
+                            </td>
+                        @endif
                         <td>
                             @if($rep->git_commit_link)
                                 <a href="{{ $rep->git_commit_link }}" target="_blank" class="text-decoration-none text-truncate d-inline-block" style="max-width: 140px;">

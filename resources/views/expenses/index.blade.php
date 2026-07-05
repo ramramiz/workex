@@ -77,6 +77,13 @@
                             <span class="text-capitalize badge bg-secondary-subtle text-secondary border border-secondary-subtle">
                                 {{ str_replace('_', ' ', $exp->category) }}
                             </span>
+                            @php
+                                $matchedBank = $banks->firstWhere('name', $exp->payment_mode);
+                                $payMethodDisplay = $matchedBank 
+                                    ? ($matchedBank->name . ' - ' . $matchedBank->branch . ' - ****' . substr($matchedBank->account_number, -4)) 
+                                    : ($exp->payment_mode ?? 'Cash');
+                            @endphp
+                            <small class="text-muted d-block mt-1 font-monospace" style="font-size:10.5px;"><i class="bi bi-credit-card me-1"></i>{{ $payMethodDisplay }}</small>
                         </td>
                         <td>{{ $exp->date ? $exp->date->format('d M Y') : '—' }}</td>
                         <td>

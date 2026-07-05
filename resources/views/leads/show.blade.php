@@ -44,7 +44,12 @@
                 <div class="d-flex align-items-center gap-1.5">
                     <button type="button" class="btn btn-outline-success btn-sm" title="Log Call" 
                         data-bs-toggle="modal" data-bs-target="#logCallModal" 
-                        data-bs-action="{{ route('leads.calls.store', $lead) }}">
+                        data-bs-action="{{ route('leads.calls.store', $lead) }}"
+                        data-bs-client-name="{{ $lead->client_name }}"
+                        data-bs-client-phone="{{ $lead->client_phone ?? '—' }}"
+                        data-bs-calls-count="{{ $lead->calls->count() }}"
+                        data-bs-last-contacted-at="{{ $lead->latestCall ? $lead->latestCall->call_date_time->format('d M Y, h:i A') : '' }}"
+                        data-bs-first-remarks="{{ $lead->calls->sortBy('id')->first() ? e($lead->calls->sortBy('id')->first()->remarks) : '' }}">
                         <i class="bi bi-telephone-outbound"></i>
                     </button>
                     <button type="button" class="btn btn-outline-warning btn-sm" title="Schedule Follow-up" 
@@ -184,7 +189,12 @@
                 <div class="d-flex align-items-center gap-2 py-2 pe-3">
                     <button type="button" class="btn btn-outline-success btn-sm rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; padding: 0;" title="Log Call" 
                         data-bs-toggle="modal" data-bs-target="#logCallModal" 
-                        data-bs-action="{{ route('leads.calls.store', $lead) }}">
+                        data-bs-action="{{ route('leads.calls.store', $lead) }}"
+                        data-bs-client-name="{{ $lead->client_name }}"
+                        data-bs-client-phone="{{ $lead->client_phone ?? '—' }}"
+                        data-bs-calls-count="{{ $lead->calls->count() }}"
+                        data-bs-last-contacted-at="{{ $lead->latestCall ? $lead->latestCall->call_date_time->format('d M Y, h:i A') : '' }}"
+                        data-bs-first-remarks="{{ $lead->calls->sortBy('id')->first() ? e($lead->calls->sortBy('id')->first()->remarks) : '' }}">
                         <i class="bi bi-telephone-outbound"></i>
                     </button>
                     <button type="button" class="btn btn-outline-warning btn-sm rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; padding: 0;" title="Schedule Follow-up" 
@@ -293,7 +303,12 @@
                             <div class="col-12 col-md-4">
                                 <div class="card h-100 border text-center p-4 hover-shadow-sm transition-all" style="cursor: pointer;" 
                                      data-bs-toggle="modal" data-bs-target="#logCallModal" 
-                                     data-bs-action="{{ route('leads.calls.store', $lead) }}">
+                                     data-bs-action="{{ route('leads.calls.store', $lead) }}"
+                                     data-bs-client-name="{{ $lead->client_name }}"
+                                     data-bs-client-phone="{{ $lead->client_phone ?? '—' }}"
+                                     data-bs-calls-count="{{ $lead->calls->count() }}"
+                                     data-bs-last-contacted-at="{{ $lead->latestCall ? $lead->latestCall->call_date_time->format('d M Y, h:i A') : '' }}"
+                                     data-bs-first-remarks="{{ $lead->calls->sortBy('id')->first() ? e($lead->calls->sortBy('id')->first()->remarks) : '' }}">
                                     <div class="fs-1 text-success mb-3">
                                         <i class="bi bi-telephone-outbound"></i>
                                     </div>

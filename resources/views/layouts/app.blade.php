@@ -27,7 +27,7 @@
         }
     </script>
 
-    <title>@yield('title', 'Dashboard') — {{ config('app.name') }}</title>
+    <title>@yield('title', 'Dashboard') &ndash; {{ config('app.name') }}</title>
 
     @php
         $companyLogo = \App\Models\Setting::get('company_logo');
@@ -49,6 +49,9 @@
 
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Tom Select CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
 
     <style>
         :root {
@@ -372,6 +375,141 @@
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+        /* ===== GLOBAL SEARCH ===== */
+        .gs-wrapper {
+            position: relative;
+            flex: 1;
+            max-width: 480px;
+            margin: 0 20px;
+        }
+        .gs-input-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.13);
+            border-radius: 12px;
+            padding: 7px 14px;
+            cursor: text;
+            transition: all 0.2s;
+            backdrop-filter: blur(8px);
+        }
+        .gs-input-wrap:focus-within {
+            background: rgba(255,255,255,0.12);
+            border-color: rgba(99,102,241,0.6);
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+        }
+        .gs-icon { color: #94a3b8; font-size: 14px; flex-shrink: 0; }
+        .gs-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #f1f5f9;
+            font-size: 13.5px;
+            font-family: 'Inter', sans-serif;
+            min-width: 0;
+        }
+        .gs-input::placeholder { color: #64748b; }
+        .gs-shortcut {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 5px;
+            padding: 1px 6px;
+            font-size: 10px;
+            color: #64748b;
+            font-family: monospace;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .gs-dropdown {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            right: 0;
+            background: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 14px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+            z-index: 9999;
+            overflow: hidden;
+            display: none;
+            max-height: 420px;
+            overflow-y: auto;
+        }
+        .gs-dropdown.show { display: block; }
+        .gs-section-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #475569;
+            padding: 10px 16px 4px;
+        }
+        .gs-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 9px 16px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background 0.15s;
+            border-radius: 0;
+        }
+        .gs-item:hover, .gs-item.active {
+            background: rgba(99,102,241,0.15);
+        }
+        .gs-item-icon {
+            width: 30px; height: 30px;
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px;
+            flex-shrink: 0;
+        }
+        .gs-item-body { flex: 1; min-width: 0; }
+        .gs-item-title { font-size: 13px; font-weight: 500; color: #f1f5f9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .gs-item-desc { font-size: 11px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .gs-item-badge {
+            font-size: 10px;
+            background: rgba(99,102,241,0.2);
+            color: #a5b4fc;
+            border-radius: 4px;
+            padding: 1px 6px;
+            flex-shrink: 0;
+        }
+        .gs-empty {
+            text-align: center;
+            padding: 28px 16px;
+            color: #475569;
+            font-size: 13px;
+        }
+        .gs-empty i { font-size: 28px; display: block; margin-bottom: 6px; }
+        mark.gs-hl {
+            background: rgba(99,102,241,0.35);
+            color: #c7d2fe;
+            border-radius: 2px;
+            padding: 0;
+        }
+        [data-bs-theme="dark"] .gs-input-wrap {
+            background: rgba(255,255,255,0.05);
+            border-color: rgba(255,255,255,0.1);
+        }
+        [data-bs-theme="light"] .gs-input { color: #0f172a; }
+        [data-bs-theme="light"] .gs-input::placeholder { color: #94a3b8; }
+        [data-bs-theme="light"] .gs-input-wrap {
+            background: rgba(0,0,0,0.04);
+            border-color: rgba(0,0,0,0.1);
+        }
+        [data-bs-theme="light"] .gs-dropdown {
+            background: #ffffff;
+            border-color: #e2e8f0;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.12);
+        }
+        [data-bs-theme="light"] .gs-item-title { color: #0f172a; }
+        [data-bs-theme="light"] .gs-section-label { color: #94a3b8; }
+        @media(max-width:768px) { .gs-wrapper { display: none; } }
+
         .global-color-btn.active {
             outline: 2px solid #000000;
             outline-offset: 2px;
@@ -950,6 +1088,17 @@
                 <i class="bi bi-kanban-fill nav-icon"></i><span class="nav-text">Projects</span>
             </a>
             @endif
+            @if(auth()->user()->isAdminOrAbove() || auth()->user()->isTeamLeader())
+            <a href="{{ route('project-amcs.index') }}" class="sidebar-item {{ request()->routeIs('project-amcs*') ? 'active' : '' }}" data-title="Project AMC">
+                <i class="bi bi-clock-history nav-icon"></i><span class="nav-text">Project AMC</span>
+            </a>
+            <a href="{{ route('hosting-providers.index') }}" class="sidebar-item {{ request()->routeIs('hosting-providers*') ? 'active' : '' }}" data-title="Hosting Providers">
+                <i class="bi bi-server nav-icon"></i><span class="nav-text">Hosting Providers</span>
+            </a>
+            <a href="{{ route('domain-registrations.index') }}" class="sidebar-item {{ request()->routeIs('domain-registrations*') ? 'active' : '' }}" data-title="Domain Registrations">
+                <i class="bi bi-globe nav-icon"></i><span class="nav-text">Domain Registrations</span>
+            </a>
+            @endif
             @if(auth()->user()->isAdminOrAbove())
             <a href="{{ route('clients.index') }}" class="sidebar-item {{ request()->routeIs('clients*') ? 'active' : '' }}" data-title="Clients">
                 <i class="bi bi-building nav-icon"></i><span class="nav-text">Clients</span>
@@ -1002,11 +1151,20 @@
             <a href="{{ route('invoices.index') }}" class="sidebar-item {{ request()->routeIs('invoices*') ? 'active' : '' }}" data-title="Invoices">
                 <i class="bi bi-receipt nav-icon"></i><span class="nav-text">Invoices</span>
             </a>
+            <a href="{{ route('proforma-invoices.index') }}" class="sidebar-item {{ request()->routeIs('proforma-invoices*') ? 'active' : '' }}" data-title="Proforma Invoices">
+                <i class="bi bi-file-earmark-ruled nav-icon"></i><span class="nav-text">Proforma Invoices</span>
+            </a>
             <a href="{{ route('payments.index') }}" class="sidebar-item {{ request()->routeIs('payments*') ? 'active' : '' }}" data-title="Payments">
                 <i class="bi bi-credit-card-fill nav-icon"></i><span class="nav-text">Payments</span>
             </a>
             <a href="{{ route('expenses.index') }}" class="sidebar-item {{ request()->routeIs('expenses*') ? 'active' : '' }}" data-title="Expenses">
                 <i class="bi bi-cash-stack nav-icon"></i><span class="nav-text">Expenses</span>
+            </a>
+            <a href="{{ route('banks.index') }}" class="sidebar-item {{ request()->routeIs('banks*') ? 'active' : '' }}" data-title="Banks">
+                <i class="bi bi-bank nav-icon"></i><span class="nav-text">Banks</span>
+            </a>
+            <a href="{{ route('investors.index') }}" class="sidebar-item {{ request()->routeIs('investors*') ? 'active' : '' }}" data-title="Investors">
+                <i class="bi bi-piggy-bank nav-icon"></i><span class="nav-text">Investors</span>
             </a>
             @if(auth()->user()->isAdminOrAbove())
             <a href="{{ route('admin.payroll.index') }}" class="sidebar-item {{ request()->routeIs('admin.payroll*') ? 'active' : '' }}" data-title="Payroll">
@@ -1072,7 +1230,19 @@
         @endif
     </div>
 
-    @yield('topnav-middle')    <div class="topnav-right">
+    @yield('topnav-middle')
+
+    <!-- GLOBAL SEARCH -->
+    <div class="gs-wrapper" id="gs-wrapper">
+        <div class="gs-input-wrap" onclick="document.getElementById('gs-input').focus()">
+            <i class="bi bi-search gs-icon" id="gs-icon"></i>
+            <input type="text" id="gs-input" class="gs-input" placeholder="Search anything... (Ctrl+K)" autocomplete="off" spellcheck="false">
+            <span class="gs-shortcut d-none d-lg-inline">Ctrl K</span>
+        </div>
+        <div class="gs-dropdown" id="gs-dropdown"></div>
+    </div>
+
+    <div class="topnav-right">
         @if(!auth()->user()->isReseller())
             @php
                 $activeTaskLog = \App\Models\TaskTimeLog::where('user_id', auth()->id())->where('status', 'running')->with('task')->first();
@@ -1182,6 +1352,26 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     @endif
+    @if(session('info'))
+        <div class="alert alert-info alert-dismissible fade show mb-4">
+            <i class="bi bi-info-circle-fill me-2"></i>{{ session('info') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+    @if(session('impersonating_from'))
+        <div class="d-flex align-items-center justify-content-between px-4 py-2 text-white fw-semibold shadow" style="background: linear-gradient(90deg, #7c3aed, #4f46e5); font-size: 13.5px; border-radius: 10px; margin-bottom: 16px;">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-person-fill-lock fs-5"></i>
+                <span>You are impersonating <strong>{{ auth()->user()->name }}</strong> ({{ auth()->user()->email }})</span>
+            </div>
+            <form method="POST" action="{{ route('employees.return-account') }}" class="m-0">
+                @csrf
+                <button type="submit" class="btn btn-sm text-white fw-bold d-flex align-items-center gap-1" style="background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.35); border-radius: 8px; backdrop-filter: blur(4px);">
+                    <i class="bi bi-arrow-return-left"></i> Return to my account
+                </button>
+            </form>
+        </div>
+    @endif
     @if($errors->any())
         <div class="alert alert-danger alert-dismissible fade show mb-4">
             <strong>Please fix the following errors:</strong>
@@ -1265,7 +1455,7 @@
     });
 </script>
 <script>
-    // AI Auto-Correct Feature for every text box
+    // AI Auto-Correct & Sentence Expansion Feature for every text box
     document.addEventListener('DOMContentLoaded', () => {
         const attachAiCorrector = (input) => {
             if (input.dataset.aiCorrectAttached) return;
@@ -1284,7 +1474,7 @@
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'btn-ai-correct';
-            btn.title = 'AI Auto-Correct Sentence';
+            btn.title = 'AI Writing Assistant';
             btn.innerHTML = '<i class="bi bi-stars" style="font-size: 11px; pointer-events: none;"></i>';
             
             // Add Styles
@@ -1308,7 +1498,60 @@
                 padding: '0'
             });
 
+            // Create Assist Dropdown Menu
+            const menu = document.createElement('div');
+            menu.className = 'ai-assist-dropdown-menu';
+            Object.assign(menu.style, {
+                position: 'absolute',
+                zIndex: '1000',
+                background: 'var(--card-bg, #ffffff)',
+                border: '1px solid var(--border-color, #e2e8f0)',
+                borderRadius: '12px',
+                padding: '6px',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
+                display: 'none',
+                flexDirection: 'column',
+                gap: '2px',
+                minWidth: '160px',
+                pointerEvents: 'auto',
+                transition: 'opacity 0.2s ease, transform 0.2s ease'
+            });
+
+            const optCorrect = document.createElement('button');
+            optCorrect.type = 'button';
+            optCorrect.className = 'btn btn-sm d-flex align-items-center gap-2 text-start px-2 py-1.5 w-100';
+            optCorrect.style.fontSize = '12px';
+            optCorrect.style.border = 'none';
+            optCorrect.style.borderRadius = '8px';
+            optCorrect.style.background = 'transparent';
+            optCorrect.style.color = 'var(--text-primary, #0f172a)';
+            optCorrect.innerHTML = '<i class="bi bi-magic text-primary" style="font-size: 14px; pointer-events: none;"></i> <span style="pointer-events: none;">Correct Sentence</span>';
+
+            const optExpand = document.createElement('button');
+            optExpand.type = 'button';
+            optExpand.className = 'btn btn-sm d-flex align-items-center gap-2 text-start px-2 py-1.5 w-100';
+            optExpand.style.fontSize = '12px';
+            optExpand.style.border = 'none';
+            optExpand.style.borderRadius = '8px';
+            optExpand.style.background = 'transparent';
+            optExpand.style.color = 'var(--text-primary, #0f172a)';
+            optExpand.innerHTML = '<i class="bi bi-blockquote-left text-success" style="font-size: 14px; pointer-events: none;"></i> <span style="pointer-events: none;">Expand Sentence</span>';
+
+            // Hover styles for options
+            [optCorrect, optExpand].forEach(opt => {
+                opt.addEventListener('mouseenter', () => {
+                    opt.style.background = 'rgba(99, 102, 241, 0.08)';
+                });
+                opt.addEventListener('mouseleave', () => {
+                    opt.style.background = 'transparent';
+                });
+            });
+
+            menu.appendChild(optCorrect);
+            menu.appendChild(optExpand);
+            
             parent.appendChild(btn);
+            parent.appendChild(menu);
 
             // Reposition button dynamically
             const repositionButton = () => {
@@ -1327,6 +1570,28 @@
                 btn.style.left = `${left}px`;
             };
 
+            const toggleMenu = (show) => {
+                if (show) {
+                    repositionButton();
+                    const btnRect = btn.getBoundingClientRect();
+                    const parentRect = parent.getBoundingClientRect();
+                    
+                    let topPos = btnRect.bottom - parentRect.top + 4; // below the button
+                    let leftPos = btnRect.right - parentRect.left - 160; // aligned to right of button
+
+                    // If it overflows the parent bottom, show above instead
+                    if (topPos + 80 > parentRect.height) {
+                        topPos = btnRect.top - parentRect.top - 80;
+                    }
+
+                    menu.style.top = `${topPos}px`;
+                    menu.style.left = `${leftPos}px`;
+                    menu.style.display = 'flex';
+                } else {
+                    menu.style.display = 'none';
+                }
+            };
+
             const showButton = () => {
                 if (input.value.trim().length > 3 && !input.readOnly && !input.disabled) {
                     repositionButton();
@@ -1340,11 +1605,16 @@
             const hideButton = () => {
                 btn.style.opacity = '0';
                 btn.style.pointerEvents = 'none';
+                toggleMenu(false);
             };
 
             // Event Listeners
-            input.addEventListener('focus', showButton);
+            input.addEventListener('focus', () => {
+                repositionButton();
+                showButton();
+            });
             input.addEventListener('input', showButton);
+            input.addEventListener('click', repositionButton);
             
             // Reposition on window resize or scroll
             window.addEventListener('resize', repositionButton);
@@ -1352,9 +1622,29 @@
             // Initialize button state immediately on load (if input already has text)
             showButton();
 
-            btn.addEventListener('click', async () => {
+            // Toggle menu on click
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (menu.style.display === 'flex') {
+                    toggleMenu(false);
+                } else {
+                    toggleMenu(true);
+                }
+            });
+
+            // Close menu when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!btn.contains(e.target) && !menu.contains(e.target)) {
+                    toggleMenu(false);
+                }
+            });
+
+            // Run AI Action (Correct or Expand)
+            const runAiAction = async (action) => {
                 const originalText = input.value;
                 if (!originalText.trim()) return;
+
+                toggleMenu(false);
 
                 // Show spinner
                 btn.disabled = true;
@@ -1368,7 +1658,7 @@
                             'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                         },
-                        body: JSON.stringify({ text: originalText })
+                        body: JSON.stringify({ text: originalText, action: action })
                     });
 
                     const data = await response.json();
@@ -1390,7 +1680,7 @@
                             showButton();
                         }, 2000);
                     } else {
-                        throw new Error('Correction failed');
+                        throw new Error('AI Assist action failed');
                     }
                 } catch (error) {
                     console.error('AI Error:', error);
@@ -1404,9 +1694,18 @@
                         showButton();
                     }, 2000);
                 }
+            };
+
+            optCorrect.addEventListener('click', (e) => {
+                e.stopPropagation();
+                runAiAction('correct');
+            });
+            optExpand.addEventListener('click', (e) => {
+                e.stopPropagation();
+                runAiAction('expand');
             });
 
-            // Hover effects
+            // Hover effects for main button
             btn.addEventListener('mouseenter', () => {
                 if (!btn.disabled) {
                     btn.style.transform = 'scale(1.15)';
@@ -3958,7 +4257,7 @@
                 refreshAlertCaptcha();
                 playAlertRingSound();
             } else {
-                // No pending alert on load — start polling for live alerts
+                // No pending alert on load &ndash; start polling for live alerts
                 startAlertPolling();
             }
         });
@@ -4029,6 +4328,7 @@
             document.getElementById('chatActionNotes').removeAttribute('required');
             
             const submitBtn = document.getElementById('chatActionSubmitBtn');
+            submitBtn.disabled = false;
             submitBtn.textContent = 'Approve';
             submitBtn.className = 'btn btn-success btn-sm px-3 text-white fw-bold';
 
@@ -4047,6 +4347,7 @@
             document.getElementById('chatActionNotes').setAttribute('required', 'required');
             
             const submitBtn = document.getElementById('chatActionSubmitBtn');
+            submitBtn.disabled = false;
             submitBtn.textContent = 'Reject';
             submitBtn.className = 'btn btn-danger btn-sm px-3 text-white fw-bold';
 
@@ -4111,6 +4412,310 @@
     </script>
     @endauth
 
+    <!-- Tom Select JS -->
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            function initTomSelect(el) {
+                if (el.tomselect) return;
+                new TomSelect(el, {
+                    create: false,
+                    dropdownParent: 'body'
+                });
+            }
+
+            document.querySelectorAll('.select-search').forEach(initTomSelect);
+
+            // Also support initializing dynamically added elements or when a modal opens
+            document.addEventListener('shown.bs.modal', function(event) {
+                event.target.querySelectorAll('.select-search').forEach(initTomSelect);
+            });
+        });
+    </script>
     @stack('scripts')
+
+    @auth
+    <script>
+    /* ============================================================
+       GLOBAL SEARCH ENGINE  (Menu + Live DB Records)
+    ============================================================ */
+    (function() {
+        const SEARCH_URL = '{{ route("global.search") }}';
+        const CSRF       = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+        // â”€â”€ STATIC MENU ITEMS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        const MENU_ITEMS = [
+            { title: 'Dashboard', desc: 'Home overview & stats', icon: 'bi-grid-1x2-fill', color: '#6366f1', bg: 'rgba(99,102,241,0.15)', url: '{{ route("dashboard") }}', tags: ['home','overview','stats'] },
+            @if(auth()->user()->isSuperAdmin())
+            { title: 'Live Status Board', desc: 'Real-time employee activity', icon: 'bi-broadcast', color: '#10b981', bg: 'rgba(16,185,129,0.15)', url: '{{ route("live-status") }}', tags: ['live','status','monitor'] },
+            @endif
+            { title: 'Chat Workspace', desc: 'Team messaging & discussions', icon: 'bi-chat-fill', color: '#06b6d4', bg: 'rgba(6,182,212,0.15)', url: '{{ route("chat.index") }}', tags: ['chat','message','team'] },
+            { title: 'Mailbox', desc: 'Internal mail & messages', icon: 'bi-envelope-fill', color: '#f59e0b', bg: 'rgba(245,158,11,0.15)', url: '{{ route("mailbox.index") }}', tags: ['mail','inbox','email'] },
+            @if(!auth()->user()->isTelecaller())
+            @if(auth()->user()->isEmployee() || auth()->user()->isTeamLeader())
+            { title: 'Work Timer', desc: 'Track daily work hours', icon: 'bi-stopwatch-fill', color: '#8b5cf6', bg: 'rgba(139,92,246,0.15)', url: '{{ route("work-timer.index") }}', tags: ['timer','hours','time'] },
+            @endif
+            { title: 'Approved Tasks', desc: 'View all approved tasks', icon: 'bi-check-circle', color: '#10b981', bg: 'rgba(16,185,129,0.15)', url: '{{ route("tasks.approved") }}', tags: ['tasks','approved'] },
+            @if(!auth()->user()->isEmployee())
+            { title: 'Daily Reports', desc: 'Day-end employee reports', icon: 'bi-journal-text', color: '#6366f1', bg: 'rgba(99,102,241,0.15)', url: '{{ route("daily-reports.index") }}', tags: ['report','daily','log','eod'] },
+            { title: 'Bug Tracker', desc: 'Track & manage bugs', icon: 'bi-bug-fill', color: '#ef4444', bg: 'rgba(239,68,68,0.15)', url: '{{ route("bugs.index") }}', tags: ['bug','issue','tracker'] },
+            { title: 'Meetings & Discussions', desc: 'Schedule & view meetings', icon: 'bi-chat-left-quote', color: '#0ea5e9', bg: 'rgba(14,165,233,0.15)', url: '{{ route("meetings.index") }}', tags: ['meeting','schedule'] },
+            @endif
+            @endif
+            @if(auth()->user()->isAdminOrAbove() || auth()->user()->isTelecaller() || auth()->user()->isTeamLeader())
+            @if(auth()->user()->isTelecaller())
+            { title: 'Start Today Work', desc: 'Begin telecaller work session', icon: 'bi-play-circle-fill', color: '#10b981', bg: 'rgba(16,185,129,0.15)', url: '{{ route("leads.start-work.index") }}', tags: ['start','work','room'] },
+            @endif
+            @if(auth()->user()->isAdminOrAbove())
+            { title: 'Leads & Enquiries', desc: 'View and manage all leads', icon: 'bi-funnel-fill', color: '#f59e0b', bg: 'rgba(245,158,11,0.15)', url: '{{ route("leads.index") }}', tags: ['leads','enquiry','sales','crm'] },
+            { title: 'Quotations', desc: 'Create & send quotations', icon: 'bi-file-earmark-text-fill', color: '#8b5cf6', bg: 'rgba(139,92,246,0.15)', url: '{{ route("quotations.index") }}', tags: ['quote','quotation'] },
+            @endif
+            { title: 'Telecaller Performance', desc: 'Reports & call analytics', icon: 'bi-graph-up-arrow', color: '#06b6d4', bg: 'rgba(6,182,212,0.15)', url: '{{ route("reports.telecaller-performance") }}', tags: ['performance','analytics','telecaller'] },
+            @if(auth()->user()->isSuperAdmin())
+            { title: 'Room Work Approvals', desc: 'Approve telecaller sessions', icon: 'bi-clipboard-check', color: '#ef4444', bg: 'rgba(239,68,68,0.15)', url: '{{ route("admin.telecaller-sessions.index") }}', tags: ['room','approval','session'] },
+            @endif
+            @endif
+            @if(!auth()->user()->isTelecaller())
+            @if(!auth()->user()->isEmployee())
+            { title: 'Projects', desc: 'Manage all client projects', icon: 'bi-kanban-fill', color: '#6366f1', bg: 'rgba(99,102,241,0.15)', url: '{{ route("projects.index") }}', tags: ['project','kanban'] },
+            { title: 'Add New Project', desc: 'Create a new project', icon: 'bi-plus-circle-fill', color: '#10b981', bg: 'rgba(16,185,129,0.15)', url: '{{ route("projects.create") }}', tags: ['add','new','project'] },
+            @endif
+            @if(auth()->user()->isAdminOrAbove() || auth()->user()->isTeamLeader())
+            { title: 'Project AMC', desc: 'Annual maintenance contracts', icon: 'bi-clock-history', color: '#f59e0b', bg: 'rgba(245,158,11,0.15)', url: '{{ route("project-amcs.index") }}', tags: ['amc','maintenance','contract'] },
+            { title: 'Hosting Providers', desc: 'Manage hosting accounts', icon: 'bi-server', color: '#0ea5e9', bg: 'rgba(14,165,233,0.15)', url: '{{ route("hosting-providers.index") }}', tags: ['hosting','server','cloud'] },
+            { title: 'Domain Registrations', desc: 'Manage domain names', icon: 'bi-globe', color: '#10b981', bg: 'rgba(16,185,129,0.15)', url: '{{ route("domain-registrations.index") }}', tags: ['domain','dns','website'] },
+            @endif
+            @if(auth()->user()->isAdminOrAbove())
+            { title: 'Clients', desc: 'View & manage clients', icon: 'bi-building', color: '#8b5cf6', bg: 'rgba(139,92,246,0.15)', url: '{{ route("clients.index") }}', tags: ['client','customer','company'] },
+            { title: 'Add New Client', desc: 'Create a new client record', icon: 'bi-person-plus-fill', color: '#06b6d4', bg: 'rgba(6,182,212,0.15)', url: '{{ route("clients.create") }}', tags: ['add','new','client'] },
+            @endif
+            @endif
+            @if(!auth()->user()->isClient())
+            @if(auth()->user()->isAdminOrAbove() || auth()->user()->isHR())
+            { title: 'Employees', desc: 'HR & employee directory', icon: 'bi-people-fill', color: '#6366f1', bg: 'rgba(99,102,241,0.15)', url: '{{ route("employees.index") }}', tags: ['employee','staff','hr'] },
+            { title: 'Add Employee', desc: 'Register a new employee', icon: 'bi-person-plus-fill', color: '#10b981', bg: 'rgba(16,185,129,0.15)', url: '{{ route("employees.create") }}', tags: ['add','employee','hire'] },
+            { title: 'Hiring & Vacancies', desc: 'Manage job openings', icon: 'bi-briefcase-fill', color: '#f59e0b', bg: 'rgba(245,158,11,0.15)', url: '{{ route("job-vacancies.index") }}', tags: ['job','vacancy','hiring'] },
+            { title: 'Interns Directory', desc: 'Manage intern records', icon: 'bi-award-fill', color: '#8b5cf6', bg: 'rgba(139,92,246,0.15)', url: '{{ route("interns.index") }}', tags: ['intern','trainee'] },
+            @endif
+            { title: 'Attendance', desc: 'Track daily attendance', icon: 'bi-calendar2-check-fill', color: '#10b981', bg: 'rgba(16,185,129,0.15)', url: '{{ route("attendance.index") }}', tags: ['attendance','checkin','time'] },
+            { title: 'Leave Management', desc: 'Apply & manage leaves', icon: 'bi-calendar-x-fill', color: '#ef4444', bg: 'rgba(239,68,68,0.15)', url: '{{ route("leaves.index") }}', tags: ['leave','holiday','absent'] },
+            @endif
+            @if(auth()->user()->isAdminOrAbove() || auth()->user()->isAccounts())
+            { title: 'Invoices', desc: 'Client billing & invoices', icon: 'bi-receipt', color: '#10b981', bg: 'rgba(16,185,129,0.15)', url: '{{ route("invoices.index") }}', tags: ['invoice','bill','finance'] },
+            { title: 'Create Invoice', desc: 'Generate a new invoice', icon: 'bi-file-earmark-plus', color: '#6366f1', bg: 'rgba(99,102,241,0.15)', url: '{{ route("invoices.create") }}', tags: ['create','invoice','new'] },
+            { title: 'Proforma Invoices', desc: 'Draft & proforma invoices', icon: 'bi-file-earmark-ruled', color: '#8b5cf6', bg: 'rgba(139,92,246,0.15)', url: '{{ route("proforma-invoices.index") }}', tags: ['proforma','invoice'] },
+            { title: 'Payments', desc: 'Track received payments', icon: 'bi-credit-card-fill', color: '#f59e0b', bg: 'rgba(245,158,11,0.15)', url: '{{ route("payments.index") }}', tags: ['payment','money','finance'] },
+            { title: 'Expenses', desc: 'Company expenses & bills', icon: 'bi-cash-stack', color: '#ef4444', bg: 'rgba(239,68,68,0.15)', url: '{{ route("expenses.index") }}', tags: ['expense','cost','spend'] },
+            { title: 'Banks', desc: 'Bank accounts management', icon: 'bi-bank', color: '#06b6d4', bg: 'rgba(6,182,212,0.15)', url: '{{ route("banks.index") }}', tags: ['bank','account','finance'] },
+            { title: 'Investors', desc: 'Investor relations & funding', icon: 'bi-piggy-bank', color: '#10b981', bg: 'rgba(16,185,129,0.15)', url: '{{ route("investors.index") }}', tags: ['investor','funding'] },
+            { title: 'Reports', desc: 'Financial reports & exports', icon: 'bi-bar-chart-fill', color: '#8b5cf6', bg: 'rgba(139,92,246,0.15)', url: '{{ route("reports.index") }}', tags: ['report','analytics','export'] },
+            @if(auth()->user()->isAdminOrAbove())
+            { title: 'Salary Disbursal', desc: 'Process employee payroll', icon: 'bi-wallet2', color: '#6366f1', bg: 'rgba(99,102,241,0.15)', url: '{{ route("admin.payroll.index") }}', tags: ['payroll','salary'] },
+            @endif
+            @endif
+            @if(auth()->user()->isSuperAdmin())
+            { title: 'Global Alerts', desc: 'Broadcast alerts to all users', icon: 'bi-exclamation-triangle', color: '#ef4444', bg: 'rgba(239,68,68,0.15)', url: '{{ route("admin.alerts.index") }}', tags: ['alert','broadcast'] },
+            { title: 'Activity Logs', desc: 'System-wide activity history', icon: 'bi-clock-history', color: '#64748b', bg: 'rgba(100,116,139,0.15)', url: '{{ route("activity-logs.index") }}', tags: ['log','activity','audit'] },
+            { title: 'Settings', desc: 'App & company settings', icon: 'bi-gear-fill', color: '#94a3b8', bg: 'rgba(148,163,184,0.15)', url: '{{ route("settings.index") }}', tags: ['settings','config'] },
+            @endif
+            { title: 'My Profile', desc: 'Edit your profile & password', icon: 'bi-person-fill', color: '#6366f1', bg: 'rgba(99,102,241,0.15)', url: '{{ route("profile.edit") }}', tags: ['profile','account','password'] },
+        ];
+
+        // â”€â”€ HELPERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        function menuScore(item, q) {
+            const hay = [item.title, item.desc, ...(item.tags||[])].join(' ').toLowerCase();
+            const needle = q.toLowerCase();
+            if (hay.includes(needle)) return 2;
+            let hi=0,ni=0;
+            while(hi<hay.length&&ni<needle.length){if(hay[hi]===needle[ni])ni++;hi++;}
+            return ni===needle.length?1:0;
+        }
+        function highlight(text, q) {
+            if (!q) return text;
+            const idx = text.toLowerCase().indexOf(q.toLowerCase());
+            if (idx === -1) return text;
+            return text.slice(0,idx)+'<mark class="gs-hl">'+text.slice(idx,idx+q.length)+'</mark>'+text.slice(idx+q.length);
+        }
+
+        // â”€â”€ DOM REFS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        const input    = document.getElementById('gs-input');
+        const dropdown = document.getElementById('gs-dropdown');
+        const gsIcon   = document.getElementById('gs-icon');
+        if (!input || !dropdown) return;
+
+        let activeIdx    = -1;
+        let visibleItems = [];
+        let abortCtrl    = null;
+
+        // â”€â”€ RENDER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        function render(q) {
+            dropdown.innerHTML = '';
+            activeIdx    = -1;
+            visibleItems = [];
+
+            if (!q.trim()) {
+                // Quick nav when empty
+                const quick = [
+                    MENU_ITEMS[0],
+                    MENU_ITEMS.find(i=>i.title==='Projects')||MENU_ITEMS[1],
+                    MENU_ITEMS.find(i=>i.title==='Chat Workspace')||MENU_ITEMS[2],
+                    MENU_ITEMS.find(i=>i.title==='Clients')||null,
+                    MENU_ITEMS.find(i=>i.title==='Approved Tasks')||null,
+                ].filter(Boolean).slice(0,5);
+                appendSection('âš¡ Quick Navigation', quick, q);
+                dropdown.classList.add('show');
+                return;
+            }
+
+            // Show loading immediately
+            showLoading();
+            dropdown.classList.add('show');
+
+            // Cancel previous request
+            if (abortCtrl) abortCtrl.abort();
+            abortCtrl = new AbortController();
+
+            fetch(`${SEARCH_URL}?q=${encodeURIComponent(q)}`, {
+                signal: abortCtrl.signal,
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': CSRF }
+            })
+            .then(r => r.json())
+            .then(data => {
+                dropdown.innerHTML = '';
+                activeIdx    = -1;
+                visibleItems = [];
+
+                const dbResults  = data.results || [];
+                const menuScored = MENU_ITEMS
+                    .map(item => ({item, s: menuScore(item, q)}))
+                    .filter(r => r.s > 0)
+                    .sort((a,b) => b.s - a.s)
+                    .map(r => r.item);
+
+                if (dbResults.length === 0 && menuScored.length === 0) {
+                    dropdown.innerHTML = `<div class="gs-empty"><i class="bi bi-search"></i>No results found for "<strong>${q}</strong>"<br><small style="color:#64748b">Try different keywords</small></div>`;
+                    dropdown.classList.add('show');
+                    return;
+                }
+
+                // Records from DB grouped by badge/type
+                if (dbResults.length > 0) {
+                    const grouped = {};
+                    dbResults.forEach(r => {
+                        const key = r.badge || 'Other';
+                        if (!grouped[key]) grouped[key] = [];
+                        grouped[key].push(r);
+                    });
+                    Object.entries(grouped).forEach(([label, items]) => {
+                        appendSection(label, items, q);
+                    });
+                }
+
+                // Static menu items
+                if (menuScored.length > 0) {
+                    appendSection('Menus & Actions', menuScored.slice(0, 6), q);
+                }
+
+                dropdown.classList.add('show');
+            })
+            .catch(err => {
+                if (err.name === 'AbortError') return;
+                dropdown.innerHTML = `<div class="gs-empty"><i class="bi bi-wifi-off"></i>Search unavailable</div>`;
+            });
+        }
+
+        function showLoading() {
+            dropdown.innerHTML = `
+                <div style="display:flex;align-items:center;gap:10px;padding:16px 20px;color:#64748b;font-size:13px;">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status" style="width:16px;height:16px;border-width:2px;"></div>
+                    Searchingâ€¦
+                </div>`;
+        }
+
+        function appendSection(label, items, q) {
+            const sec = document.createElement('div');
+            sec.className = 'gs-section-label';
+            sec.textContent = label;
+            dropdown.appendChild(sec);
+            items.forEach(item => appendItem(item, q));
+        }
+
+        function appendItem(item, q) {
+            const a = document.createElement('a');
+            a.href = item.url;
+            a.className = 'gs-item';
+            a.dataset.idx = visibleItems.length;
+            a.innerHTML = `
+                <div class="gs-item-icon" style="background:${item.bg};color:${item.color};">
+                    <i class="bi ${item.icon}"></i>
+                </div>
+                <div class="gs-item-body">
+                    <div class="gs-item-title">${highlight(item.title, q)}</div>
+                    <div class="gs-item-desc">${item.desc || ''}</div>
+                </div>
+                ${item.badge ? `<span class="gs-item-badge">${item.badge}</span>` : ''}
+            `;
+            a.addEventListener('mouseenter', () => setActive(parseInt(a.dataset.idx)));
+            dropdown.appendChild(a);
+            visibleItems.push(a);
+        }
+
+        function setActive(i) {
+            visibleItems.forEach((el,j) => el.classList.toggle('active', j===i));
+            activeIdx = i;
+        }
+        function close() { dropdown.classList.remove('show'); activeIdx = -1; }
+
+        // â”€â”€ EVENTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        let debounceTimer;
+        input.addEventListener('input', () => {
+            clearTimeout(debounceTimer);
+            const q = input.value;
+            // Immediately show loading if query is long enough
+            if (q.trim().length >= 2) {
+                showLoading();
+                dropdown.classList.add('show');
+            }
+            debounceTimer = setTimeout(() => render(q), 300);
+        });
+
+        input.addEventListener('focus', () => render(input.value));
+
+        input.addEventListener('keydown', e => {
+            if (!dropdown.classList.contains('show')) return;
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setActive(Math.min(activeIdx+1, visibleItems.length-1));
+                visibleItems[activeIdx]?.scrollIntoView({block:'nearest'});
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setActive(Math.max(activeIdx-1, 0));
+                visibleItems[activeIdx]?.scrollIntoView({block:'nearest'});
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (activeIdx >= 0 && visibleItems[activeIdx]) window.location.href = visibleItems[activeIdx].href;
+            } else if (e.key === 'Escape') {
+                close(); input.blur();
+            }
+        });
+
+        document.addEventListener('click', e => {
+            if (!document.getElementById('gs-wrapper')?.contains(e.target)) close();
+        });
+
+        // Ctrl+K / Cmd+K
+        document.addEventListener('keydown', e => {
+            if ((e.ctrlKey||e.metaKey) && e.key==='k') {
+                e.preventDefault();
+                input.focus(); input.select();
+                render(input.value);
+            }
+        });
+    })();
+    </script>
+    @endauth
+
+
 </body>
 </html>
+

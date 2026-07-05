@@ -94,15 +94,32 @@
                                 <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">Bank Transfer</span>
                             @elseif($slip->payment_method === 'cheque')
                                 <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1">Cheque</span>
-                            @else
+                            @elseif($slip->payment_method === 'Cash')
                                 <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Cash</span>
+                            @else
+                                @php
+                                    $matchedBank = $banks->firstWhere('name', $slip->payment_method);
+                                    $payMethodDisplay = $matchedBank 
+                                        ? ($matchedBank->name . ' - ' . $matchedBank->branch . ' - ****' . substr($matchedBank->account_number, -4)) 
+                                        : $slip->payment_method;
+                                @endphp
+                                <span class="badge bg-info-subtle text-info border border-info-subtle px-2 py-1">{{ $payMethodDisplay }}</span>
                             @endif
                         </td>
                         <td class="fs-7 text-muted">{{ $slip->payment_date->format('d M Y') }}</td>
                         <td class="text-end">
-                            <a href="{{ route('admin.payroll.show', $slip) }}" target="_blank" class="btn btn-outline-primary btn-sm px-3" style="border-radius: 8px;">
-                                <i class="bi bi-file-earmark-pdf me-1"></i> Payslip
-                            </a>
+                            <div class="d-inline-flex gap-2">
+                                <a href="{{ route('admin.payroll.show', $slip) }}" target="_blank" class="btn btn-outline-primary btn-sm px-3" style="border-radius: 8px;">
+                                    <i class="bi bi-file-earmark-pdf me-1"></i> Payslip
+                                </a>
+                                <form method="POST" action="{{ route('admin.payroll.destroy', $slip) }}" class="d-inline" onsubmit="return confirm('Are you sure you want to revoke this salary disbursal? This will also delete the associated expense log.');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-outline-danger btn-sm px-3" style="border-radius: 8px;">
+                                        <i class="bi bi-arrow-counterclockwise me-1"></i> Revoke
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                 @empty
