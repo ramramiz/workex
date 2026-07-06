@@ -35,54 +35,73 @@ class ProjectController extends Controller
         
         $projects = $query->latest()->get();
         
-        foreach ($projects as $p) {
-            $p->iframe_status = Cache::remember('project_iframe_status_' . $p->id, 3600, function() use ($p) {
-                try {
-                    $response = Http::withHeaders([
-                        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-                    ])->timeout(2)->connectTimeout(2)->get($p->url);
-                    
-                    if (!$response->successful()) {
-                        return [
-                            'embeddable' => false,
-                            'reason' => 'Site returned status ' . $response->status()
-                        ];
-                    }
-                    
-                    $xFrameOptions = $response->header('X-Frame-Options');
-                    if ($xFrameOptions && (stripos($xFrameOptions, 'deny') !== false || stripos($xFrameOptions, 'sameorigin') !== false)) {
-                        return [
-                            'embeddable' => false,
-                            'reason' => 'Embedding blocked by X-Frame-Options'
-                        ];
-                    }
-                    
-                    $csp = $response->header('Content-Security-Policy');
-                    if ($csp && stripos($csp, 'frame-ancestors') !== false) {
-                        return [
-                            'embeddable' => false,
-                            'reason' => 'Embedding blocked by CSP frame-ancestors'
-                        ];
-                    }
-                    
-                    return [
-                        'embeddable' => true,
-                        'reason' => ''
-                    ];
-                } catch (\Exception $e) {
-                    return [
-                        'embeddable' => false,
-                        'reason' => 'Offline / Connection Timeout'
-                    ];
-                }
-            });
-        }
-        
         if ($user->isTeamLeader() || $user->isSuperAdmin()) {
             \App\Models\ActivityLog::log('view_project_previews', 'Logged project preview lookup');
         }
         
         return view('projects.previews', compact('projects'));
+    }
+
+    public function previewStatus(Project $project)
+    {
+        $user = auth()->user();
+        
+        if ($user->isTeamLeader()) {
+            $hasAccess = ($project->team_leader_id === $user->id) || $project->members()->where('user_id', $user->id)->exists();
+            if (!$hasAccess) {
+                abort(403, 'Unauthorized access to this project preview.');
+            }
+        }
+        
+        if (empty($project->url)) {
+            return response()->json([
+                'embeddable' => false,
+                'reason' => 'No URL configured'
+            ]);
+        }
+        
+        $status = Cache::remember('project_iframe_status_' . $project->id, 3600, function() use ($project) {
+            try {
+                $response = Http::withHeaders([
+                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+                ])->timeout(2)->connectTimeout(2)->get($project->url);
+                
+                if (!$response->successful()) {
+                    return [
+                        'embeddable' => false,
+                        'reason' => 'Site returned status ' . $response->status()
+                    ];
+                }
+                
+                $xFrameOptions = $response->header('X-Frame-Options');
+                if ($xFrameOptions && (stripos($xFrameOptions, 'deny') !== false || stripos($xFrameOptions, 'sameorigin') !== false)) {
+                    return [
+                        'embeddable' => false,
+                        'reason' => 'Embedding blocked by X-Frame-Options'
+                    ];
+                }
+                
+                $csp = $response->header('Content-Security-Policy');
+                if ($csp && stripos($csp, 'frame-ancestors') !== false) {
+                    return [
+                        'embeddable' => false,
+                        'reason' => 'Embedding blocked by CSP frame-ancestors'
+                    ];
+                }
+                
+                return [
+                    'embeddable' => true,
+                    'reason' => ''
+                ];
+            } catch (\Exception $e) {
+                return [
+                    'embeddable' => false,
+                    'reason' => 'Offline / Connection Timeout'
+                ];
+            }
+        });
+        
+        return response()->json($status);
     }
 
     public function index(Request $request)

@@ -524,4 +524,66 @@ class ProjectManagementTest extends TestCase
         $responseCompleted->assertSee('Done Completed Project XYZ');
         $responseCompleted->assertDontSee('Active Working Project ABC');
     }
+
+    public function test_user_can_access_project_previews_page()
+    {
+        // Create a project with a URL
+        Project::create([
+            'project_code' => 'PRJ-URL-111',
+            'name' => 'Project with Live Link',
+            'url' => 'https://example.com',
+            'status' => 'development',
+            'created_by' => $this->adminUser->id,
+            'company_id' => $this->adminUser->company_id,
+        ]);
+
+        $response = $this->actingAs($this->adminUser)
+            ->get(route('projects.previews'));
+
+        $response->assertStatus(200);
+        $response->assertSee('Project with Live Link');
+    }
+
+    public function test_user_can_fetch_preview_status()
+    {
+        $project = Project::create([
+            'project_code' => 'PRJ-URL-222',
+            'name' => 'Project to Check Status',
+            'url' => 'https://example.com',
+            'status' => 'development',
+            'created_by' => $this->adminUser->id,
+            'company_id' => $this->adminUser->company_id,
+        ]);
+
+        // Mock Http to return successful response
+        \Illuminate\Support\Facades\Http::fake([
+            'https://example.com' => \Illuminate\Support\Facades\Http::response('<html></html>', 200)
+        ]);
+
+        $response = $this->actingAs($this->adminUser)
+            ->get(route('projects.preview-status', $project));
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'embeddable' => true
+        ]);
+    }
+
+    public function test_team_leader_cannot_fetch_status_of_unassociated_project()
+    {
+        $project = Project::create([
+            'project_code' => 'PRJ-URL-333',
+            'name' => 'Secret Project',
+            'url' => 'https://example.com',
+            'status' => 'development',
+            'team_leader_id' => $this->adminUser->id, // Owned by admin, not leaderUser
+            'created_by' => $this->adminUser->id,
+            'company_id' => $this->adminUser->company_id,
+        ]);
+
+        $response = $this->actingAs($this->leaderUser)
+            ->get(route('projects.preview-status', $project));
+
+        $response->assertStatus(403);
+    }
 }

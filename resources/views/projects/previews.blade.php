@@ -191,22 +191,14 @@
     <button class="preview-filter-btn active" id="pill-all" onclick="filterPreviews('all')">
         All Projects <span class="count" id="count-all">{{ count($projects) }}</span>
     </button>
-    @php
-        $restrictedCount = $projects->filter(function($p) {
-            return isset($p->iframe_status) && !$p->iframe_status['embeddable'];
-        })->count();
-    @endphp
     <button class="preview-filter-btn" id="pill-restricted" onclick="filterPreviews('restricted')">
-        Restricted / No Preview <span class="count" id="count-restricted">{{ $restrictedCount }}</span>
+        Restricted / No Preview <span class="count" id="count-restricted">0</span>
     </button>
 </div>
 
 <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="previews-grid">
     @forelse($projects as $p)
-        @php
-            $isRestricted = isset($p->iframe_status) && !$p->iframe_status['embeddable'];
-        @endphp
-        <div class="col project-preview-col" data-restricted="{{ $isRestricted ? 'true' : 'false' }}">
+        <div class="col project-preview-col" id="project-card-{{ $p->id }}" data-id="{{ $p->id }}" data-restricted="false" data-url="{{ $p->url }}">
             <div class="live-card">
                 <!-- Mock Browser Header -->
                 <div class="mock-browser-header">
@@ -215,28 +207,20 @@
                         <span class="browser-dot yellow"></span>
                         <span class="browser-dot green"></span>
                     </div>
-                    <div class="browser-address-bar">
+                    <div class="browser-address-bar" id="address-bar-{{ $p->id }}">
                         {{ parse_url($p->url, PHP_URL_HOST) ?? $p->url }}
-                        @if($isRestricted)
-                            <i class="bi bi-exclamation-triangle-fill text-warning ms-1" title="Embedding restricted: {{ $p->iframe_status['reason'] }}"></i>
-                        @endif
                     </div>
                     <a href="{{ $p->url }}" target="_blank" class="browser-external-link" title="Open live site">
                         <i class="bi bi-box-arrow-up-right"></i>
                     </a>
                 </div>
                 
-                <!-- Browser Content (Live Iframe or Warning State) -->
-                <div class="browser-content">
-                    @if($isRestricted)
-                        <div class="preview-warning-state">
-                            <i class="bi bi-exclamation-triangle-fill text-warning mb-2" style="font-size: 28px;"></i>
-                            <h6 class="fw-bold text-dark mb-1" style="font-size: 13px;">Preview Restricted</h6>
-                            <p class="text-muted mb-0" style="font-size: 11px;">{{ $p->iframe_status['reason'] }}</p>
-                        </div>
-                    @else
-                        <iframe src="{{ $p->url }}" class="browser-iframe" loading="lazy"></iframe>
-                    @endif
+                <!-- Browser Content (Live Iframe, Warning State, or Loader) -->
+                <div class="browser-content" id="browser-content-{{ $p->id }}">
+                    <div class="preview-loading-state d-flex flex-column align-items-center justify-content-center h-100 bg-light text-muted">
+                        <div class="spinner-border spinner-border-sm mb-2 text-primary" role="status"></div>
+                        <span style="font-size: 11px;">Checking status...</span>
+                    </div>
                 </div>
                 
                 <!-- Project Info Footer -->
@@ -289,6 +273,83 @@
 
 @push('scripts')
 <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const cards = document.querySelectorAll('.project-preview-col');
+        let restrictedCount = 0;
+
+        function updateRestrictedBadge() {
+            const badge = document.getElementById('count-restricted');
+            if (badge) {
+                badge.textContent = restrictedCount;
+            }
+        }
+
+        cards.forEach(card => {
+            const projectId = card.getAttribute('data-id');
+            const projectUrl = card.getAttribute('data-url');
+            const contentContainer = document.getElementById(`browser-content-${projectId}`);
+            const addressBar = document.getElementById(`address-bar-${projectId}`);
+
+            if (!projectUrl) {
+                card.setAttribute('data-restricted', 'true');
+                restrictedCount++;
+                updateRestrictedBadge();
+                if (contentContainer) {
+                    contentContainer.innerHTML = `
+                        <div class="preview-warning-state h-100 d-flex flex-column align-items-center justify-content-center p-3 text-center">
+                            <i class="bi bi-exclamation-triangle-fill text-warning mb-2" style="font-size: 28px;"></i>
+                            <h6 class="fw-bold text-dark mb-1" style="font-size: 13px;">No URL Configured</h6>
+                        </div>
+                    `;
+                }
+                return;
+            }
+
+            fetch(`/projects/${projectId}/preview-status`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.embeddable) {
+                        if (contentContainer) {
+                            contentContainer.innerHTML = `<iframe src="${projectUrl}" class="browser-iframe" loading="lazy"></iframe>`;
+                        }
+                    } else {
+                        card.setAttribute('data-restricted', 'true');
+                        restrictedCount++;
+                        updateRestrictedBadge();
+
+                        if (addressBar) {
+                            addressBar.innerHTML += ` <i class="bi bi-exclamation-triangle-fill text-warning ms-1" title="Embedding restricted: ${data.reason}"></i>`;
+                        }
+
+                        if (contentContainer) {
+                            contentContainer.innerHTML = `
+                                <div class="preview-warning-state h-100 d-flex flex-column align-items-center justify-content-center p-3 text-center">
+                                    <i class="bi bi-exclamation-triangle-fill text-warning mb-2" style="font-size: 28px;"></i>
+                                    <h6 class="fw-bold text-dark mb-1" style="font-size: 13px;">Preview Restricted</h6>
+                                    <p class="text-muted mb-0" style="font-size: 11px;">${data.reason}</p>
+                                </div>
+                            `;
+                        }
+                    }
+                })
+                .catch(err => {
+                    console.error('Failed to load status for project', projectId, err);
+                    card.setAttribute('data-restricted', 'true');
+                    restrictedCount++;
+                    updateRestrictedBadge();
+                    if (contentContainer) {
+                        contentContainer.innerHTML = `
+                            <div class="preview-warning-state h-100 d-flex flex-column align-items-center justify-content-center p-3 text-center">
+                                <i class="bi bi-exclamation-triangle-fill text-warning mb-2" style="font-size: 28px;"></i>
+                                <h6 class="fw-bold text-dark mb-1" style="font-size: 13px;">Check Failed</h6>
+                                <p class="text-muted mb-0" style="font-size: 11px;">Unable to verify status</p>
+                            </div>
+                        `;
+                    }
+                });
+        });
+    });
+
     function filterPreviews(type) {
         document.querySelectorAll('.preview-filter-btn').forEach(btn => {
             btn.classList.remove('active');

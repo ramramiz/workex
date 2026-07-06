@@ -267,6 +267,7 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['role:super-admin,admin,team-leader,hr,accounts'])->group(function () {
         // Projects
         Route::get('projects/previews', [ProjectController::class, 'previews'])->name('projects.previews');
+        Route::get('projects/{project}/preview-status', [ProjectController::class, 'previewStatus'])->name('projects.preview-status');
         Route::get('projects/import/template', [ProjectController::class, 'downloadTemplate'])->name('projects.import.template');
         Route::post('projects/import/preview', [ProjectController::class, 'preview'])->name('projects.import.preview');
         Route::post('projects/import/submit', [ProjectController::class, 'submit'])->name('projects.import.submit');
