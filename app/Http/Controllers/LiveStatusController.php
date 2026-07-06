@@ -20,6 +20,7 @@ class LiveStatusController extends Controller
 
         $employees = User::whereHas('role', fn($q) => $q->whereIn('slug', ['employee', 'team-leader', 'telecaller']))
             ->where('status', 'active')
+            ->whereHas('employee', fn($q) => $q->where('show_in_live_status', true))
             ->with([
                 'role',
                 'employee.department',

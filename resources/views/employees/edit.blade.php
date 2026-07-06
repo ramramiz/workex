@@ -129,6 +129,14 @@
                             </select>
                             @error('is_applicable_for_salary')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">Show in Live Status Board <span class="text-danger">*</span></label>
+                            <select name="show_in_live_status" class="form-select @error('show_in_live_status') is-invalid @enderror" required>
+                                <option value="1" {{ old('show_in_live_status', $employee->show_in_live_status) == 1 ? 'selected' : '' }}>Yes</option>
+                                <option value="0" {{ old('show_in_live_status', $employee->show_in_live_status) == 0 ? 'selected' : '' }}>No</option>
+                            </select>
+                            @error('show_in_live_status')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
                     </div>
 
                     <div class="d-flex align-items-center justify-content-end gap-2 border-top pt-3">

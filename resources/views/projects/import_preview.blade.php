@@ -73,6 +73,7 @@
                                 <th>Budget</th>
                                 <th>Priority</th>
                                 <th>AMC Details</th>
+                                <th>Domain & Hosting</th>
                                 <th>Warnings / Errors</th>
                             </tr>
                         </thead>
@@ -131,6 +132,30 @@
                                                 <div class="fs-7"><span class="text-muted">Due:</span> {{ $row['amc_end_date'] }}</div>
                                             @endif
                                             <div class="fs-7"><span class="text-muted">Status:</span> <span class="badge bg-secondary-subtle text-secondary py-0">{{ ucfirst($row['amc_status']) }}</span></div>
+                                        @else
+                                            <span class="text-muted">—</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if(!empty($row['domain_provider']) || !empty($row['domain_valid_till']) || !empty($row['hosting_provider']) || !empty($row['hosting_valid_till']))
+                                            @if(!empty($row['domain_provider']) || !empty($row['domain_valid_till']))
+                                                <div class="fs-7"><strong class="text-secondary">Domain:</strong></div>
+                                                @if(!empty($row['domain_provider']))
+                                                    <div class="fs-7 ps-2"><span class="text-muted">Provider:</span> {{ $row['domain_provider'] }}</div>
+                                                @endif
+                                                @if(!empty($row['domain_valid_till']))
+                                                    <div class="fs-7 ps-2"><span class="text-muted">Valid Till:</span> {{ $row['domain_valid_till'] }}</div>
+                                                @endif
+                                            @endif
+                                            @if(!empty($row['hosting_provider']) || !empty($row['hosting_valid_till']))
+                                                <div class="fs-7 mt-1"><strong class="text-secondary">Hosting:</strong></div>
+                                                @if(!empty($row['hosting_provider']))
+                                                    <div class="fs-7 ps-2"><span class="text-muted">Provider:</span> {{ $row['hosting_provider'] }}</div>
+                                                @endif
+                                                @if(!empty($row['hosting_valid_till']))
+                                                    <div class="fs-7 ps-2"><span class="text-muted">Valid Till:</span> {{ $row['hosting_valid_till'] }}</div>
+                                                @endif
+                                            @endif
                                         @else
                                             <span class="text-muted">—</span>
                                         @endif
@@ -195,6 +220,30 @@
                                                 <div class="fs-7"><span class="text-muted">Due:</span> {{ $row['amc_end_date'] }}</div>
                                             @endif
                                             <div class="fs-7"><span class="text-muted">Status:</span> <span class="badge bg-secondary-subtle text-secondary py-0">{{ ucfirst($row['amc_status']) }}</span></div>
+                                        @else
+                                            <span class="text-muted">—</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if(!empty($row['domain_provider']) || !empty($row['domain_valid_till']) || !empty($row['hosting_provider']) || !empty($row['hosting_valid_till']))
+                                            @if(!empty($row['domain_provider']) || !empty($row['domain_valid_till']))
+                                                <div class="fs-7"><strong class="text-secondary">Domain:</strong></div>
+                                                @if(!empty($row['domain_provider']))
+                                                    <div class="fs-7 ps-2"><span class="text-muted">Provider:</span> {{ $row['domain_provider'] }}</div>
+                                                @endif
+                                                @if(!empty($row['domain_valid_till']))
+                                                    <div class="fs-7 ps-2"><span class="text-muted">Valid Till:</span> {{ $row['domain_valid_till'] }}</div>
+                                                @endif
+                                            @endif
+                                            @if(!empty($row['hosting_provider']) || !empty($row['hosting_valid_till']))
+                                                <div class="fs-7 mt-1"><strong class="text-secondary">Hosting:</strong></div>
+                                                @if(!empty($row['hosting_provider']))
+                                                    <div class="fs-7 ps-2"><span class="text-muted">Provider:</span> {{ $row['hosting_provider'] }}</div>
+                                                @endif
+                                                @if(!empty($row['hosting_valid_till']))
+                                                    <div class="fs-7 ps-2"><span class="text-muted">Valid Till:</span> {{ $row['hosting_valid_till'] }}</div>
+                                                @endif
+                                            @endif
                                         @else
                                             <span class="text-muted">—</span>
                                         @endif

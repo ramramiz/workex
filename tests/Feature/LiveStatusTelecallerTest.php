@@ -260,5 +260,28 @@ class LiveStatusTelecallerTest extends TestCase
         $this->assertEquals('Task One', $employeeData['working_tasks'][0]['task_title']);
         $this->assertEquals('Task Two', $employeeData['working_tasks'][1]['task_title']);
     }
+
+    public function test_employee_is_hidden_from_live_status_board_if_configured()
+    {
+        $employeeRole = Role::where('slug', 'employee')->first();
+        $employeeUser = User::factory()->create([
+            'role_id' => $employeeRole->id,
+        ]);
+
+        // Verify they are visible by default (default show_in_live_status is true)
+        $response = $this->actingAs($this->adminUser)->get(route('live-status.data'));
+        $employees = $response->json('employees');
+        $employeeData = collect($employees)->firstWhere('id', $employeeUser->id);
+        $this->assertNotNull($employeeData);
+
+        // Update employee setting to hide from live status board
+        $employeeUser->employee->update(['show_in_live_status' => false]);
+
+        // Verify they are now hidden
+        $response = $this->actingAs($this->adminUser)->get(route('live-status.data'));
+        $employees = $response->json('employees');
+        $employeeData = collect($employees)->firstWhere('id', $employeeUser->id);
+        $this->assertNull($employeeData);
+    }
 }
 

@@ -385,7 +385,11 @@ class ProjectController extends Controller
             'AMC Value',
             'AMC Due Date',
             'AMC Contract Status',
-            'AMC Remarks'
+            'AMC Remarks',
+            'Domain Provider',
+            'Domain Valid Till',
+            'Hosting Provider',
+            'Hosting Valid Till'
         ];
 
         // Write Headers
@@ -395,32 +399,71 @@ class ProjectController extends Controller
         }
 
         // Sample Data
-        $sampleData = [
-            'E-Commerce Site',
-            'web',
-            'Develop an online storefront',
-            'Acme Company',
-            'leader@example.com',
-            '75000.00',
-            'high', // low, medium, high, critical
-            '2026-07-05', // YYYY-MM-DD
-            '2026-12-31', // YYYY-MM-DD
-            'Laravel, Vue.js, Tailwind',
-            'PRJ-CUSTOM-123',
-            'https://myproject.com',
-            '2026-12-25', // YYYY-MM-DD
-            '25000.00',
-            '10000.00',
-            'manager@example.com',
-            '80',
-            'This is a sample project note.',
-            '2026-08-01', // YYYY-MM-DD
-            'annually', // annually, semi-annually, quarterly, monthly
-            '5000.00',
-            '2027-07-31', // YYYY-MM-DD
-            'active', // active, pending_renewal, expired
-            'Includes hosting and support.'
-        ];
+        $project = Project::with(['client', 'teamLeader', 'manager', 'amc', 'hostingProvider'])->first();
+
+        if ($project) {
+            $sampleData = [
+                $project->name,
+                $project->project_type ?? 'web',
+                $project->description,
+                $project->client ? $project->client->company_name : '',
+                $project->teamLeader ? $project->teamLeader->email : '',
+                number_format($project->project_value, 2, '.', ''),
+                $project->priority ?? 'medium',
+                $project->start_date ? $project->start_date->format('Y-m-d') : '',
+                $project->deadline ? $project->deadline->format('Y-m-d') : '',
+                $project->technologies ? implode(', ', $project->technologies) : '',
+                $project->project_code,
+                $project->url,
+                $project->completed_date ? $project->completed_date->format('Y-m-d') : '',
+                number_format($project->advance_amount, 2, '.', ''),
+                number_format($project->balance_amount, 2, '.', ''),
+                $project->manager ? $project->manager->email : '',
+                (string)$project->progress_percentage,
+                $project->notes,
+                $project->amc && $project->amc->start_date ? \Carbon\Carbon::parse($project->amc->start_date)->format('Y-m-d') : '',
+                $project->amc ? $project->amc->frequency : 'annually',
+                $project->amc ? number_format($project->amc->amount, 2, '.', '') : '0.00',
+                $project->amc && $project->amc->end_date ? \Carbon\Carbon::parse($project->amc->end_date)->format('Y-m-d') : '',
+                $project->amc ? $project->amc->status : 'active',
+                $project->amc ? $project->amc->remarks : '',
+                $project->domain_provider,
+                $project->domain_valid_till ? $project->domain_valid_till->format('Y-m-d') : '',
+                $project->hostingProvider ? $project->hostingProvider->name : '',
+                $project->hosting_valid_till ? $project->hosting_valid_till->format('Y-m-d') : ''
+            ];
+        } else {
+            $sampleData = [
+                'E-Commerce Site',
+                'web',
+                'Develop an online storefront',
+                'Acme Company',
+                'leader@example.com',
+                '75000.00',
+                'high', // low, medium, high, critical
+                '2026-07-05', // YYYY-MM-DD
+                '2026-12-31', // YYYY-MM-DD
+                'Laravel, Vue.js, Tailwind',
+                'PRJ-CUSTOM-123',
+                'https://myproject.com',
+                '2026-12-25', // YYYY-MM-DD
+                '25000.00',
+                '10000.00',
+                'manager@example.com',
+                '80',
+                'This is a sample project note.',
+                '2026-08-01', // YYYY-MM-DD
+                'annually', // annually, semi-annually, quarterly, monthly
+                '5000.00',
+                '2027-07-31', // YYYY-MM-DD
+                'active', // active, pending_renewal, expired
+                'Includes hosting and support.',
+                'GoDaddy', // Domain Provider
+                '2027-07-05', // Domain Valid Till
+                'Hostinger', // Hosting Provider
+                '2027-07-05' // Hosting Valid Till
+            ];
+        }
 
         foreach ($sampleData as $colIndex => $value) {
             $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex + 1);
@@ -551,6 +594,12 @@ class ProjectController extends Controller
             $amcStatus     = isset($row[22]) ? strtolower(trim($row[22])) : 'active';
             $amcRemarks    = isset($row[23]) ? trim($row[23]) : null;
 
+            // Domain & Hosting fields
+            $domainProviderName  = isset($row[24]) ? trim($row[24]) : '';
+            $domainValidTill     = isset($row[25]) ? trim($row[25]) : null;
+            $hostingProviderName = isset($row[26]) ? trim($row[26]) : '';
+            $hostingValidTill    = isset($row[27]) ? trim($row[27]) : null;
+
             $errors = [];
             if (empty($projectName)) {
                 $errors[] = 'Project Name is required.';
@@ -588,6 +637,26 @@ class ProjectController extends Controller
                 }
             }
 
+            // Find Domain Registration (for display / warnings)
+            $domainReg = null;
+            $domainWarning = '';
+            if (!empty($domainProviderName)) {
+                $domainReg = \App\Models\DomainRegistration::where('name', $domainProviderName)->first();
+                if (!$domainReg) {
+                    $domainWarning = "Domain Provider '{$domainProviderName}' not found (defaults to none).";
+                }
+            }
+
+            // Find Hosting Provider (for display / warnings)
+            $hostingProv = null;
+            $hostingWarning = '';
+            if (!empty($hostingProviderName)) {
+                $hostingProv = \App\Models\HostingProvider::where('name', $hostingProviderName)->first();
+                if (!$hostingProv) {
+                    $hostingWarning = "Hosting Provider '{$hostingProviderName}' not found (defaults to none).";
+                }
+            }
+
             // Find existing project (for display / warnings / update)
             $project = null;
             if (!empty($projectCode)) {
@@ -602,7 +671,7 @@ class ProjectController extends Controller
                 $projectExistsWarning = "Project already exists and will be updated.";
             }
 
-            $warnings = array_filter([$clientWarning, $leaderWarning, $managerWarning, $projectExistsWarning]);
+            $warnings = array_filter([$clientWarning, $leaderWarning, $managerWarning, $projectExistsWarning, $domainWarning, $hostingWarning]);
 
             $rowData = [
                 'name'                => $projectName,
@@ -632,6 +701,12 @@ class ProjectController extends Controller
                 'amc_end_date'        => $amcEndDate,
                 'amc_status'          => in_array($amcStatus, ['active', 'expired', 'pending_renewal']) ? $amcStatus : 'active',
                 'amc_remarks'         => $amcRemarks,
+                'domain_provider'        => $domainProviderName,
+                'domain_registration_id' => $domainReg ? $domainReg->id : null,
+                'domain_valid_till'      => $domainValidTill,
+                'hosting_provider'       => $hostingProviderName,
+                'hosting_provider_id'    => $hostingProv ? $hostingProv->id : null,
+                'hosting_valid_till'     => $hostingValidTill,
                 'warnings'            => implode(' ', $warnings),
                 'exists'              => $project ? true : false,
             ];
@@ -722,6 +797,12 @@ class ProjectController extends Controller
             $amcStatus     = isset($row[22]) ? strtolower(trim($row[22])) : 'active';
             $amcRemarks    = isset($row[23]) ? trim($row[23]) : null;
 
+            // Domain & Hosting fields
+            $domainProviderName  = isset($row[24]) ? trim($row[24]) : '';
+            $domainValidTill     = isset($row[25]) ? trim($row[25]) : null;
+            $hostingProviderName = isset($row[26]) ? trim($row[26]) : '';
+            $hostingValidTill    = isset($row[27]) ? trim($row[27]) : null;
+
             if (empty($projectName)) {
                 continue;
             }
@@ -741,6 +822,16 @@ class ProjectController extends Controller
             $manager = null;
             if (!empty($managerEmail)) {
                 $manager = User::where('email', $managerEmail)->first();
+            }
+
+            $domainReg = null;
+            if (!empty($domainProviderName)) {
+                $domainReg = \App\Models\DomainRegistration::where('name', $domainProviderName)->first();
+            }
+
+            $hostingProv = null;
+            if (!empty($hostingProviderName)) {
+                $hostingProv = \App\Models\HostingProvider::where('name', $hostingProviderName)->first();
             }
 
             if (!in_array($priority, ['low', 'medium', 'high', 'critical'])) {
@@ -765,25 +856,30 @@ class ProjectController extends Controller
             }
 
             $projectFields = [
-                'project_code'        => $projectCode,
-                'name'                => $projectName,
-                'description'         => $description,
-                'client_id'           => $client ? $client->id : null,
-                'team_leader_id'      => $teamLeader ? $teamLeader->id : null,
-                'manager_id'          => $manager ? $manager->id : null,
-                'start_date'          => empty($startDate) ? null : $startDate,
-                'deadline'            => empty($deadline) ? null : $deadline,
-                'completed_date'      => empty($completedDate) ? null : $completedDate,
-                'project_value'       => is_numeric($budget) ? floatval($budget) : 0,
-                'advance_amount'      => is_numeric($advanceAmount) ? floatval($advanceAmount) : 0.00,
-                'balance_amount'      => is_numeric($balanceAmount) ? floatval($balanceAmount) : 0.00,
-                'progress_percentage' => is_numeric($progressPct) ? intval($progressPct) : 0,
-                'notes'               => $notes,
-                'priority'            => $priority,
-                'status'              => !empty($amcStartDate) ? 'completed_started_amc' : ($project ? $project->status : 'planning'),
-                'technologies'        => $technologies ? array_map('trim', explode(',', $technologies)) : [],
-                'project_type'        => $projectType,
-                'url'                 => $projectUrl,
+                'project_code'           => $projectCode,
+                'name'                   => $projectName,
+                'description'            => $description,
+                'client_id'              => $client ? $client->id : null,
+                'team_leader_id'         => $teamLeader ? $teamLeader->id : null,
+                'manager_id'             => $manager ? $manager->id : null,
+                'start_date'             => empty($startDate) ? null : $startDate,
+                'deadline'               => empty($deadline) ? null : $deadline,
+                'completed_date'         => empty($completedDate) ? null : $completedDate,
+                'project_value'          => is_numeric($budget) ? floatval($budget) : 0,
+                'advance_amount'         => is_numeric($advanceAmount) ? floatval($advanceAmount) : 0.00,
+                'balance_amount'         => is_numeric($balanceAmount) ? floatval($balanceAmount) : 0.00,
+                'progress_percentage'    => is_numeric($progressPct) ? intval($progressPct) : 0,
+                'notes'                  => $notes,
+                'priority'               => $priority,
+                'status'                 => !empty($amcStartDate) ? 'completed_started_amc' : ($project ? $project->status : 'planning'),
+                'technologies'           => $technologies ? array_map('trim', explode(',', $technologies)) : [],
+                'project_type'           => $projectType,
+                'url'                    => $projectUrl,
+                'domain_provider'        => $domainProviderName ?: null,
+                'domain_registration_id' => $domainReg ? $domainReg->id : null,
+                'domain_valid_till'      => empty($domainValidTill) ? null : $domainValidTill,
+                'hosting_provider_id'    => $hostingProv ? $hostingProv->id : null,
+                'hosting_valid_till'     => empty($hostingValidTill) ? null : $hostingValidTill,
             ];
 
             if ($project) {

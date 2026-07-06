@@ -49,6 +49,7 @@ class EmployeeController extends Controller
             'salary'         => 'nullable|numeric',
             'avatar'         => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'google_drive_link' => 'nullable|url',
+            'show_in_live_status' => 'nullable|boolean',
         ]);
 
         $plainPassword = $request->password ?? 'Password@123';
@@ -91,6 +92,7 @@ class EmployeeController extends Controller
                 'salary_type'    => $request->salary_type ?? 'monthly',
                 'google_drive_link' => $request->google_drive_link,
                 'status'         => 'active',
+                'show_in_live_status' => $request->boolean('show_in_live_status', true),
             ]
         );
 
@@ -165,6 +167,7 @@ class EmployeeController extends Controller
             'joining_date'             => 'required|date',
             'salary'                   => 'nullable|numeric',
             'is_applicable_for_salary' => 'required|boolean',
+            'show_in_live_status'      => 'required|boolean',
             'password'                 => 'nullable|string|min:8',
             'avatar'                   => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'google_drive_link'        => 'nullable|url',
@@ -199,6 +202,7 @@ class EmployeeController extends Controller
             'is_applicable_for_salary' => $request->boolean('is_applicable_for_salary', true),
             'joining_date'   => $request->joining_date,
             'google_drive_link' => $request->google_drive_link,
+            'show_in_live_status' => $request->boolean('show_in_live_status', true),
         ]);
 
         return redirect()->route('employees.index')->with('success', 'Employee updated successfully!');

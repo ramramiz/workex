@@ -83,6 +83,15 @@ class ProjectManagementTest extends TestCase
             'created_by' => $this->adminUser->id
         ]);
 
+        $domainReg = \App\Models\DomainRegistration::create([
+            'name' => 'GoDaddy',
+            'company_id' => $this->adminUser->company_id,
+        ]);
+        $hostingProv = \App\Models\HostingProvider::create([
+            'name' => 'Hostinger',
+            'company_id' => $this->adminUser->company_id,
+        ]);
+
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
         
@@ -91,7 +100,7 @@ class ProjectManagementTest extends TestCase
             'Team Leader Email', 'Project Budget', 'Priority', 'Project Start Date', 'Deadline', 'Technologies',
             'Project Code', 'Project URL', 'Completed Date', 'Advance Amount', 'Balance Amount', 'Manager Email',
             'Progress Percentage', 'Notes', 'Amc Start Date', 'AMC Billing Frequency', 'AMC Value', 'AMC Due Date',
-            'AMC Contract Status', 'AMC Remarks'
+            'AMC Contract Status', 'AMC Remarks', 'Domain Provider', 'Domain Valid Till', 'Hosting Provider', 'Hosting Valid Till'
         ];
         
         foreach ($headers as $colIndex => $header) {
@@ -104,7 +113,8 @@ class ProjectManagementTest extends TestCase
             'leader@example.com', '125000.00', 'critical', '2026-07-05', '2026-12-31', 'Laravel, React',
             'PRJ-IMP-111', 'https://imported.com', '2026-12-30', '50000.00', '20000.00', 'manager@example.com',
             '75', 'Imported notes', '2026-08-01',
-            'quarterly', '15000.00', '2027-07-31', 'pending_renewal', 'My test remarks'
+            'quarterly', '15000.00', '2027-07-31', 'pending_renewal', 'My test remarks',
+            'GoDaddy', '2027-07-05', 'Hostinger', '2027-07-05'
         ];
 
         foreach ($row as $colIndex => $value) {
@@ -163,6 +173,12 @@ class ProjectManagementTest extends TestCase
         $this->assertEquals(75, $project->progress_percentage);
         $this->assertEquals('Imported notes', $project->notes);
 
+        $this->assertEquals('GoDaddy', $project->domain_provider);
+        $this->assertEquals($domainReg->id, $project->domain_registration_id);
+        $this->assertEquals('2027-07-05', $project->domain_valid_till->format('Y-m-d'));
+        $this->assertEquals($hostingProv->id, $project->hosting_provider_id);
+        $this->assertEquals('2027-07-05', $project->hosting_valid_till->format('Y-m-d'));
+
         $this->assertDatabaseHas('project_amcs', [
             'project_id' => $project->id,
             'amount'     => 15000.00,
@@ -217,6 +233,15 @@ class ProjectManagementTest extends TestCase
             'company_id'          => $this->adminUser->company_id,
         ]);
 
+        $domainReg = \App\Models\DomainRegistration::create([
+            'name' => 'GoDaddy',
+            'company_id' => $this->adminUser->company_id,
+        ]);
+        $hostingProv = \App\Models\HostingProvider::create([
+            'name' => 'Hostinger',
+            'company_id' => $this->adminUser->company_id,
+        ]);
+
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
         
@@ -225,7 +250,7 @@ class ProjectManagementTest extends TestCase
             'Team Leader Email', 'Project Budget', 'Priority', 'Project Start Date', 'Deadline', 'Technologies',
             'Project Code', 'Project URL', 'Completed Date', 'Advance Amount', 'Balance Amount', 'Manager Email',
             'Progress Percentage', 'Notes', 'Amc Start Date', 'AMC Billing Frequency', 'AMC Value', 'AMC Due Date',
-            'AMC Contract Status', 'AMC Remarks'
+            'AMC Contract Status', 'AMC Remarks', 'Domain Provider', 'Domain Valid Till', 'Hosting Provider', 'Hosting Valid Till'
         ];
         
         foreach ($headers as $colIndex => $header) {
@@ -239,7 +264,8 @@ class ProjectManagementTest extends TestCase
             'leader@example.com', '99999.00', 'high', '2026-07-01', '2026-12-31', 'Flutter, Firebase',
             'PRJ-IMP-111', 'https://updated.com', '2026-12-25', '30000.00', '69999.00', 'admin@example.com',
             '90', 'Updated notes', null,
-            'annually', '0.00', null, 'active', null
+            'annually', '0.00', null, 'active', null,
+            'GoDaddy', '2027-07-05', 'Hostinger', '2027-07-05'
         ];
 
         foreach ($row as $colIndex => $value) {
@@ -294,6 +320,11 @@ class ProjectManagementTest extends TestCase
         $this->assertEquals('https://updated.com', $project->url);
         $this->assertEquals(90, $project->progress_percentage);
         $this->assertEquals('Updated notes', $project->notes);
+        $this->assertEquals('GoDaddy', $project->domain_provider);
+        $this->assertEquals($domainReg->id, $project->domain_registration_id);
+        $this->assertEquals('2027-07-05', $project->domain_valid_till->format('Y-m-d'));
+        $this->assertEquals($hostingProv->id, $project->hosting_provider_id);
+        $this->assertEquals('2027-07-05', $project->hosting_valid_till->format('Y-m-d'));
 
         @unlink($tempFilePath);
         if (file_exists($storedTempFilePath)) {
