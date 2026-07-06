@@ -40,6 +40,7 @@ class EmployeeController extends Controller
             'name'           => 'required|string|max:255',
             'email'          => 'required|email|unique:users,email',
             'personal_email' => 'nullable|email|max:255',
+            'phone'          => 'nullable|string|max:100',
             'role_id'        => 'required|exists:roles,id',
             'department_id'  => 'required|exists:departments,id',
             'designation_id' => 'nullable|exists:designations,id',
@@ -154,13 +155,19 @@ class EmployeeController extends Controller
     public function update(Request $request, Employee $employee)
     {
         $request->validate([
-            'name'           => 'required|string|max:255',
-            'email'          => 'required|email|unique:users,email,' . $employee->user_id,
-            'personal_email' => 'nullable|email|max:255',
-            'department_id'  => 'required|exists:departments,id',
-            'password'       => 'nullable|string|min:8',
-            'avatar'         => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'google_drive_link' => 'nullable|url',
+            'name'                     => 'required|string|max:255',
+            'email'                    => 'required|email|unique:users,email,' . $employee->user_id,
+            'personal_email'           => 'nullable|email|max:255',
+            'phone'                    => 'nullable|string|max:100',
+            'role_id'                  => 'required|exists:roles,id',
+            'department_id'            => 'required|exists:departments,id',
+            'designation_id'           => 'nullable|exists:designations,id',
+            'joining_date'             => 'required|date',
+            'salary'                   => 'nullable|numeric',
+            'is_applicable_for_salary' => 'required|boolean',
+            'password'                 => 'nullable|string|min:8',
+            'avatar'                   => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'google_drive_link'        => 'nullable|url',
         ]);
 
         $userData = [
