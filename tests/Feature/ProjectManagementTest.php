@@ -179,6 +179,128 @@ class ProjectManagementTest extends TestCase
         }
     }
 
+    public function test_super_admin_can_import_and_update_existing_projects_excel()
+    {
+        // 1. Pre-create a client
+        $client = Client::create([
+            'company_name' => 'Acme Company',
+            'name' => 'Acme Contact',
+            'contact_person' => 'Acme Contact Person',
+            'phone' => '9876543210',
+            'email' => 'acme@example.com',
+            'status' => 'active',
+            'created_by' => $this->adminUser->id
+        ]);
+
+        // 2. Pre-create a project with the code 'PRJ-IMP-111'
+        $existingProject = Project::create([
+            'project_code'        => 'PRJ-IMP-111',
+            'name'                => 'Old Project Name',
+            'description'         => 'Old description',
+            'client_id'           => $client->id,
+            'team_leader_id'      => $this->leaderUser->id,
+            'manager_id'          => $this->adminUser->id,
+            'start_date'          => '2026-01-01',
+            'deadline'            => '2026-06-30',
+            'completed_date'      => null,
+            'project_value'       => 50000.00,
+            'advance_amount'      => 10000.00,
+            'balance_amount'      => 40000.00,
+            'progress_percentage' => 10,
+            'notes'               => 'Old notes',
+            'priority'            => 'low',
+            'status'              => 'planning',
+            'technologies'        => ['PHP'],
+            'project_type'        => 'web',
+            'url'                 => 'https://old.com',
+            'created_by'          => $this->adminUser->id,
+            'company_id'          => $this->adminUser->company_id,
+        ]);
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        
+        $headers = [
+            'Project Name', 'Project Type', 'Description', 'Client Company Name',
+            'Team Leader Email', 'Project Budget', 'Priority', 'Project Start Date', 'Deadline', 'Technologies',
+            'Project Code', 'Project URL', 'Completed Date', 'Advance Amount', 'Balance Amount', 'Manager Email',
+            'Progress Percentage', 'Notes', 'Amc Start Date', 'AMC Billing Frequency', 'AMC Value', 'AMC Due Date',
+            'AMC Contract Status', 'AMC Remarks'
+        ];
+        
+        foreach ($headers as $colIndex => $header) {
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex + 1);
+            $sheet->setCellValue($colLetter . '1', $header);
+        }
+
+        // Row containing same project code PRJ-IMP-111, but updated data
+        $row = [
+            'Updated Project Name', 'mobile', 'Updated desc', 'Acme Company',
+            'leader@example.com', '99999.00', 'high', '2026-07-01', '2026-12-31', 'Flutter, Firebase',
+            'PRJ-IMP-111', 'https://updated.com', '2026-12-25', '30000.00', '69999.00', 'admin@example.com',
+            '90', 'Updated notes', null,
+            'annually', '0.00', null, 'active', null
+        ];
+
+        foreach ($row as $colIndex => $value) {
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex + 1);
+            $sheet->setCellValue($colLetter . '2', $value);
+        }
+
+        $tempFilePath = tempnam(sys_get_temp_dir(), 'proj_import') . '.xlsx';
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save($tempFilePath);
+
+        $uploadedFile = new UploadedFile(
+            $tempFilePath,
+            'projects.xlsx',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            null,
+            true
+        );
+
+        // Preview the file (assert exists = true is set in view data)
+        $response = $this->actingAs($this->adminUser)
+            ->post(route('projects.import.preview'), [
+                'file' => $uploadedFile
+            ]);
+
+        $response->assertStatus(200);
+        $validRows = $response->viewData('validRows');
+        $this->assertCount(1, $validRows);
+        $this->assertTrue($validRows[0]['exists']);
+
+        $storedTempFilePath = $response->viewData('tempFilePath');
+
+        // Submit the import
+        $responseSubmit = $this->actingAs($this->adminUser)
+            ->post(route('projects.import.submit'), [
+                'temp_file_path' => $storedTempFilePath
+            ]);
+
+        $responseSubmit->assertRedirect(route('projects.index'));
+
+        // Assert existing project was updated and not duplicated
+        $this->assertEquals(1, Project::where('project_code', 'PRJ-IMP-111')->count());
+
+        $project = Project::where('project_code', 'PRJ-IMP-111')->first();
+        $this->assertEquals('Updated Project Name', $project->name);
+        $this->assertEquals('mobile', $project->project_type);
+        $this->assertEquals('Updated desc', $project->description);
+        $this->assertEquals('high', $project->priority);
+        $this->assertEquals(99999.00, $project->project_value);
+        $this->assertEquals('2026-07-01', $project->start_date->format('Y-m-d'));
+        $this->assertEquals('2026-12-31', $project->deadline->format('Y-m-d'));
+        $this->assertEquals('https://updated.com', $project->url);
+        $this->assertEquals(90, $project->progress_percentage);
+        $this->assertEquals('Updated notes', $project->notes);
+
+        @unlink($tempFilePath);
+        if (file_exists($storedTempFilePath)) {
+            @unlink($storedTempFilePath);
+        }
+    }
+
     public function test_leader_cannot_import_projects_excel()
     {
         $uploadedFile = UploadedFile::fake()->create('projects.xlsx', 100);

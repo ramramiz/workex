@@ -82,7 +82,11 @@
                                 <tr>
                                     <td class="text-center font-monospace text-muted">{{ $index + 1 }}</td>
                                     <td class="text-center">
-                                        <span class="badge bg-success-subtle text-success border border-success-subtle py-1">Valid</span>
+                                        @if(isset($row['exists']) && $row['exists'])
+                                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle py-1">Update</span>
+                                        @else
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle py-1">New</span>
+                                        @endif
                                     </td>
                                     <td>
                                         <div class="fw-semibold text-dark">{{ $row['name'] }}</div>

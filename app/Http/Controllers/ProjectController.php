@@ -588,7 +588,21 @@ class ProjectController extends Controller
                 }
             }
 
-            $warnings = array_filter([$clientWarning, $leaderWarning, $managerWarning]);
+            // Find existing project (for display / warnings / update)
+            $project = null;
+            if (!empty($projectCode)) {
+                $project = Project::where('project_code', $projectCode)->first();
+            }
+            if (!$project && !empty($projectName)) {
+                $project = Project::where('name', $projectName)->first();
+            }
+
+            $projectExistsWarning = '';
+            if ($project) {
+                $projectExistsWarning = "Project already exists and will be updated.";
+            }
+
+            $warnings = array_filter([$clientWarning, $leaderWarning, $managerWarning, $projectExistsWarning]);
 
             $rowData = [
                 'name'                => $projectName,
@@ -619,6 +633,7 @@ class ProjectController extends Controller
                 'amc_status'          => in_array($amcStatus, ['active', 'expired', 'pending_renewal']) ? $amcStatus : 'active',
                 'amc_remarks'         => $amcRemarks,
                 'warnings'            => implode(' ', $warnings),
+                'exists'              => $project ? true : false,
             ];
 
             if (empty($errors)) {
@@ -732,12 +747,24 @@ class ProjectController extends Controller
                 $priority = 'medium';
             }
 
-            if (empty($projectCode)) {
-                $totalProjectsCount++;
-                $projectCode = 'PRJ-' . now()->format('Ymd') . '-' . str_pad($totalProjectsCount, 4, '0', STR_PAD_LEFT);
+            $project = null;
+            if (!empty($projectCode)) {
+                $project = Project::where('project_code', $projectCode)->first();
+            }
+            if (!$project && !empty($projectName)) {
+                $project = Project::where('name', $projectName)->first();
             }
 
-            $project = Project::create([
+            if (empty($projectCode)) {
+                if ($project) {
+                    $projectCode = $project->project_code;
+                } else {
+                    $totalProjectsCount++;
+                    $projectCode = 'PRJ-' . now()->format('Ymd') . '-' . str_pad($totalProjectsCount, 4, '0', STR_PAD_LEFT);
+                }
+            }
+
+            $projectFields = [
                 'project_code'        => $projectCode,
                 'name'                => $projectName,
                 'description'         => $description,
@@ -753,15 +780,21 @@ class ProjectController extends Controller
                 'progress_percentage' => is_numeric($progressPct) ? intval($progressPct) : 0,
                 'notes'               => $notes,
                 'priority'            => $priority,
-                'status'              => !empty($amcStartDate) ? 'completed_started_amc' : 'planning',
+                'status'              => !empty($amcStartDate) ? 'completed_started_amc' : ($project ? $project->status : 'planning'),
                 'technologies'        => $technologies ? array_map('trim', explode(',', $technologies)) : [],
                 'project_type'        => $projectType,
                 'url'                 => $projectUrl,
-                'created_by'          => auth()->id(),
-                'company_id'          => auth()->user()->company_id,
-            ]);
+            ];
 
-            \App\Models\ActivityLog::log('project_created', "Imported project: {$project->name}", $project);
+            if ($project) {
+                $project->update($projectFields);
+                \App\Models\ActivityLog::log('project_updated', "Updated imported project: {$project->name}", $project);
+            } else {
+                $projectFields['created_by'] = auth()->id();
+                $projectFields['company_id'] = auth()->user()->company_id;
+                $project = Project::create($projectFields);
+                \App\Models\ActivityLog::log('project_created', "Imported project: {$project->name}", $project);
+            }
 
             if (!empty($amcStartDate)) {
                 try {
