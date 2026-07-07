@@ -131,9 +131,20 @@ class DashboardController extends Controller
             ->take(10)
             ->get();
 
+        // Dynamic status check auto-expiry
+        \App\Models\ProjectAmc::where('status', 'active')
+            ->whereDate('end_date', '<', $today)
+            ->update(['status' => 'expired']);
+
         $upcomingAmcs = \App\Models\ProjectAmc::with(['project.client'])
-            ->where('status', 'active')
-            ->whereBetween('end_date', [$today, Carbon::today()->addDays(20)])
+            ->whereHas('project')
+            ->where(function($q) use ($today) {
+                $q->whereIn('status', ['expired', 'pending_renewal'])
+                  ->orWhere(function($subQ) use ($today) {
+                      $subQ->where('status', 'active')
+                           ->whereBetween('end_date', [$today, Carbon::today()->addDays(20)]);
+                  });
+            })
             ->orderBy('end_date', 'asc')
             ->get();
  

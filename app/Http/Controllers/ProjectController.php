@@ -104,6 +104,18 @@ class ProjectController extends Controller
         return response()->json($status);
     }
 
+    private function generateProjectCode(): string
+    {
+        $dateStr = now()->format('Ymd');
+        $sequence = Project::withTrashed()->count() + 1;
+        do {
+            $projectCode = 'PRJ-' . $dateStr . '-' . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+            $sequence++;
+        } while (Project::withTrashed()->where('project_code', $projectCode)->exists());
+
+        return $projectCode;
+    }
+
     public function index(Request $request)
     {
         $user = auth()->user();
@@ -186,7 +198,7 @@ class ProjectController extends Controller
         }
 
         $project = Project::create([
-            'project_code'    => 'PRJ-' . now()->format('Ymd') . '-' . str_pad(Project::count() + 1, 4, '0', STR_PAD_LEFT),
+            'project_code'    => $this->generateProjectCode(),
             'name'            => $request->name,
             'logo_path'       => $logoPath,
             'url'             => $request->url,
@@ -869,8 +881,7 @@ class ProjectController extends Controller
                 if ($project) {
                     $projectCode = $project->project_code;
                 } else {
-                    $totalProjectsCount++;
-                    $projectCode = 'PRJ-' . now()->format('Ymd') . '-' . str_pad($totalProjectsCount, 4, '0', STR_PAD_LEFT);
+                    $projectCode = $this->generateProjectCode();
                 }
             }
 

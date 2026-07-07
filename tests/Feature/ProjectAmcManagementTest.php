@@ -279,4 +279,109 @@ class ProjectAmcManagementTest extends TestCase
             ]);
         $responseSubmit->assertStatus(403);
     }
+
+    public function test_amc_renewals_and_expired_show_on_admin_dashboard(): void
+    {
+        // 1. Create an active AMC that expires in 10 days (should show)
+        ProjectAmc::create([
+            'project_id' => $this->project->id,
+            'amount'     => 10000.00,
+            'start_date' => now()->subDays(355),
+            'end_date'   => now()->addDays(10),
+            'frequency'  => 'annually',
+            'status'     => 'active',
+            'company_id' => $this->admin->company_id,
+        ]);
+
+        // 2. Create an active AMC that has already passed end_date (should show as expired)
+        ProjectAmc::create([
+            'project_id' => $this->project->id,
+            'amount'     => 20000.00,
+            'start_date' => now()->subDays(370),
+            'end_date'   => now()->subDays(5),
+            'frequency'  => 'annually',
+            'status'     => 'active', // starts active, but dynamic expiry should change it to expired
+            'company_id' => $this->admin->company_id,
+        ]);
+
+        // 3. Create an active AMC that expires in 30 days (should NOT show)
+        ProjectAmc::create([
+            'project_id' => $this->project->id,
+            'amount'     => 30000.00,
+            'start_date' => now()->subDays(335),
+            'end_date'   => now()->addDays(30),
+            'frequency'  => 'annually',
+            'status'     => 'active',
+            'company_id' => $this->admin->company_id,
+        ]);
+
+        // Access dashboard as admin
+        $response = $this->actingAs($this->admin)
+            ->get(route('dashboard'));
+
+        $response->assertStatus(200);
+
+        // Check if the expiring and expired AMCs are visible in the view data
+        $upcomingAmcs = $response->viewData('upcomingAmcs');
+        $this->assertNotNull($upcomingAmcs);
+        
+        $amounts = $upcomingAmcs->pluck('amount')->map(fn($val) => (float)$val)->toArray();
+        // Should contain 10000 (expiring in 10 days) and 20000 (expired 5 days ago)
+        $this->assertContains(10000.00, $amounts);
+        $this->assertContains(20000.00, $amounts);
+        
+        // Should NOT contain 30000 (expires in 30 days)
+        $this->assertNotContains(30000.00, $amounts);
+        
+        // Assert the database has updated the second AMC status to expired
+        $this->assertDatabaseHas('project_amcs', [
+            'amount' => 20000.00,
+            'status' => 'expired'
+        ]);
+    }
+
+    public function test_amc_of_soft_deleted_project_does_not_throw_exception_on_admin_dashboard(): void
+    {
+        // 1. Create a project
+        $projectToSoftDelete = Project::create([
+            'project_code'   => 'PRJ-DEL-999',
+            'name'           => 'Project to Soft Delete',
+            'client_id'      => $this->project->client_id,
+            'team_leader_id' => $this->teamLeader->id,
+            'start_date'     => '2026-01-01',
+            'deadline'       => '2026-12-31',
+            'project_value'  => 150000.00,
+            'priority'       => 'high',
+            'status'         => 'development',
+            'created_by'     => $this->admin->id,
+        ]);
+
+        // 2. Create an expired AMC for it
+        ProjectAmc::create([
+            'project_id' => $projectToSoftDelete->id,
+            'amount'     => 99000.00,
+            'start_date' => now()->subDays(370),
+            'end_date'   => now()->subDays(5),
+            'frequency'  => 'annually',
+            'status'     => 'active',
+            'company_id' => $this->admin->company_id,
+        ]);
+
+        // 3. Soft delete the project
+        $projectToSoftDelete->delete();
+
+        // 4. Access dashboard as admin
+        $response = $this->actingAs($this->admin)
+            ->get(route('dashboard'));
+
+        // Should return 200 (not 500 error)
+        $response->assertStatus(200);
+
+        // Check that the AMC associated with the soft-deleted project is NOT shown on the dashboard
+        $upcomingAmcs = $response->viewData('upcomingAmcs');
+        $this->assertNotNull($upcomingAmcs);
+        
+        $amounts = $upcomingAmcs->pluck('amount')->map(fn($val) => (float)$val)->toArray();
+        $this->assertNotContains(99000.00, $amounts);
+    }
 }

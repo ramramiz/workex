@@ -547,8 +547,14 @@
                         <i class="bi bi-shield-check" style="color:#10b981;"></i>
                     </div>
                     <span>AMC Renewals &amp; Updates (Near 20 Days)</span>
-                    <span class="badge ms-1" style="background:rgba(16,185,129,0.12);color:#10b981;border-radius:20px;font-size:11px;padding:3px 10px;font-weight:700;">
-                        {{ $upcomingAmcs->count() }} Near Renewal
+                    @php
+                        $expiredCount = $upcomingAmcs->filter(fn($amc) => $amc->status === 'expired' || $amc->end_date->isPast())->count();
+                        $headerBadgeBg = $expiredCount > 0 ? 'rgba(239,68,68,0.12)' : ($upcomingAmcs->count() > 0 ? 'rgba(245,158,11,0.12)' : 'rgba(16,185,129,0.12)');
+                        $headerBadgeColor = $expiredCount > 0 ? '#ef4444' : ($upcomingAmcs->count() > 0 ? '#d97706' : '#10b981');
+                        $headerBadgeLabel = $expiredCount > 0 ? ($upcomingAmcs->count() . ' Attention Required') : ($upcomingAmcs->count() > 0 ? ($upcomingAmcs->count() . ' Near Renewal') : '0 Near Renewal');
+                    @endphp
+                    <span class="badge ms-1" style="background:{{ $headerBadgeBg }};color:{{ $headerBadgeColor }};border-radius:20px;font-size:11px;padding:3px 10px;font-weight:700;">
+                        {{ $headerBadgeLabel }}
                     </span>
                 </div>
                 <a href="{{ route('project-amcs.index') }}" class="btn btn-sm"

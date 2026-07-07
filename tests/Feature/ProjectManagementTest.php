@@ -586,4 +586,37 @@ class ProjectManagementTest extends TestCase
 
         $response->assertStatus(403);
     }
+
+    public function test_auto_generated_project_code_prevents_duplicate_violation_with_soft_deleted_projects()
+    {
+        // 1. Create a project with code 'PRJ-YYYYMMDD-0001' (manually matching the expected first sequence format)
+        $dateStr = now()->format('Ymd');
+        $conflictingCode = 'PRJ-' . $dateStr . '-0001';
+        
+        $project1 = Project::create([
+            'project_code' => $conflictingCode,
+            'name' => 'Existing Conflicting Project',
+            'created_by' => $this->adminUser->id,
+            'company_id' => $this->adminUser->company_id,
+        ]);
+
+        // Soft-delete it
+        $project1->delete();
+
+        // 2. Add a new project through the store route without providing a code manually (relying on auto-generation)
+        $response = $this->actingAs($this->adminUser)
+            ->post(route('projects.store'), [
+                'name' => 'New Safe Project',
+                'priority' => 'medium',
+                'project_type' => 'web',
+            ]);
+
+        // It should redirect (meaning it successfully saved and didn't crash on unique key violation)
+        $response->assertRedirect();
+        
+        // Assert the database has the new project with a different, incremented code suffix
+        $newProject = Project::where('name', 'New Safe Project')->first();
+        $this->assertNotNull($newProject);
+        $this->assertNotEquals($conflictingCode, $newProject->project_code);
+    }
 }
