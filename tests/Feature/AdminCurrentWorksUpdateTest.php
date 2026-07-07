@@ -87,4 +87,72 @@ class AdminCurrentWorksUpdateTest extends TestCase
         $response->assertSee($this->employeeUser->name);
         $response->assertSee('Live Tracking Task');
     }
+
+    public function test_admin_dashboard_pending_projects_filtering_and_count()
+    {
+        // 1. Create active projects (should be included)
+        $activeProject = Project::create([
+            'project_code' => 'PRJ-ACT-001',
+            'name'         => 'Active Development Project',
+            'status'       => 'development',
+        ]);
+
+        $planningProject = Project::create([
+            'project_code' => 'PRJ-ACT-002',
+            'name'         => 'Planning Project',
+            'status'       => 'planning',
+        ]);
+
+        // 2. Create completed/cancelled projects (should be excluded)
+        $completedProject = Project::create([
+            'project_code' => 'PRJ-COM-001',
+            'name'         => 'Completed Project',
+            'status'       => 'completed',
+        ]);
+
+        $amcProject = Project::create([
+            'project_code' => 'PRJ-AMC-001',
+            'name'         => 'Completed & Started AMC Project',
+            'status'       => 'completed_started_amc',
+        ]);
+
+        $cancelledProject = Project::create([
+            'project_code' => 'PRJ-CAN-001',
+            'name'         => 'Cancelled Project',
+            'status'       => 'cancelled',
+        ]);
+
+        // Access dashboard as admin
+        $response = $this->actingAs($this->adminUser)
+            ->get(route('dashboard'));
+
+        $response->assertStatus(200);
+
+        // Check recentProjects passed to view has the active ones and excludes completed ones
+        $recentProjects = $response->viewData('recentProjects');
+        $this->assertNotNull($recentProjects);
+
+        $projectNames = $recentProjects->pluck('name')->toArray();
+        $this->assertContains('Active Development Project', $projectNames);
+        $this->assertContains('Planning Project', $projectNames);
+        
+        $this->assertNotContains('Completed Project', $projectNames);
+        $this->assertNotContains('Completed & Started AMC Project', $projectNames);
+        $this->assertNotContains('Cancelled Project', $projectNames);
+
+        // Verify the HTML contains the active count badge and project names, but not the completed ones
+        $response->assertSee('Active Development Project');
+        $response->assertSee('Planning Project');
+        $response->assertDontSee('Completed & Started AMC Project');
+        
+        // Assert the exact "Active" badge count is correct in the view (there are 2 active projects in this context)
+        // Active projects in DB = PRJ-ACT-001 (development), PRJ-ACT-002 (planning). Total = 2.
+        $response->assertSee('2 Active');
+
+        // Assert KPI boxes are linked to their respective routes
+        $response->assertSee(route('employees.index'));
+        $response->assertSee(route('projects.index'));
+        $response->assertSee(route('tasks.index'));
+        $response->assertSee(route('chat.index') . '?filter=review');
+    }
 }

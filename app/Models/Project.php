@@ -135,6 +135,14 @@ class Project extends Model
     public function getProgressPercentageAttribute($value): int
     {
         if ($value) return (int) $value;
+
+        if (in_array($this->status, ['completed', 'delivered', 'completed_started_amc'])) {
+            $hasOpenTasks = $this->tasks()->whereNotIn('status', ['completed', 'cancelled'])->exists();
+            if (!$hasOpenTasks) {
+                return 100;
+            }
+        }
+
         $total = $this->tasks()->count();
         if (!$total) return 0;
         $completed = $this->tasks()->where('status', 'completed')->count();

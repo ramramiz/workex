@@ -464,6 +464,12 @@ class ProjectManagementTest extends TestCase
         $response->assertSee('30 days to go');
         // Assert AMC Not Started is shown
         $response->assertSee('AMC Not Started');
+
+        // Assert dynamic status colors are applied
+        $response->assertSee('bg-success-subtle');
+        $response->assertSee('text-success');
+        $response->assertSee('bg-info-subtle');
+        $response->assertSee('text-info');
     }
 
     public function test_admin_can_access_edit_project_page()
@@ -618,5 +624,96 @@ class ProjectManagementTest extends TestCase
         $newProject = Project::where('name', 'New Safe Project')->first();
         $this->assertNotNull($newProject);
         $this->assertNotEquals($conflictingCode, $newProject->project_code);
+    }
+
+    public function test_sidebar_navigation_includes_check_projects_link(): void
+    {
+        // Access project previews/index page as admin
+        $response = $this->actingAs($this->adminUser)
+            ->get(route('projects.index'));
+
+        $response->assertStatus(200);
+
+        // Verify that the sidebar includes the projects.previews link
+        $response->assertSee(route('projects.previews'));
+        $response->assertSee('Check Projects');
+    }
+
+    public function test_completed_projects_progress_percentage(): void
+    {
+        // 1. Create a completed project with no tasks
+        $project1 = Project::create([
+            'project_code' => 'PRJ-COMP-001',
+            'name'         => 'Completed No Tasks',
+            'status'       => 'completed',
+            'progress_percentage' => 0, // database value is 0
+        ]);
+        $this->assertEquals(100, $project1->progress_percentage);
+
+        // 2. Create a completed project with completed tasks only
+        $project2 = Project::create([
+            'project_code' => 'PRJ-COMP-002',
+            'name'         => 'Completed With Completed Tasks',
+            'status'       => 'completed',
+            'progress_percentage' => 0,
+        ]);
+        \App\Models\Task::create([
+            'title'       => 'Task 1',
+            'project_id'  => $project2->id,
+            'status'      => 'completed',
+            'priority'    => 'medium',
+            'assigned_to' => $this->leaderUser->id,
+            'created_by'  => $this->adminUser->id,
+        ]);
+        $this->assertEquals(100, $project2->progress_percentage);
+
+        // 3. Create a completed project with an open task
+        $project3 = Project::create([
+            'project_code' => 'PRJ-COMP-003',
+            'name'         => 'Completed With Open Task',
+            'status'       => 'completed',
+            'progress_percentage' => 0,
+        ]);
+        \App\Models\Task::create([
+            'title'       => 'Completed Task',
+            'project_id'  => $project3->id,
+            'status'      => 'completed',
+            'priority'    => 'medium',
+            'assigned_to' => $this->leaderUser->id,
+            'created_by'  => $this->adminUser->id,
+        ]);
+        \App\Models\Task::create([
+            'title'       => 'Open Task',
+            'project_id'  => $project3->id,
+            'status'      => 'in_progress',
+            'priority'    => 'medium',
+            'assigned_to' => $this->leaderUser->id,
+            'created_by'  => $this->adminUser->id,
+        ]);
+        // Reverts to actual calculated percentage: 1 completed out of 2 total = 50%
+        $this->assertEquals(50, $project3->progress_percentage);
+    }
+
+    public function test_project_progress_report_renders_status_colors(): void
+    {
+        // 1. Create a project with status rework (color danger)
+        Project::create([
+            'project_code' => 'PRJ-REWORK-888',
+            'name'         => 'Reworking Site',
+            'status'       => 'rework',
+            'created_by'   => $this->adminUser->id,
+            'company_id'   => $this->adminUser->company_id,
+        ]);
+
+        $response = $this->actingAs($this->adminUser)
+            ->get(route('reports.project-progress'));
+
+        $response->assertStatus(200);
+
+        // Verify status labels and badge color classes
+        $response->assertSee('Reworking Site');
+        $response->assertSee('Rework');
+        $response->assertSee('bg-danger-subtle');
+        $response->assertSee('text-danger');
     }
 }

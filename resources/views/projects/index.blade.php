@@ -105,7 +105,7 @@
                     <span class="badge bg-{{ $project->priority === 'critical' ? 'danger' : ($project->priority === 'high' ? 'warning' : 'secondary') }}-subtle text-{{ $project->priority === 'critical' ? 'danger' : ($project->priority === 'high' ? 'warning' : 'secondary') }} border border-{{ $project->priority === 'critical' ? 'danger' : ($project->priority === 'high' ? 'warning' : 'secondary') }}-subtle text-uppercase fs-8" style="font-size: 10px;">
                         {{ $project->priority }} Priority
                     </span>
-                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle text-capitalize fs-8" style="font-size: 10px;">
+                    <span class="badge bg-{{ $project->status_badge }}-subtle text-{{ $project->status_badge }} border border-{{ $project->status_badge }}-subtle text-capitalize fs-8" style="font-size: 10px;">
                         {{ $project->status_label }}
                     </span>
                 </div>

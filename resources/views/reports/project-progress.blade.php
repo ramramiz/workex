@@ -71,8 +71,8 @@
                             </span>
                         </td>
                         <td>
-                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle text-capitalize fs-8">
-                                {{ str_replace('_', ' ', $p->status) }}
+                            <span class="badge bg-{{ $p->status_badge }}-subtle text-{{ $p->status_badge }} border border-{{ $p->status_badge }}-subtle text-capitalize fs-8">
+                                {{ $p->status_label }}
                             </span>
                         </td>
                     </tr>

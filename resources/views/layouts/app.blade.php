@@ -1084,8 +1084,11 @@
             @if(!auth()->user()->isTelecaller())
             <div class="sidebar-section-label">Customer Details</div>
             @if(!auth()->user()->isEmployee())
-            <a href="{{ route('projects.index') }}" class="sidebar-item {{ request()->routeIs('projects*') ? 'active' : '' }}" data-title="Projects">
+            <a href="{{ route('projects.index') }}" class="sidebar-item {{ (request()->routeIs('projects*') && !request()->routeIs('projects.previews*')) ? 'active' : '' }}" data-title="Projects">
                 <i class="bi bi-kanban-fill nav-icon"></i><span class="nav-text">Projects</span>
+            </a>
+            <a href="{{ route('projects.previews') }}" class="sidebar-item {{ request()->routeIs('projects.previews*') ? 'active' : '' }}" data-title="Check Projects">
+                <i class="bi bi-folder-check nav-icon"></i><span class="nav-text">Check Projects</span>
             </a>
             @endif
             @if(auth()->user()->isAdminOrAbove() || auth()->user()->isTeamLeader())

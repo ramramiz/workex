@@ -80,7 +80,7 @@
 
                 <div class="mb-3">
                     <small class="text-muted d-block">Status</small>
-                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle text-capitalize mt-1">
+                    <span class="badge bg-{{ $project->status_badge }}-subtle text-{{ $project->status_badge }} border border-{{ $project->status_badge }}-subtle text-capitalize mt-1">
                         {{ $project->status_label }}
                     </span>
                 </div>

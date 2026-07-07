@@ -71,7 +71,11 @@ class DashboardController extends Controller
             'tasks_in_review'  => Task::where('status', 'review')->count(),
         ];
 
-        $recentProjects = Project::with(['client', 'teamLeader'])->latest()->take(15)->get();
+        $recentProjects = Project::with(['client', 'teamLeader'])
+            ->whereNotIn('status', ['completed', 'delivered', 'cancelled', 'completed_started_amc'])
+            ->latest()
+            ->take(15)
+            ->get();
         // 1. Get active work sessions (for normal employees who start their day)
         $sessions = WorkSession::with(['user.role', 'timeLogs' => fn($q) => $q->where('status', 'running')->with('task')])
             ->where('status', 'active')

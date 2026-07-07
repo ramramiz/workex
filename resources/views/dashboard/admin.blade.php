@@ -55,6 +55,9 @@
     overflow: hidden;
     transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
     cursor: default;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
 }
 .kpi-card::after {
     content: '';
@@ -86,7 +89,7 @@
 }
 .kpi-label { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
 .kpi-sub {
-    font-size: 12px; font-weight: 600; margin-top: 10px;
+    font-size: 12px; font-weight: 600; margin-top: auto; padding-top: 10px;
     display: flex; align-items: center; gap: 4px;
 }
 
@@ -268,65 +271,71 @@
 
     {{-- Employees --}}
     <div class="col-6 col-sm-6 col-lg-3">
-        <div class="kpi-card">
-            <div class="kpi-card-accent" style="background:linear-gradient(90deg,#6366f1,#8b5cf6);"></div>
-            <div class="d-flex align-items-center justify-content-between">
-                <div class="kpi-icon-wrap" style="background:rgba(99,102,241,0.1);">
-                    <i class="bi bi-people-fill" style="color:#6366f1;"></i>
+        <a href="{{ route('employees.index') }}" class="text-decoration-none" style="display:block;height:100%;">
+            <div class="kpi-card" style="transition:transform 0.2s ease,box-shadow 0.2s ease;cursor:pointer;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 24px rgba(99,102,241,0.12)';" onmouseout="this.style.transform='none';this.style.boxShadow='none';">
+                <div class="kpi-card-accent" style="background:linear-gradient(90deg,#6366f1,#8b5cf6);"></div>
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="kpi-icon-wrap" style="background:rgba(99,102,241,0.1);">
+                        <i class="bi bi-people-fill" style="color:#6366f1;"></i>
+                    </div>
+                    <span class="badge rounded-pill" style="background:rgba(16,185,129,0.12);color:#10b981;font-size:11px;padding:5px 10px;font-weight:600;">Active</span>
                 </div>
-                <span class="badge rounded-pill" style="background:rgba(16,185,129,0.12);color:#10b981;font-size:11px;padding:5px 10px;font-weight:600;">Active</span>
+                <div class="kpi-value" style="color:var(--text-primary);">{{ $stats['total_employees'] }}</div>
+                <div class="kpi-label">Total Employees</div>
+                <div class="kpi-sub" style="color:#10b981;">
+                    <span class="status-dot-live"></span> {{ $stats['working_today'] }} working now
+                </div>
             </div>
-            <div class="kpi-value" style="color:var(--text-primary);">{{ $stats['total_employees'] }}</div>
-            <div class="kpi-label">Total Employees</div>
-            <div class="kpi-sub" style="color:#10b981;">
-                <span class="status-dot-live"></span> {{ $stats['working_today'] }} working now
-            </div>
-        </div>
+        </a>
     </div>
 
     {{-- Projects --}}
     <div class="col-6 col-sm-6 col-lg-3">
-        <div class="kpi-card">
-            <div class="kpi-card-accent" style="background:linear-gradient(90deg,#2563eb,#0891b2);"></div>
-            <div class="d-flex align-items-center justify-content-between">
-                <div class="kpi-icon-wrap" style="background:rgba(37,99,235,0.1);">
-                    <i class="bi bi-kanban-fill" style="color:#2563eb;"></i>
+        <a href="{{ route('projects.index') }}" class="text-decoration-none" style="display:block;height:100%;">
+            <div class="kpi-card" style="transition:transform 0.2s ease,box-shadow 0.2s ease;cursor:pointer;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 24px rgba(37,99,235,0.12)';" onmouseout="this.style.transform='none';this.style.boxShadow='none';">
+                <div class="kpi-card-accent" style="background:linear-gradient(90deg,#2563eb,#0891b2);"></div>
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="kpi-icon-wrap" style="background:rgba(37,99,235,0.1);">
+                        <i class="bi bi-kanban-fill" style="color:#2563eb;"></i>
+                    </div>
+                    @if($stats['delayed_projects'] > 0)
+                        <span class="badge rounded-pill" style="background:rgba(239,68,68,0.12);color:#ef4444;font-size:11px;padding:5px 10px;font-weight:600;">{{ $stats['delayed_projects'] }} delayed</span>
+                    @else
+                        <span class="badge rounded-pill" style="background:rgba(16,185,129,0.12);color:#10b981;font-size:11px;padding:5px 10px;font-weight:600;">On track</span>
+                    @endif
                 </div>
-                @if($stats['delayed_projects'] > 0)
-                    <span class="badge rounded-pill" style="background:rgba(239,68,68,0.12);color:#ef4444;font-size:11px;padding:5px 10px;font-weight:600;">{{ $stats['delayed_projects'] }} delayed</span>
-                @else
-                    <span class="badge rounded-pill" style="background:rgba(16,185,129,0.12);color:#10b981;font-size:11px;padding:5px 10px;font-weight:600;">On track</span>
-                @endif
+                <div class="kpi-value" style="color:var(--text-primary);">{{ $stats['total_projects'] }}</div>
+                <div class="kpi-label">Total Projects</div>
+                <div class="kpi-sub" style="color:#2563eb;">
+                    <i class="bi bi-arrow-up-right"></i> {{ $stats['active_projects'] }} active
+                    &nbsp;·&nbsp; <span style="color:#10b981;">{{ $stats['completed_projects'] }} completed</span>
+                </div>
             </div>
-            <div class="kpi-value" style="color:var(--text-primary);">{{ $stats['total_projects'] }}</div>
-            <div class="kpi-label">Total Projects</div>
-            <div class="kpi-sub" style="color:#2563eb;">
-                <i class="bi bi-arrow-up-right"></i> {{ $stats['active_projects'] }} active
-                &nbsp;·&nbsp; <span style="color:#10b981;">{{ $stats['completed_projects'] }} completed</span>
-            </div>
-        </div>
+        </a>
     </div>
 
     {{-- Tasks --}}
     <div class="col-6 col-sm-6 col-lg-3">
-        <div class="kpi-card">
-            <div class="kpi-card-accent" style="background:linear-gradient(90deg,#16a34a,#0d9488);"></div>
-            <div class="d-flex align-items-center justify-content-between">
-                <div class="kpi-icon-wrap" style="background:rgba(22,163,74,0.1);">
-                    <i class="bi bi-check2-square" style="color:#16a34a;"></i>
+        <a href="{{ route('tasks.index') }}" class="text-decoration-none" style="display:block;height:100%;">
+            <div class="kpi-card" style="transition:transform 0.2s ease,box-shadow 0.2s ease;cursor:pointer;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 24px rgba(22,163,74,0.12)';" onmouseout="this.style.transform='none';this.style.boxShadow='none';">
+                <div class="kpi-card-accent" style="background:linear-gradient(90deg,#16a34a,#0d9488);"></div>
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="kpi-icon-wrap" style="background:rgba(22,163,74,0.1);">
+                        <i class="bi bi-check2-square" style="color:#16a34a;"></i>
+                    </div>
+                    @if($stats['open_bugs'] > 0)
+                        <span class="badge rounded-pill" style="background:rgba(239,68,68,0.12);color:#ef4444;font-size:11px;padding:5px 10px;font-weight:600;">{{ $stats['open_bugs'] }} bugs</span>
+                    @else
+                        <span class="badge rounded-pill" style="background:rgba(16,185,129,0.12);color:#10b981;font-size:11px;padding:5px 10px;font-weight:600;">Bug-free</span>
+                    @endif
                 </div>
-                @if($stats['open_bugs'] > 0)
-                    <span class="badge rounded-pill" style="background:rgba(239,68,68,0.12);color:#ef4444;font-size:11px;padding:5px 10px;font-weight:600;">{{ $stats['open_bugs'] }} bugs</span>
-                @else
-                    <span class="badge rounded-pill" style="background:rgba(16,185,129,0.12);color:#10b981;font-size:11px;padding:5px 10px;font-weight:600;">Bug-free</span>
-                @endif
+                <div class="kpi-value" style="color:var(--text-primary);">{{ $stats['pending_tasks'] }}</div>
+                <div class="kpi-label">Pending Tasks</div>
+                <div class="kpi-sub" style="color:#16a34a;">
+                    <i class="bi bi-check2-all"></i> {{ $stats['completed_tasks'] }} completed today
+                </div>
             </div>
-            <div class="kpi-value" style="color:var(--text-primary);">{{ $stats['pending_tasks'] }}</div>
-            <div class="kpi-label">Pending Tasks</div>
-            <div class="kpi-sub" style="color:#16a34a;">
-                <i class="bi bi-check2-all"></i> {{ $stats['completed_tasks'] }} completed today
-            </div>
-        </div>
+        </a>
     </div>
 
     {{-- Tasks in Review --}}
@@ -418,7 +427,7 @@
                     </div>
                     <span>Pending Projects &amp; Progress Updates</span>
                     <span class="badge ms-1" style="background:rgba(245,158,11,0.12);color:#d97706;border-radius:20px;font-size:11px;padding:3px 10px;font-weight:700;">
-                        {{ $recentProjects->whereNotIn('status', ['completed','delivered','cancelled'])->count() }} Active
+                        {{ \App\Models\Project::whereNotIn('status', ['completed','delivered','cancelled','completed_started_amc'])->count() }} Active
                     </span>
                 </div>
                 <a href="{{ route('projects.index') }}" class="btn btn-sm"
@@ -429,7 +438,7 @@
 
             <div class="p-3">
                 @php
-                    $pendingProjects = $recentProjects->whereNotIn('status', ['completed','delivered','cancelled','completed_started_amc'])->values();
+                    $pendingProjects = $recentProjects;
                     $statusColors = [
                         'not_started'   => ['bg'=>'rgba(100,116,139,0.12)', 'color'=>'#64748b', 'label'=>'Not Started'],
                         'planning'      => ['bg'=>'rgba(6,182,212,0.12)',   'color'=>'#0891b2', 'label'=>'Planning'],
@@ -741,7 +750,7 @@
                 </a>
             </div>
 
-            @forelse($recentProjects->whereNotIn('status', ['completed', 'delivered', 'completed_started_amc'])->take(5) as $project)
+            @forelse($recentProjects->take(5) as $project)
             @php
                 $statusColors = [
                     'not_started'   => ['bg'=>'rgba(100,116,139,0.12)', 'color'=>'#64748b'],
