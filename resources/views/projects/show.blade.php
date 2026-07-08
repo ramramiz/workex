@@ -68,7 +68,13 @@
                 <div class="row g-2 mb-3">
                     <div class="col-6">
                         <small class="text-muted d-block">Budget</small>
-                        <span class="fw-semibold text-success">₹{{ number_format($project->budget, 2) }}</span>
+                        <span class="fw-semibold text-success">
+                            @if(auth()->user()->isSuperAdmin() || auth()->user()->isAccounts())
+                                ₹{{ number_format($project->budget, 2) }}
+                            @else
+                                —
+                            @endif
+                        </span>
                     </div>
                     <div class="col-6">
                         <small class="text-muted d-block">Priority</small>
@@ -261,7 +267,13 @@
                 @if($amc)
                     <div class="mb-3">
                         <small class="text-muted d-block fs-8 text-uppercase font-monospace">AMC Value</small>
-                        <span class="fw-bold text-primary fs-6">₹{{ number_format($amc->amount, 2) }}</span>
+                        <span class="fw-bold text-primary fs-6">
+                            @if(auth()->user()->isSuperAdmin() || auth()->user()->isAccounts())
+                                ₹{{ number_format($amc->amount, 2) }}
+                            @else
+                                —
+                            @endif
+                        </span>
                     </div>
                     <div class="row g-2 mb-3">
                         <div class="col-6">
@@ -597,7 +609,13 @@
                                             <td class="fw-semibold">
                                                 <a href="{{ route('invoices.show', $inv) }}" class="text-decoration-none">{{ $inv->invoice_number }}</a>
                                             </td>
-                                            <td class="fw-semibold text-success">₹{{ number_format($inv->amount, 2) }}</td>
+                                            <td class="fw-semibold text-success">
+                                                @if(auth()->user()->isSuperAdmin() || auth()->user()->isAccounts())
+                                                    ₹{{ number_format($inv->amount, 2) }}
+                                                @else
+                                                    —
+                                                @endif
+                                            </td>
                                             <td>{{ $inv->due_date ? \Carbon\Carbon::parse($inv->due_date)->format('d M Y') : '—' }}</td>
                                             <td>
                                                 @if($inv->status === 'paid')

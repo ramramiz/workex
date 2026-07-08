@@ -135,7 +135,13 @@
                         </div>
                         <div class="col-6">
                             <i class="bi bi-wallet2 me-1"></i> Budget:<br>
-                            <span class="fw-semibold text-dark">₹{{ number_format($project->budget, 2) }}</span>
+                            <span class="fw-semibold text-dark">
+                                @if(auth()->user()->isSuperAdmin() || auth()->user()->isAccounts())
+                                    ₹{{ number_format($project->budget, 2) }}
+                                @else
+                                    —
+                                @endif
+                            </span>
                         </div>
                     </div>
 

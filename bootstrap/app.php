@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->web(append: [
             \App\Http\Middleware\RestrictToRoomWork::class,
+            \App\Http\Middleware\VerifyMenuPermission::class,
         ]);
         $middleware->redirectGuestsTo(function (\Illuminate\Http\Request $request) {
             if ($request->expectsJson() || 

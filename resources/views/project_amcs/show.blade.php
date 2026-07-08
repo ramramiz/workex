@@ -27,7 +27,7 @@
                     {{ ucfirst($projectAmc->status) }}
                 @endif
             </span>
-            @if(auth()->user()->isAdminOrAbove() || auth()->user()->isAccounts())
+            @if(auth()->user()->isSuperAdmin() || auth()->user()->isAccounts())
                 <button type="button" class="btn btn-primary btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#addPaymentModal" style="border-radius: 8px; padding: 6px 14px;">
                     <i class="bi bi-plus-circle me-1"></i> Log AMC Payment
                 </button>
@@ -83,8 +83,14 @@
                             <i class="bi bi-wallet2 fs-6"></i>
                         </div>
                     </div>
-                    <div>
-                        <h3 class="fw-bold text-dark mb-1">₹{{ number_format($projectAmc->amount, 2) }}</h3>
+                    <div class="mb-3">
+                        <h3 class="fw-bold text-dark mb-1">
+                            @if(auth()->user()->isSuperAdmin() || auth()->user()->isAccounts())
+                                ₹{{ number_format($projectAmc->amount, 2) }}
+                            @else
+                                —
+                            @endif
+                        </h3>
                         <span class="text-muted fs-8">Total contracted amount</span>
                     </div>
                 </div>
@@ -105,12 +111,22 @@
                         </div>
                     </div>
                     <div>
-                        <h3 class="fw-bold mb-1" style="color: #0f172a;">₹{{ number_format($totalPaid, 2) }}</h3>
-                        <span class="text-dark-50 fs-8" style="color: #475569;">
-                            @if($pending > 0)
-                                Pending Balance: ₹{{ number_format($pending, 2) }}
+                        <h3 class="fw-bold mb-1" style="color: #0f172a;">
+                            @if(auth()->user()->isSuperAdmin() || auth()->user()->isAccounts())
+                                ₹{{ number_format($totalPaid, 2) }}
                             @else
-                                Fully Cleared
+                                —
+                            @endif
+                        </h3>
+                        <span class="text-dark-50 fs-8" style="color: #475569;">
+                            @if(auth()->user()->isSuperAdmin() || auth()->user()->isAccounts())
+                                @if($pending > 0)
+                                    Pending Balance: ₹{{ number_format($pending, 2) }}
+                                @else
+                                    Fully Cleared
+                                @endif
+                            @else
+                                Pending Balance: —
                             @endif
                         </span>
                     </div>
@@ -157,7 +173,11 @@
                                 {{ $log->remarks ?: 'No remarks' }}
                             </td>
                             <td class="px-4 text-end fw-bold text-success fs-7">
-                                ₹{{ number_format($log->amount_paid, 2) }}
+                                @if(auth()->user()->isSuperAdmin() || auth()->user()->isAccounts())
+                                    ₹{{ number_format($log->amount_paid, 2) }}
+                                @else
+                                    —
+                                @endif
                             </td>
                         </tr>
                     @empty

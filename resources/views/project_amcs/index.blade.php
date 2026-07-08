@@ -19,7 +19,7 @@
                     <i class="bi bi-file-earmark-arrow-up me-1"></i> Import Excel
                 </button>
             @endif
-            @if(auth()->user()->isAdminOrAbove() || auth()->user()->isAccounts())
+            @if(auth()->user()->isSuperAdmin() || auth()->user()->isAccounts())
                 <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addAmcModal" style="border-radius: 8px;">
                     <i class="bi bi-plus-circle me-1"></i> Add Project AMC
                 </button>
@@ -99,7 +99,13 @@
                                 <span class="text-muted">—</span>
                             @endif
                         </td>
-                        <td class="fw-bold text-primary">₹{{ number_format($amc->amount, 2) }}</td>
+                        <td class="fw-bold text-primary">
+                            @if(auth()->user()->isSuperAdmin() || auth()->user()->isAccounts())
+                                ₹{{ number_format($amc->amount, 2) }}
+                            @else
+                                —
+                            @endif
+                        </td>
                         <td>
                             <span class="fs-7 text-dark fw-medium">{{ $amc->start_date->format('d M Y') }}</span>
                             <span class="text-muted fs-8 mx-1">to</span>
@@ -130,7 +136,7 @@
                                    style="border-radius: 6px;" title="View Renewal History">
                                     <i class="bi bi-eye"></i>
                                 </a>
-                                @if(auth()->user()->isAdminOrAbove() || auth()->user()->isAccounts())
+                                @if(auth()->user()->isSuperAdmin() || auth()->user()->isAccounts())
                                     <button type="button" class="btn btn-outline-primary btn-sm btn-edit-amc" 
                                             style="border-radius: 6px;"
                                             data-id="{{ $amc->id }}"

@@ -1018,6 +1018,9 @@
                     {{ $sidebarMailsCount }}
                 </span>
             </a>
+            @php
+                $hasPermissionsTable = \App\Models\Permission::where('slug', 'projects.view-own')->exists();
+            @endphp
             @if(!auth()->user()->isTelecaller())
                 @if(auth()->user()->isEmployee() || auth()->user()->isTeamLeader())
                 <a href="{{ route('work-timer.index') }}" class="sidebar-item {{ request()->routeIs('work-timer*') ? 'active' : '' }}" data-title="Work Timer">
@@ -1027,7 +1030,7 @@
                 <a href="{{ route('tasks.approved') }}" class="sidebar-item {{ request()->routeIs('tasks.approved*') ? 'active' : '' }}" data-title="Approved Tasks">
                     <i class="bi bi-check-circle nav-icon"></i><span class="nav-text">Approved Tasks</span>
                 </a>
-                @if(!auth()->user()->isEmployee())
+                @if(!auth()->user()->isEmployee() && (!$hasPermissionsTable || auth()->user()->hasPermission('reports.view-all') || auth()->user()->hasPermission('reports.approve')))
                 <a href="{{ route('daily-reports.index') }}" class="sidebar-item {{ request()->routeIs('daily-reports*') ? 'active' : '' }}" data-title="Daily Reports">
                     <i class="bi bi-journal-text nav-icon"></i><span class="nav-text">Daily Reports</span>
                     @php
@@ -1037,9 +1040,13 @@
                         {{ $pendingReportsCount }}
                     </span>
                 </a>
+                @endif
+                @if(!auth()->user()->isEmployee() && (!$hasPermissionsTable || auth()->user()->hasPermission('bugs.view')))
                 <a href="{{ route('bugs.index') }}" class="sidebar-item {{ request()->routeIs('bugs*') ? 'active' : '' }}" data-title="Bug Tracker">
                     <i class="bi bi-bug-fill nav-icon"></i><span class="nav-text">Bug Tracker</span>
                 </a>
+                @endif
+                @if(!auth()->user()->isEmployee())
                 <a href="{{ route('meetings.index') }}" class="sidebar-item {{ request()->routeIs('meetings*') ? 'active' : '' }}" data-title="Meetings">
                     <i class="bi bi-chat-left-quote nav-icon"></i><span class="nav-text">Meetings & Discussions</span>
                 </a>
@@ -1054,12 +1061,12 @@
                 <i class="bi bi-play-circle-fill nav-icon"></i><span class="nav-text">Start Today Work</span>
             </a>
             @endif
-            @if(auth()->user()->isAdminOrAbove())
+            @if(auth()->user()->isAdminOrAbove() && (!$hasPermissionsTable || auth()->user()->hasPermission('leads.view')))
             <a href="{{ route('leads.index') }}" class="sidebar-item {{ request()->routeIs('leads*') && !request()->routeIs('leads.start-work*') ? 'active' : '' }}" data-title="Leads">
                 <i class="bi bi-funnel-fill nav-icon"></i><span class="nav-text">Leads & Enquiries</span>
             </a>
             @endif
-            @if(!auth()->user()->isTelecaller() && auth()->user()->isAdminOrAbove())
+            @if(!auth()->user()->isTelecaller() && auth()->user()->isAdminOrAbove() && (!$hasPermissionsTable || auth()->user()->hasPermission('quotations.view')))
             <a href="{{ route('quotations.index') }}" class="sidebar-item {{ request()->routeIs('quotations*') ? 'active' : '' }}" data-title="Quotations">
                 <i class="bi bi-file-earmark-text-fill nav-icon"></i><span class="nav-text">Quotations</span>
             </a>
@@ -1083,7 +1090,7 @@
             <!-- Customer Details -->
             @if(!auth()->user()->isTelecaller())
             <div class="sidebar-section-label">Customer Details</div>
-            @if(!auth()->user()->isEmployee())
+            @if(!auth()->user()->isEmployee() && (!$hasPermissionsTable || auth()->user()->hasPermission('projects.view-all') || auth()->user()->hasPermission('projects.view-own')))
             <a href="{{ route('projects.index') }}" class="sidebar-item {{ (request()->routeIs('projects*') && !request()->routeIs('projects.previews*')) ? 'active' : '' }}" data-title="Projects">
                 <i class="bi bi-kanban-fill nav-icon"></i><span class="nav-text">Projects</span>
             </a>
@@ -1091,18 +1098,22 @@
                 <i class="bi bi-folder-check nav-icon"></i><span class="nav-text">Check Projects</span>
             </a>
             @endif
-            @if(auth()->user()->isAdminOrAbove() || auth()->user()->isTeamLeader())
+            @if((auth()->user()->isAdminOrAbove() || auth()->user()->isTeamLeader()) && (!$hasPermissionsTable || auth()->user()->hasPermission('project-amcs.view')))
             <a href="{{ route('project-amcs.index') }}" class="sidebar-item {{ request()->routeIs('project-amcs*') ? 'active' : '' }}" data-title="Project AMC">
                 <i class="bi bi-clock-history nav-icon"></i><span class="nav-text">Project AMC</span>
             </a>
+            @endif
+            @if((auth()->user()->isAdminOrAbove() || auth()->user()->isTeamLeader()) && (!$hasPermissionsTable || auth()->user()->hasPermission('hosting-providers.view')))
             <a href="{{ route('hosting-providers.index') }}" class="sidebar-item {{ request()->routeIs('hosting-providers*') ? 'active' : '' }}" data-title="Hosting Providers">
                 <i class="bi bi-server nav-icon"></i><span class="nav-text">Hosting Providers</span>
             </a>
+            @endif
+            @if((auth()->user()->isAdminOrAbove() || auth()->user()->isTeamLeader()) && (!$hasPermissionsTable || auth()->user()->hasPermission('domain-registrations.view')))
             <a href="{{ route('domain-registrations.index') }}" class="sidebar-item {{ request()->routeIs('domain-registrations*') ? 'active' : '' }}" data-title="Domain Registrations">
                 <i class="bi bi-globe nav-icon"></i><span class="nav-text">Domain Registrations</span>
             </a>
             @endif
-            @if(auth()->user()->isAdminOrAbove())
+            @if(auth()->user()->isAdminOrAbove() && (!$hasPermissionsTable || auth()->user()->hasPermission('clients.view')))
             <a href="{{ route('clients.index') }}" class="sidebar-item {{ request()->routeIs('clients*') ? 'active' : '' }}" data-title="Clients">
                 <i class="bi bi-building nav-icon"></i><span class="nav-text">Clients</span>
             </a>
@@ -1112,13 +1123,17 @@
             <!-- ERP Details -->
             @if(!auth()->user()->isClient())
             <div class="sidebar-section-label">ERP Details</div>
-            @if(auth()->user()->isAdminOrAbove() || auth()->user()->isHR())
+            @if((auth()->user()->isAdminOrAbove() || auth()->user()->isHR()) && (!$hasPermissionsTable || auth()->user()->hasPermission('employees.view')))
             <a href="{{ route('employees.index') }}" class="sidebar-item {{ request()->routeIs('employees*') ? 'active' : '' }}" data-title="Employees">
                 <i class="bi bi-people-fill nav-icon"></i><span class="nav-text">Employees</span>
             </a>
+            @endif
+            @if((auth()->user()->isAdminOrAbove() || auth()->user()->isHR()) && (!$hasPermissionsTable || auth()->user()->hasPermission('job-vacancies.view')))
             <a href="{{ route('job-vacancies.index') }}" class="sidebar-item {{ request()->routeIs('job-vacancies*') ? 'active' : '' }}" data-title="Hiring">
                 <i class="bi bi-briefcase-fill nav-icon"></i><span class="nav-text">Hiring & Vacancies</span>
             </a>
+            @endif
+            @if((auth()->user()->isAdminOrAbove() || auth()->user()->isHR()) && (!$hasPermissionsTable || auth()->user()->hasPermission('interns.view')))
             <a href="{{ route('interns.index') }}" class="sidebar-item {{ request()->routeIs('interns*') ? 'active' : '' }}" data-title="Interns">
                 <i class="bi bi-award-fill nav-icon"></i><span class="nav-text">Interns Directory</span>
             </a>
@@ -1150,25 +1165,37 @@
             @endif
 
             @if(auth()->user()->isAdminOrAbove() || auth()->user()->isAccounts() || (auth()->user()->isHR() && !auth()->user()->isTelecaller()))
-            @if(auth()->user()->isAdminOrAbove() || auth()->user()->isAccounts())
+            @if((auth()->user()->isAdminOrAbove() || auth()->user()->isAccounts()) && (!$hasPermissionsTable || auth()->user()->hasPermission('invoices.view')))
             <a href="{{ route('invoices.index') }}" class="sidebar-item {{ request()->routeIs('invoices*') ? 'active' : '' }}" data-title="Invoices">
                 <i class="bi bi-receipt nav-icon"></i><span class="nav-text">Invoices</span>
             </a>
+            @endif
+            @if((auth()->user()->isAdminOrAbove() || auth()->user()->isAccounts()) && (!$hasPermissionsTable || auth()->user()->hasPermission('proforma-invoices.view')))
             <a href="{{ route('proforma-invoices.index') }}" class="sidebar-item {{ request()->routeIs('proforma-invoices*') ? 'active' : '' }}" data-title="Proforma Invoices">
                 <i class="bi bi-file-earmark-ruled nav-icon"></i><span class="nav-text">Proforma Invoices</span>
             </a>
+            @endif
+            @if((auth()->user()->isAdminOrAbove() || auth()->user()->isAccounts()) && (!$hasPermissionsTable || auth()->user()->hasPermission('payments.view')))
             <a href="{{ route('payments.index') }}" class="sidebar-item {{ request()->routeIs('payments*') ? 'active' : '' }}" data-title="Payments">
                 <i class="bi bi-credit-card-fill nav-icon"></i><span class="nav-text">Payments</span>
             </a>
+            @endif
+            @if((auth()->user()->isAdminOrAbove() || auth()->user()->isAccounts()) && (!$hasPermissionsTable || auth()->user()->hasPermission('expenses.view')))
             <a href="{{ route('expenses.index') }}" class="sidebar-item {{ request()->routeIs('expenses*') ? 'active' : '' }}" data-title="Expenses">
                 <i class="bi bi-cash-stack nav-icon"></i><span class="nav-text">Expenses</span>
             </a>
+            @endif
+            @if(auth()->user()->isAdminOrAbove() || auth()->user()->isAccounts())
             <a href="{{ route('banks.index') }}" class="sidebar-item {{ request()->routeIs('banks*') ? 'active' : '' }}" data-title="Banks">
                 <i class="bi bi-bank nav-icon"></i><span class="nav-text">Banks</span>
             </a>
+            @endif
+            @if((auth()->user()->isAdminOrAbove() || auth()->user()->isAccounts()) && (!$hasPermissionsTable || auth()->user()->hasPermission('investors.view')))
             <a href="{{ route('investors.index') }}" class="sidebar-item {{ request()->routeIs('investors*') ? 'active' : '' }}" data-title="Investors">
                 <i class="bi bi-piggy-bank nav-icon"></i><span class="nav-text">Investors</span>
             </a>
+            @endif
+            @if(auth()->user()->isAdminOrAbove() || auth()->user()->isAccounts())
             @if(auth()->user()->isAdminOrAbove())
             <a href="{{ route('admin.payroll.index') }}" class="sidebar-item {{ request()->routeIs('admin.payroll*') ? 'active' : '' }}" data-title="Payroll">
                 <i class="bi bi-wallet2 nav-icon"></i><span class="nav-text">Salary Disbursal</span>
@@ -1176,7 +1203,7 @@
             @endif
             @endif
             @if(!auth()->user()->isTelecaller())
-            @if(auth()->user()->isAdminOrAbove() || auth()->user()->isHR() || auth()->user()->isAccounts())
+            @if((auth()->user()->isAdminOrAbove() || auth()->user()->isHR() || auth()->user()->isAccounts()) && (!$hasPermissionsTable || auth()->user()->hasPermission('reports.view-all')))
             <a href="{{ route('reports.index') }}" class="sidebar-item {{ request()->routeIs('reports*') && !request()->routeIs('reports.telecaller-performance*') ? 'active' : '' }}" data-title="Reports">
                 <i class="bi bi-bar-chart-fill nav-icon"></i><span class="nav-text">Reports</span>
             </a>

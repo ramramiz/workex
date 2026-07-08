@@ -163,6 +163,7 @@
 
                     <h6 class="text-uppercase text-primary fs-7 mb-3 border-bottom pb-2">Financials, Schedule & Technologies</h6>
                     <div class="row g-3 mb-4">
+                        @if(auth()->user()->isSuperAdmin() || auth()->user()->isAccounts())
                         <div class="col-12 col-md-6">
                             <label class="form-label">Project Budget (₹)</label>
                             <div class="input-group">
@@ -171,6 +172,7 @@
                             </div>
                             @error('budget')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
+                        @endif
                         <div class="col-12 col-md-6">
                             <label class="form-label">Priority Level <span class="text-danger">*</span></label>
                             <select name="priority" class="form-select @error('priority') is-invalid @enderror" required>
@@ -218,6 +220,7 @@
                             </select>
                             @error('amc_frequency')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
+                        @if(auth()->user()->isSuperAdmin() || auth()->user()->isAccounts())
                         <div class="col-12 col-md-4">
                             <label class="form-label">AMC Value (₹)</label>
                             <div class="input-group">
@@ -226,6 +229,7 @@
                             </div>
                             @error('amc_amount')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
+                        @endif
                         <div class="col-12 col-md-6">
                             <label class="form-label">AMC Due Date</label>
                             <input type="date" name="amc_end_date" id="amc_due_date" class="form-control @error('amc_end_date') is-invalid @enderror" value="{{ old('amc_end_date', $amc ? $amc->end_date->format('Y-m-d') : '') }}" disabled>

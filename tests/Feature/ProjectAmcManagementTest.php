@@ -151,7 +151,7 @@ class ProjectAmcManagementTest extends TestCase
         $response = $this->actingAs($this->employee)
             ->get(route('project-amcs.index'));
 
-        $response->assertStatus(403);
+        $response->assertStatus(404);
     }
 
     public function test_admin_can_log_renewal_payment(): void

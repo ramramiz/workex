@@ -207,7 +207,7 @@ class ProjectController extends Controller
             'team_leader_id'  => $request->team_leader_id,
             'start_date'      => $request->start_date,
             'deadline'        => $request->deadline,
-            'project_value'   => $request->budget ?? 0,
+            'project_value'   => (auth()->user()->isSuperAdmin() || auth()->user()->isAccounts()) ? ($request->budget ?? 0) : 0,
             'priority'        => $request->priority,
             'status'          => $status,
             'technologies'    => $request->technologies ? array_map('trim', explode(',', $request->technologies)) : [],
@@ -230,7 +230,7 @@ class ProjectController extends Controller
         if ($request->filled('amc_start_date')) {
             \App\Models\ProjectAmc::create([
                 'project_id' => $project->id,
-                'amount'     => $request->amc_amount ?? 0.00,
+                'amount'     => (auth()->user()->isSuperAdmin() || auth()->user()->isAccounts()) ? ($request->amc_amount ?? 0.00) : 0.00,
                 'start_date' => $request->amc_start_date,
                 'end_date'   => $request->amc_end_date ?? \Carbon\Carbon::parse($request->amc_start_date)->addYear()->subDay()->toDateString(),
                 'frequency'  => $request->amc_frequency ?? 'annually',
@@ -316,7 +316,7 @@ class ProjectController extends Controller
             $data['logo_path'] = $request->file('logo')->store('project_logos', 'public');
         }
 
-        if ($request->has('budget')) {
+        if ($request->has('budget') && (auth()->user()->isSuperAdmin() || auth()->user()->isAccounts())) {
             $data['project_value'] = $request->budget ?? 0;
         }
 
@@ -331,17 +331,22 @@ class ProjectController extends Controller
         }
 
         if ($request->filled('amc_start_date')) {
+            $amcData = [
+                'start_date' => $request->amc_start_date,
+                'end_date'   => $request->amc_end_date ?? \Carbon\Carbon::parse($request->amc_start_date)->addYear()->subDay()->toDateString(),
+                'frequency'  => $request->amc_frequency ?? 'annually',
+                'status'     => $request->amc_status ?? 'active',
+                'remarks'    => $request->amc_remarks,
+                'company_id' => auth()->user()->company_id,
+            ];
+
+            if (auth()->user()->isSuperAdmin() || auth()->user()->isAccounts()) {
+                $amcData['amount'] = $request->amc_amount ?? 0.00;
+            }
+
             \App\Models\ProjectAmc::updateOrCreate(
                 ['project_id' => $project->id],
-                [
-                    'amount'     => $request->amc_amount ?? 0.00,
-                    'start_date' => $request->amc_start_date,
-                    'end_date'   => $request->amc_end_date ?? \Carbon\Carbon::parse($request->amc_start_date)->addYear()->subDay()->toDateString(),
-                    'frequency'  => $request->amc_frequency ?? 'annually',
-                    'status'     => $request->amc_status ?? 'active',
-                    'remarks'    => $request->amc_remarks,
-                    'company_id' => auth()->user()->company_id,
-                ]
+                $amcData
             );
         } else {
             $project->amc()?->delete();

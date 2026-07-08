@@ -67,7 +67,7 @@ class ProjectManagementTest extends TestCase
         $response = $this->actingAs($this->employeeUser)
             ->get(route('projects.import.template'));
 
-        $response->assertStatus(403);
+        $response->assertStatus(404);
     }
 
     public function test_super_admin_can_import_projects_excel()
