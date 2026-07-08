@@ -1135,6 +1135,9 @@
                 <!-- Filters -->
                 <div class="chat-sidebar-filters px-3 pb-2 d-flex align-items-center gap-2 flex-wrap" style="border-bottom: 1px solid rgba(0,0,0,0.05); margin-bottom: 8px;">
                     <button class="chat-filter-btn active" data-filter="all" onclick="filterChats('all')">All</button>
+                    @if(auth()->user()->isTeamLeader() || auth()->user()->isAdminOrAbove())
+                        <button class="chat-filter-btn" data-filter="my-tasks" onclick="filterChats('my-tasks')">My Tasks</button>
+                    @endif
                     <button class="chat-filter-btn" data-filter="telecaller" onclick="filterChats('telecaller')">Telecaller</button>
                     <button class="chat-filter-btn" data-filter="unread" onclick="filterChats('unread')">Unread</button>
                     <button class="chat-filter-btn" data-filter="bugs" onclick="filterChats('bugs')">Bugs</button>
@@ -1159,6 +1162,7 @@
                                data-is-telecaller="{{ $item->is_room_calling ? '1' : '0' }}"
                                data-priority="{{ $t->priority }}"
                                data-status="{{ $t->status }}"
+                               data-assignee-id="{{ $t->assigned_to }}"
                                data-timestamp="{{ $item->timestamp }}"
                                onclick="selectTask({{ $t->id }})">
                                 <div class="position-relative" style="margin-left: 5px;">
@@ -2411,6 +2415,7 @@
     let activeStoreUrl = '';
     let currentTaskData = null;
     const isLeaderOrAbove = {{ (auth()->user()->isSuperAdmin() || auth()->user()->isTeamLeader()) ? 'true' : 'false' }};
+    const currentUserId = {{ auth()->id() }};
     window.currentUserRole = "{{ auth()->user()->role->slug }}";
 
     // Unified Direct Chat variables
@@ -3658,6 +3663,8 @@
             const isTelecaller = item.getAttribute('data-is-telecaller') === '1';
             const priority = item.getAttribute('data-priority') || '';
             const status = item.getAttribute('data-status') || '';
+            const assigneeId = item.getAttribute('data-assignee-id') || '';
+            const chatType = item.getAttribute('data-chat-type') || '';
             
             let matchesFilter = true;
             if (activeChatFilter === 'all') {
@@ -3674,6 +3681,8 @@
                 matchesFilter = status === 'review';
             } else if (activeChatFilter === 'pending') {
                 matchesFilter = status === 'pending';
+            } else if (activeChatFilter === 'my-tasks') {
+                matchesFilter = chatType === 'task' && parseInt(assigneeId) === currentUserId;
             }
 
             if (matchesSearch && matchesFilter) {

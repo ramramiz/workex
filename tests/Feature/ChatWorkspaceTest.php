@@ -398,6 +398,23 @@ class ChatWorkspaceTest extends TestCase
         $response->assertSee('data-priority="', false);
     }
 
+    public function test_sidebar_includes_my_tasks_filter_for_team_leader_and_admin()
+    {
+        // For employee, should NOT see my-tasks filter
+        $response = $this->actingAs($this->employee)
+            ->get(route('chat.index'));
+        $response->assertStatus(200);
+        $response->assertDontSee('data-filter="my-tasks"', false);
+
+        // For team leader, should see my-tasks filter
+        $teamLeaderRole = Role::where('slug', 'team-leader')->first();
+        $teamLeader = User::factory()->create(['role_id' => $teamLeaderRole->id]);
+        $responseTL = $this->actingAs($teamLeader)
+            ->get(route('chat.index'));
+        $responseTL->assertStatus(200);
+        $responseTL->assertSee('data-filter="my-tasks"', false);
+    }
+
     public function test_ajax_project_and_task_store_endpoints()
     {
         $adminRole = \App\Models\Role::where('slug', 'super-admin')->first();
