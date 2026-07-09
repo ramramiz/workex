@@ -64,14 +64,7 @@ class ProjectController extends Controller
             try {
                 $response = Http::withHeaders([
                     'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-                ])->timeout(2)->connectTimeout(2)->get($project->url);
-                
-                if (!$response->successful()) {
-                    return [
-                        'embeddable' => false,
-                        'reason' => 'Site returned status ' . $response->status()
-                    ];
-                }
+                ])->timeout(5)->connectTimeout(5)->get($project->url);
                 
                 $xFrameOptions = $response->header('X-Frame-Options');
                 if ($xFrameOptions && (stripos($xFrameOptions, 'deny') !== false || stripos($xFrameOptions, 'sameorigin') !== false)) {
@@ -89,14 +82,23 @@ class ProjectController extends Controller
                     ];
                 }
                 
+                if (!$response->successful()) {
+                    return [
+                        'embeddable' => true,
+                        'warning' => 'Site returned status ' . $response->status(),
+                        'reason' => ''
+                    ];
+                }
+                
                 return [
                     'embeddable' => true,
                     'reason' => ''
                 ];
             } catch (\Exception $e) {
                 return [
-                    'embeddable' => false,
-                    'reason' => 'Offline / Connection Timeout'
+                    'embeddable' => true,
+                    'warning' => 'Offline / Connection Timeout',
+                    'reason' => ''
                 ];
             }
         });
@@ -185,6 +187,7 @@ class ProjectController extends Controller
             'amc_frequency'  => 'nullable|in:monthly,quarterly,semi-annually,annually',
             'amc_status'     => 'nullable|in:active,pending_renewal,expired',
             'amc_remarks'    => 'nullable|string',
+            'amc_service_type' => 'nullable|string|max:255',
         ]);
 
         $logoPath = null;
@@ -229,14 +232,15 @@ class ProjectController extends Controller
 
         if ($request->filled('amc_start_date')) {
             \App\Models\ProjectAmc::create([
-                'project_id' => $project->id,
-                'amount'     => (auth()->user()->isSuperAdmin() || auth()->user()->isAccounts()) ? ($request->amc_amount ?? 0.00) : 0.00,
-                'start_date' => $request->amc_start_date,
-                'end_date'   => $request->amc_end_date ?? \Carbon\Carbon::parse($request->amc_start_date)->addYear()->subDay()->toDateString(),
-                'frequency'  => $request->amc_frequency ?? 'annually',
-                'status'     => $request->amc_status ?? 'active',
-                'remarks'    => $request->amc_remarks,
-                'company_id' => auth()->user()->company_id,
+                'project_id'   => $project->id,
+                'amount'       => (auth()->user()->isSuperAdmin() || auth()->user()->isAccounts()) ? ($request->amc_amount ?? 0.00) : 0.00,
+                'start_date'   => $request->amc_start_date,
+                'end_date'     => $request->amc_end_date ?? \Carbon\Carbon::parse($request->amc_start_date)->addYear()->subDay()->toDateString(),
+                'frequency'    => $request->amc_frequency ?? 'annually',
+                'status'       => $request->amc_status ?? 'active',
+                'remarks'      => $request->amc_remarks,
+                'service_type' => $request->amc_service_type ?? 'AMC',
+                'company_id'   => auth()->user()->company_id,
             ]);
         }
 
@@ -296,6 +300,7 @@ class ProjectController extends Controller
             'amc_frequency'  => 'nullable|in:monthly,quarterly,semi-annually,annually',
             'amc_status'     => 'nullable|in:active,pending_renewal,expired',
             'amc_remarks'    => 'nullable|string',
+            'amc_service_type' => 'nullable|string|max:255',
         ]);
 
         $data = $request->only([
@@ -332,12 +337,13 @@ class ProjectController extends Controller
 
         if ($request->filled('amc_start_date')) {
             $amcData = [
-                'start_date' => $request->amc_start_date,
-                'end_date'   => $request->amc_end_date ?? \Carbon\Carbon::parse($request->amc_start_date)->addYear()->subDay()->toDateString(),
-                'frequency'  => $request->amc_frequency ?? 'annually',
-                'status'     => $request->amc_status ?? 'active',
-                'remarks'    => $request->amc_remarks,
-                'company_id' => auth()->user()->company_id,
+                'start_date'   => $request->amc_start_date,
+                'end_date'     => $request->amc_end_date ?? \Carbon\Carbon::parse($request->amc_start_date)->addYear()->subDay()->toDateString(),
+                'frequency'    => $request->amc_frequency ?? 'annually',
+                'status'       => $request->amc_status ?? 'active',
+                'remarks'      => $request->amc_remarks,
+                'service_type' => $request->amc_service_type ?? 'AMC',
+                'company_id'   => auth()->user()->company_id,
             ];
 
             if (auth()->user()->isSuperAdmin() || auth()->user()->isAccounts()) {

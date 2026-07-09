@@ -384,4 +384,119 @@ class ProjectAmcManagementTest extends TestCase
         $amounts = $upcomingAmcs->pluck('amount')->map(fn($val) => (float)$val)->toArray();
         $this->assertNotContains(99000.00, $amounts);
     }
+
+    public function test_admin_can_send_whatsapp_amc_reminder(): void
+    {
+        \Illuminate\Support\Facades\Http::fake([
+            'https://bhashsms.com/api/sendmsgutil.php*' => \Illuminate\Support\Facades\Http::response('Success', 200)
+        ]);
+
+        $amc = ProjectAmc::create([
+            'project_id'   => $this->project->id,
+            'amount'       => 12000.00,
+            'start_date'   => now(),
+            'end_date'     => now()->addYear(),
+            'frequency'    => 'annually',
+            'status'       => 'active',
+            'service_type' => 'Domain',
+            'company_id'   => $this->admin->company_id,
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->post(route('project-amcs.send-whatsapp-reminder', $amc));
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success', 'WhatsApp reminder sent successfully!');
+
+        \Illuminate\Support\Facades\Http::assertSent(function ($request) {
+            return str_contains($request->url(), 'bhashsms.com/api/sendmsgutil.php') &&
+                $request['user'] === 'Techsoul_BW' &&
+                $request['phone'] === '1234567890' &&
+                $request['text'] === 'pending_renewal' &&
+                str_contains($request['Params'], 'Acme Company') &&
+                str_contains($request['Params'], 'domain') &&
+                str_contains($request['Params'], 'Acme Web Application');
+        });
+    }
+
+    public function test_admin_can_send_whatsapp_amc_reminder_using_custom_alert_phone(): void
+    {
+        \Illuminate\Support\Facades\Http::fake([
+            'https://bhashsms.com/api/sendmsgutil.php*' => \Illuminate\Support\Facades\Http::response('Success', 200)
+        ]);
+
+        $amc = ProjectAmc::create([
+            'project_id'   => $this->project->id,
+            'amount'       => 12000.00,
+            'start_date'   => now(),
+            'end_date'     => now()->addYear(),
+            'frequency'    => 'annually',
+            'status'       => 'active',
+            'alert_phone'  => '9988776655',
+            'alert_email'  => 'custom@example.com',
+            'service_type' => 'Domain',
+            'company_id'   => $this->admin->company_id,
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->post(route('project-amcs.send-whatsapp-reminder', $amc));
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success', 'WhatsApp reminder sent successfully!');
+
+        \Illuminate\Support\Facades\Http::assertSent(function ($request) {
+            return str_contains($request->url(), 'bhashsms.com/api/sendmsgutil.php') &&
+                $request['user'] === 'Techsoul_BW' &&
+                $request['phone'] === '9988776655' &&
+                $request['text'] === 'pending_renewal' &&
+                str_contains($request['Params'], 'Acme Company') &&
+                str_contains($request['Params'], 'domain') &&
+                str_contains($request['Params'], 'Acme Web Application');
+        });
+    }
+
+    public function test_automated_reminder_command_sends_reminders_at_thresholds(): void
+    {
+        \Illuminate\Support\Facades\Http::fake([
+            'https://bhashsms.com/api/sendmsgutil.php*' => \Illuminate\Support\Facades\Http::response('Success', 200)
+        ]);
+
+        // Create an AMC contract set to expire in exactly 30 days
+        $amc = ProjectAmc::create([
+            'project_id'   => $this->project->id,
+            'amount'       => 15000.00,
+            'start_date'   => now()->subDays(335),
+            'end_date'     => now()->addDays(30), // exactly 30 days remaining
+            'frequency'    => 'annually',
+            'status'       => 'active',
+            'service_type' => 'Server',
+            'company_id'   => $this->admin->company_id,
+        ]);
+
+        // Run the artisan command
+        $this->artisan('app:send-amc-reminders')
+            ->assertSuccessful();
+
+        // Verify reminder API was hit
+        \Illuminate\Support\Facades\Http::assertSent(function ($request) {
+            return str_contains($request->url(), 'bhashsms.com/api/sendmsgutil.php') &&
+                $request['phone'] === '1234567890' &&
+                str_contains($request['Params'], 'server') &&
+                str_contains($request['Params'], '30'); // 30 days remaining
+        });
+
+        // Reset fake request history
+        \Illuminate\Support\Facades\Http::fake([
+            'https://bhashsms.com/api/sendmsgutil.php*' => \Illuminate\Support\Facades\Http::response('Success', 200)
+        ]);
+
+        // Run the command again to ensure it does not send duplicate reminder (not sended automatically send check)
+        $this->artisan('app:send-amc-reminders')
+            ->assertSuccessful();
+
+        // Verify NO HTTP requests were sent this time
+        \Illuminate\Support\Facades\Http::assertNotSent(function ($request) {
+            return str_contains($request->url(), 'bhashsms.com/api/sendmsgutil.php');
+        });
+    }
 }

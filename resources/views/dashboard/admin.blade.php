@@ -979,7 +979,7 @@
                                             @php
                                                 $logDiff = max(0, now()->timestamp - $activeLog->started_at->timestamp);
                                             @endphp
-                                            <div class="p-3 bg-success bg-opacity-5 border border-success border-opacity-10 rounded-3">
+                                            <div class="p-3 bg-success bg-opacity-10 border border-success border-opacity-10 rounded-3">
                                                 <div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-2">
                                                     <div class="min-w-0">
                                                         <div class="d-flex align-items-center gap-2 mb-1">
@@ -1000,14 +1000,14 @@
                                                 </div>
                                             </div>
                                         @elseif($status === 'idle')
-                                            <div class="p-3 bg-warning bg-opacity-5 border border-warning border-opacity-10 rounded-3 text-center">
+                                            <div class="p-3 bg-warning bg-opacity-10 border border-warning border-opacity-10 rounded-3 text-center">
                                                 <div class="d-flex align-items-center justify-content-center gap-2 text-warning fs-7 fw-semibold">
                                                     <i class="bi bi-exclamation-circle-fill"></i>
                                                     <span>Active Session but not tracking a task</span>
                                                 </div>
                                             </div>
                                         @elseif($status === 'completed')
-                                            <div class="p-3 bg-primary bg-opacity-5 border border-primary border-opacity-10 rounded-3 text-center">
+                                            <div class="p-3 bg-primary bg-opacity-10 border border-primary border-opacity-10 rounded-3 text-center">
                                                 <div class="d-flex align-items-center justify-content-center gap-2 text-primary fs-7 fw-semibold">
                                                     <i class="bi bi-check-circle-fill"></i>
                                                     <span>Completed shift at {{ $session->ended_at?->format('h:i A') ?? 'N/A' }}</span>

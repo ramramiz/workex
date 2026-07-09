@@ -164,4 +164,67 @@ class InvestorManagementTest extends TestCase
         $showResponse->assertSee('Salary Disbursal');
         $showResponse->assertSee('Salary disbursed to John Doe');
     }
+
+    public function test_expenses_and_payments_using_investor_show_in_ledger(): void
+    {
+        $investor = Investor::create([
+            'name'            => 'Charlie Brown',
+            'opening_balance' => 200000.00,
+            'status'          => 'active',
+        ]);
+
+        $client = \App\Models\Client::create([
+            'company_name' => 'Test Client',
+            'email' => 'client@example.com',
+            'contact_person' => 'Jane Doe',
+            'status' => 'active',
+        ]);
+
+        $invoice = \App\Models\Invoice::create([
+            'client_id' => $client->id,
+            'invoice_number' => 'INV-001',
+            'total' => 10000,
+            'balance_amount' => 10000,
+            'status' => 'pending',
+            'invoice_date' => now(),
+            'due_date' => now()->addDays(30),
+        ]);
+
+        // 1. Log an expense using this investor
+        \App\Models\Expense::create([
+            'title'        => 'Office Chairs',
+            'amount'       => 15000,
+            'date'         => now(),
+            'category'     => 'office_supplies',
+            'payment_mode' => 'Investor: Charlie Brown',
+            'added_by'     => $this->admin->id,
+            'status'       => 'approved',
+        ]);
+
+        // 2. Log a client payment received into this investor's fund
+        \App\Models\Payment::create([
+            'client_id' => $client->id,
+            'invoice_id' => $invoice->id,
+            'amount' => 5000,
+            'payment_date' => now(),
+            'payment_mode' => 'Investor: Charlie Brown',
+            'recorded_by' => $this->admin->id,
+            'payment_reference' => 'PAY-111',
+        ]);
+
+        // Access investor show to verify the ledger
+        $showResponse = $this->actingAs($this->admin)
+            ->get(route('investors.show', $investor));
+
+        $showResponse->assertStatus(200);
+
+        // Assert the ledger calculates the balance correctly:
+        // Opening balance: 200,000
+        // Expense (Debit): 15,000
+        // Client Payment (Credit): 5,000
+        // Net: 200,000 - 15,000 + 5,000 = 190,000
+        $showResponse->assertViewHas('currentBalance', 190000.00);
+        $showResponse->assertSee('Office Chairs');
+        $showResponse->assertSee('Test Client');
+    }
 }

@@ -84,7 +84,10 @@
                                 <div>
                                     @if($amc->project)
                                         <a href="{{ route('projects.show', $amc->project) }}" class="text-decoration-none text-dark fw-bold">{{ $amc->project->name }}</a>
-                                        <small class="text-muted d-block font-monospace fs-8">{{ $amc->project->project_code }}</small>
+                                        <div class="d-flex align-items-center gap-1 mt-1">
+                                            <span class="badge bg-secondary-subtle text-secondary font-monospace fs-8" style="font-weight: 500;">{{ $amc->project->project_code }}</span>
+                                            <span class="badge bg-primary-subtle text-primary text-uppercase fs-8" style="font-weight: 600;">{{ $amc->service_type ?? 'AMC' }}</span>
+                                        </div>
                                     @else
                                         <span class="text-muted fw-bold">Project Deleted / N/A</span>
                                     @endif
@@ -129,6 +132,16 @@
                                     {{ ucfirst($amc->status) }}
                                 @endif
                             </span>
+                            @php
+                                $daysLeft = (int) today()->diffInDays($amc->end_date, false);
+                            @endphp
+                            @if($amc->status !== 'expired' && $daysLeft >= 0 && $daysLeft <= 30)
+                                <div class="mt-1">
+                                    <span class="badge bg-warning text-dark border border-warning-subtle" style="font-size: 10px; font-weight: 600;">
+                                        <i class="bi bi-exclamation-triangle-fill me-1 text-danger"></i>{{ $daysLeft }} {{ Str::plural('day', $daysLeft) }} left
+                                    </span>
+                                </div>
+                            @endif
                         </td>
                         <td class="text-end">
                             <div class="d-flex justify-content-end gap-2">
@@ -136,6 +149,18 @@
                                    style="border-radius: 6px;" title="View Renewal History">
                                     <i class="bi bi-eye"></i>
                                 </a>
+                                @if($amc->project && $amc->project->client && $amc->project->client->phone)
+                                    <form method="POST" action="{{ route('project-amcs.send-whatsapp-reminder', $amc) }}" class="d-inline" onsubmit="return confirm('Send WhatsApp AMC renewal reminder to this client?')">
+                                        @csrf
+                                        <button type="submit" class="btn btn-outline-success btn-sm" style="border-radius: 6px;" title="Send WhatsApp Reminder">
+                                            <i class="bi bi-whatsapp"></i>
+                                        </button>
+                                    </form>
+                                @else
+                                    <button type="button" class="btn btn-outline-success btn-sm disabled" style="border-radius: 6px;" title="Client has no phone number" disabled>
+                                        <i class="bi bi-whatsapp"></i>
+                                    </button>
+                                @endif
                                 @if(auth()->user()->isSuperAdmin() || auth()->user()->isAccounts())
                                     <button type="button" class="btn btn-outline-primary btn-sm btn-edit-amc" 
                                             style="border-radius: 6px;"
@@ -147,6 +172,11 @@
                                             data-frequency="{{ $amc->frequency }}"
                                             data-status="{{ $amc->status }}"
                                             data-remarks="{{ $amc->remarks }}"
+                                            data-alert_phone="{{ $amc->alert_phone }}"
+                                            data-alert_email="{{ $amc->alert_email }}"
+                                            data-default_phone="{{ $amc->project && $amc->project->client ? $amc->project->client->phone : '' }}"
+                                            data-default_email="{{ $amc->project && $amc->project->client ? $amc->project->client->email : '' }}"
+                                            data-service_type="{{ $amc->service_type }}"
                                             onclick="openEditModal(this)">
                                         <i class="bi bi-pencil"></i>
                                     </button>
@@ -227,15 +257,32 @@
                         <select name="project_id" class="form-select select-search" required style="border-radius:8px;">
                             <option value="">Select Project</option>
                             @foreach($projects as $p)
-                                <option value="{{ $p->id }}">{{ $p->name }} ({{ $p->project_code }}) - {{ $p->client?->company_name ?? 'Internal Project' }}</option>
+                                <option value="{{ $p->id }}" 
+                                        data-client-phone="{{ $p->client?->phone ?? '' }}" 
+                                        data-client-email="{{ $p->client?->email ?? '' }}">
+                                    {{ $p->name }} ({{ $p->project_code }}) - {{ $p->client?->company_name ?? 'Internal Project' }}
+                                </option>
                             @endforeach
                         </select>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-medium text-secondary">AMC Amount <span class="text-danger">*</span></label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light text-secondary border-end-0" style="border-top-left-radius: 8px; border-bottom-left-radius: 8px;">₹</span>
-                            <input type="number" step="0.01" min="0" name="amount" class="form-control" placeholder="0.00" required style="border-top-right-radius: 8px; border-bottom-right-radius: 8px;">
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-medium text-secondary">AMC Amount <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-secondary border-end-0" style="border-top-left-radius: 8px; border-bottom-left-radius: 8px;">₹</span>
+                                <input type="number" step="0.01" min="0" name="amount" class="form-control" placeholder="0.00" required style="border-top-right-radius: 8px; border-bottom-right-radius: 8px;">
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-medium text-secondary">Service Type <span class="text-danger">*</span></label>
+                            <select id="create-service-type-select" name="service_type" class="form-select" required style="border-radius:8px;" onchange="toggleCustomServiceType(this, 'create-custom-service-type')">
+                                <option value="AMC">AMC</option>
+                                <option value="Domain">Domain</option>
+                                <option value="Server">Server</option>
+                                <option value="Email">Email</option>
+                                <option value="other">Other (Custom)</option>
+                            </select>
+                            <input type="text" id="create-custom-service-type" class="form-control mt-2 d-none" placeholder="Enter custom service type" style="border-radius:8px;">
                         </div>
                     </div>
                     <div class="row g-3 mb-3">
@@ -265,6 +312,18 @@
                                 <option value="pending_renewal">Pending Renewal</option>
                                 <option value="expired">Expired</option>
                             </select>
+                        </div>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-medium text-secondary">Alert WhatsApp Number</label>
+                            <input type="text" name="alert_phone" id="create-alert-phone" class="form-control" placeholder="Defaults to client phone" style="border-radius:8px;">
+                            <small class="text-muted d-block mt-0.5" style="font-size: 10px;">Leave blank to use default details.</small>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-medium text-secondary">Alert Email</label>
+                            <input type="email" name="alert_email" id="create-alert-email" class="form-control" placeholder="Defaults to client email" style="border-radius:8px;">
+                            <small class="text-muted d-block mt-0.5" style="font-size: 10px;">Leave blank to use default details.</small>
                         </div>
                     </div>
                     <div class="mb-3">
@@ -297,11 +356,24 @@
                         <label class="form-label fw-medium text-secondary">Project</label>
                         <input type="text" id="edit-project-display" class="form-control bg-light" readonly style="border-radius:8px;">
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-medium text-secondary">AMC Amount <span class="text-danger">*</span></label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light text-secondary border-end-0" style="border-top-left-radius: 8px; border-bottom-left-radius: 8px;">₹</span>
-                            <input type="number" step="0.01" min="0" name="amount" id="edit-amount" class="form-control" required style="border-top-right-radius: 8px; border-bottom-right-radius: 8px;">
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-medium text-secondary">AMC Amount <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-secondary border-end-0" style="border-top-left-radius: 8px; border-bottom-left-radius: 8px;">₹</span>
+                                <input type="number" step="0.01" min="0" name="amount" id="edit-amount" class="form-control" required style="border-top-right-radius: 8px; border-bottom-right-radius: 8px;">
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-medium text-secondary">Service Type <span class="text-danger">*</span></label>
+                            <select id="edit-service-type-select" name="service_type" class="form-select" required style="border-radius:8px;" onchange="toggleCustomServiceType(this, 'edit-custom-service-type')">
+                                <option value="AMC">AMC</option>
+                                <option value="Domain">Domain</option>
+                                <option value="Server">Server</option>
+                                <option value="Email">Email</option>
+                                <option value="other">Other (Custom)</option>
+                            </select>
+                            <input type="text" id="edit-custom-service-type" class="form-control mt-2 d-none" placeholder="Enter custom service type" style="border-radius:8px;">
                         </div>
                     </div>
                     <div class="row g-3 mb-3">
@@ -333,6 +405,18 @@
                             </select>
                         </div>
                     </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-medium text-secondary">Alert WhatsApp Number</label>
+                            <input type="text" name="alert_phone" id="edit-alert-phone" class="form-control" placeholder="Defaults to client phone" style="border-radius:8px;">
+                            <small class="text-muted d-block mt-0.5" style="font-size: 10px;">Leave blank to use default details.</small>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-medium text-secondary">Alert Email</label>
+                            <input type="email" name="alert_email" id="edit-alert-email" class="form-control" placeholder="Defaults to client email" style="border-radius:8px;">
+                            <small class="text-muted d-block mt-0.5" style="font-size: 10px;">Leave blank to use default details.</small>
+                        </div>
+                    </div>
                     <div class="mb-3">
                         <label class="form-label fw-medium text-secondary">Remarks / Description</label>
                         <textarea name="remarks" id="edit-remarks" class="form-control" rows="3" style="border-radius:8px;"></textarea>
@@ -359,6 +443,11 @@
         const frequency = button.getAttribute('data-frequency');
         const status = button.getAttribute('data-status');
         const remarks = button.getAttribute('data-remarks');
+        const alertPhone = button.getAttribute('data-alert_phone');
+        const alertEmail = button.getAttribute('data-alert_email');
+        const defaultPhone = button.getAttribute('data-default_phone');
+        const defaultEmail = button.getAttribute('data-default_email');
+        const serviceType = button.getAttribute('data-service_type');
 
         document.getElementById('edit-project-display').value = projectName;
         document.getElementById('edit-amount').value = amount;
@@ -367,6 +456,38 @@
         document.getElementById('edit-frequency').value = frequency;
         document.getElementById('edit-status').value = status;
         document.getElementById('edit-remarks').value = remarks || '';
+        
+        const selectEl = document.getElementById('edit-service-type-select');
+        const customInput = document.getElementById('edit-custom-service-type');
+        
+        selectEl.setAttribute('name', 'service_type');
+        customInput.removeAttribute('name');
+        customInput.removeAttribute('required');
+        customInput.classList.add('d-none');
+        customInput.value = '';
+
+        if (['AMC', 'Domain', 'Server', 'Email'].includes(serviceType)) {
+            selectEl.value = serviceType;
+        } else {
+            selectEl.value = 'other';
+            customInput.classList.remove('d-none');
+            customInput.setAttribute('required', 'required');
+            customInput.value = serviceType || '';
+            customInput.setAttribute('name', 'service_type');
+            selectEl.removeAttribute('name');
+        }
+        
+        const alertPhoneInput = document.getElementById('edit-alert-phone');
+        if (alertPhoneInput) {
+            alertPhoneInput.value = alertPhone || '';
+            alertPhoneInput.placeholder = defaultPhone || 'Defaults to client phone';
+        }
+        
+        const alertEmailInput = document.getElementById('edit-alert-email');
+        if (alertEmailInput) {
+            alertEmailInput.value = alertEmail || '';
+            alertEmailInput.placeholder = defaultEmail || 'Defaults to client email';
+        }
 
         const form = document.getElementById('editAmcForm');
         form.action = `/project-amcs/${id}`;
@@ -374,6 +495,45 @@
         const modal = new bootstrap.Modal(document.getElementById('editAmcModal'));
         modal.show();
     }
+
+    function toggleCustomServiceType(selectEl, customInputId) {
+        const customInput = document.getElementById(customInputId);
+        if (selectEl.value === 'other') {
+            customInput.classList.remove('d-none');
+            customInput.setAttribute('required', 'required');
+            customInput.setAttribute('name', selectEl.getAttribute('name'));
+            selectEl.removeAttribute('name');
+        } else {
+            customInput.classList.add('d-none');
+            customInput.removeAttribute('required');
+            if (!selectEl.hasAttribute('name')) {
+                selectEl.setAttribute('name', customInput.getAttribute('name'));
+            }
+            customInput.removeAttribute('name');
+            customInput.value = '';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const projectSelect = document.querySelector('select[name="project_id"]');
+        if (projectSelect) {
+            projectSelect.addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                const phone = selectedOption ? selectedOption.getAttribute('data-client-phone') : '';
+                const email = selectedOption ? selectedOption.getAttribute('data-client-email') : '';
+                
+                const alertPhoneInput = document.getElementById('create-alert-phone');
+                const alertEmailInput = document.getElementById('create-alert-email');
+                
+                if (alertPhoneInput) {
+                    alertPhoneInput.placeholder = phone || 'Defaults to client phone';
+                }
+                if (alertEmailInput) {
+                    alertEmailInput.placeholder = email || 'Defaults to client email';
+                }
+            });
+        }
+    });
 </script>
 @endpush
 @endsection

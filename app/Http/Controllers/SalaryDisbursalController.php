@@ -283,7 +283,6 @@ class SalaryDisbursalController extends Controller
                 ->whereDay('from_date', '>=', $empStartDay)->whereDay('from_date', '<=', $endDay)
                 ->where('status', 'approved')
                 ->get();
-            $leavesCount = $leavesList->sum('total_days');
 
             $leavesDetails = $leavesList->map(function($l) {
                 return [
@@ -293,6 +292,41 @@ class SalaryDisbursalController extends Controller
                     'days' => $l->total_days
                 ];
             });
+
+            // Calculate leaves for Term 1 (1-15) and Term 2 (16-End)
+            $empTerm1Leaves = Leave::where('user_id', $emp->user_id)
+                ->whereMonth('from_date', $month)->whereYear('from_date', $year)
+                ->whereDay('from_date', '<=', 15)
+                ->where('status', 'approved')
+                ->sum('total_days');
+
+            $empTerm2Leaves = Leave::where('user_id', $emp->user_id)
+                ->whereMonth('from_date', $month)->whereYear('from_date', $year)
+                ->whereDay('from_date', '>', 15)
+                ->where('status', 'approved')
+                ->sum('total_days');
+
+            $empTerm1CL = min(1.0, $empTerm1Leaves);
+            $empTerm1LOP = $empTerm1Leaves - $empTerm1CL;
+
+            $empTerm2CL = min(1.0 - $empTerm1CL, $empTerm2Leaves);
+            $empTerm2LOP = $empTerm2Leaves - $empTerm2CL;
+
+            if ($company && $company->salary_cycle === 'twice_monthly') {
+                if ($cycle === 1) {
+                    $leavesCount = $empTerm1Leaves;
+                    $clCount = $empTerm1CL;
+                    $lopCount = $empTerm1LOP;
+                } else {
+                    $leavesCount = $empTerm2Leaves;
+                    $clCount = $empTerm2CL;
+                    $lopCount = $empTerm2LOP;
+                }
+            } else {
+                $leavesCount = $empTerm1Leaves + $empTerm2Leaves;
+                $clCount = $empTerm1CL + $empTerm2CL;
+                $lopCount = $empTerm1LOP + $empTerm2LOP;
+            }
 
             // Calculation based on payroll type
             $basicSalary = $emp->salary ?? 0;
@@ -317,9 +351,9 @@ class SalaryDisbursalController extends Controller
             } else {
                 // Standard Daily Rate = Monthly Gross / 26
                 $dailyRate = ($emp->salary ?? 0) / 26;
-                $lopDeduction = $leavesCount * $dailyRate;
+                $lopDeduction = $lopCount * $dailyRate;
                 $calculatedGross = max(0, $basicSalary - $lopDeduction);
-                $paidDays = max(0, $empDaysInPeriod - $leavesCount);
+                $paidDays = max(0, $empDaysInPeriod - $lopCount);
             }
 
             // Check if already paid for this cycle
@@ -335,6 +369,8 @@ class SalaryDisbursalController extends Controller
                 'half_days' => $halfDays,
                 'worked_hours' => $workedHours,
                 'leaves_count' => $leavesCount,
+                'cl_count' => $clCount,
+                'lop_count' => $lopCount,
                 'leaves_details' => $leavesDetails,
                 'worked_days' => $workedDays,
                 'total_working_days' => $empWorkingDays,
@@ -414,6 +450,7 @@ class SalaryDisbursalController extends Controller
             'title' => 'Salary Disbursal - ' . $employee->name . ' (' . $monthName . ' ' . $validated['year'] . ')' . $cycleSuffix,
             'description' => "Salary disbursed for {$monthName} {$validated['year']}{$cycleSuffix}. Method: " . ucwords(str_replace('_', ' ', $validated['payment_method'])) . ". Remarks: " . ($validated['remarks'] ?? 'None'),
             'amount' => $validated['net_salary'],
+            'payment_mode' => $validated['payment_method'],
             'date' => now(),
             'added_by' => auth()->id(),
             'status' => 'paid',
@@ -478,13 +515,41 @@ class SalaryDisbursalController extends Controller
             }
         }
 
-        $leavesCount = \App\Models\Leave::where('user_id', $slip->employee->user_id)
+        $term1Leaves = \App\Models\Leave::where('user_id', $slip->employee->user_id)
             ->whereMonth('from_date', $month)->whereYear('from_date', $year)
-            ->whereDay('from_date', '>=', $startDay)->whereDay('from_date', '<=', $endDay)
+            ->whereDay('from_date', '<=', 15)
             ->where('status', 'approved')
             ->sum('total_days');
 
-        return view('admin.payroll.show', compact('slip', 'companyName', 'companyEmail', 'companyPhone', 'companyAddress', 'companyLogo', 'leavesCount'));
+        $term2Leaves = \App\Models\Leave::where('user_id', $slip->employee->user_id)
+            ->whereMonth('from_date', $month)->whereYear('from_date', $year)
+            ->whereDay('from_date', '>', 15)
+            ->where('status', 'approved')
+            ->sum('total_days');
+
+        $term1CL = min(1.0, $term1Leaves);
+        $term1LOP = $term1Leaves - $term1CL;
+
+        $term2CL = min(1.0 - $term1CL, $term2Leaves);
+        $term2LOP = $term2Leaves - $term2CL;
+
+        $totalCL = $term1CL + $term2CL;
+        $totalLOP = $term1LOP + $term2LOP;
+
+        if ($company && $company->salary_cycle === 'twice_monthly') {
+            $lopDays = ($cycle === 1) ? $term1LOP : $term2LOP;
+            $clDays = ($cycle === 1) ? $term1CL : $term2CL;
+        } else {
+            $lopDays = $totalLOP;
+            $clDays = $totalCL;
+        }
+
+        $leavesCount = $lopDays; // Keep leavesCount variable for any simple legacy queries if needed
+
+        return view('admin.payroll.show', compact(
+            'slip', 'companyName', 'companyEmail', 'companyPhone', 'companyAddress', 'companyLogo',
+            'term1Leaves', 'term2Leaves', 'term1CL', 'term1LOP', 'term2CL', 'term2LOP', 'totalCL', 'totalLOP', 'lopDays', 'clDays'
+        ));
     }
 
     public function destroy(SalaryDisbursal $slip)

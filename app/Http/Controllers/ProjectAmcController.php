@@ -80,24 +80,30 @@ class ProjectAmcController extends Controller
         $this->checkAccess(true);
 
         $request->validate([
-            'project_id' => 'required|exists:projects,id',
-            'amount'     => 'required|numeric|min:0',
-            'start_date' => 'required|date',
-            'end_date'   => 'required|date|after_or_equal:start_date',
-            'frequency'  => 'required|in:monthly,quarterly,semi-annually,annually',
-            'status'     => 'required|in:active,expired,pending_renewal',
-            'remarks'    => 'nullable|string',
+            'project_id'   => 'required|exists:projects,id',
+            'amount'       => 'required|numeric|min:0',
+            'start_date'   => 'required|date',
+            'end_date'     => 'required|date|after_or_equal:start_date',
+            'frequency'    => 'required|in:monthly,quarterly,semi-annually,annually',
+            'status'       => 'required|in:active,expired,pending_renewal',
+            'remarks'      => 'nullable|string',
+            'alert_phone'  => 'nullable|string|max:255',
+            'alert_email'  => 'nullable|email|max:255',
+            'service_type' => 'nullable|string|max:255',
         ]);
 
         ProjectAmc::create([
-            'project_id' => $request->project_id,
-            'amount'     => $request->amount,
-            'start_date' => $request->start_date,
-            'end_date'   => $request->end_date,
-            'frequency'  => $request->frequency,
-            'status'     => $request->status,
-            'remarks'    => $request->remarks,
-            'company_id' => auth()->user()->company_id,
+            'project_id'   => $request->project_id,
+            'amount'       => $request->amount,
+            'start_date'   => $request->start_date,
+            'end_date'     => $request->end_date,
+            'frequency'    => $request->frequency,
+            'status'       => $request->status,
+            'remarks'      => $request->remarks,
+            'alert_phone'  => $request->alert_phone,
+            'alert_email'  => $request->alert_email,
+            'service_type' => $request->service_type ?? 'AMC',
+            'company_id'   => auth()->user()->company_id,
         ]);
 
         return redirect()->route('project-amcs.index')->with('success', 'Project AMC created successfully!');
@@ -114,7 +120,14 @@ class ProjectAmcController extends Controller
 
         $projectAmc->load(['project.client', 'logs']);
 
-        return view('project_amcs.show', compact('projectAmc'));
+        $whatsappLogs = \App\Models\ActivityLog::with('user')
+            ->where('model_type', \App\Models\ProjectAmc::class)
+            ->where('model_id', $projectAmc->id)
+            ->where('action', 'amc_whatsapp_reminder_sent')
+            ->latest()
+            ->get();
+
+        return view('project_amcs.show', compact('projectAmc', 'whatsappLogs'));
     }
 
     public function edit(ProjectAmc $projectAmc)
@@ -128,21 +141,27 @@ class ProjectAmcController extends Controller
         $this->checkAccess(true);
 
         $request->validate([
-            'amount'     => 'required|numeric|min:0',
-            'start_date' => 'required|date',
-            'end_date'   => 'required|date|after_or_equal:start_date',
-            'frequency'  => 'required|in:monthly,quarterly,semi-annually,annually',
-            'status'     => 'required|in:active,expired,pending_renewal',
-            'remarks'    => 'nullable|string',
+            'amount'       => 'required|numeric|min:0',
+            'start_date'   => 'required|date',
+            'end_date'     => 'required|date|after_or_equal:start_date',
+            'frequency'    => 'required|in:monthly,quarterly,semi-annually,annually',
+            'status'       => 'required|in:active,expired,pending_renewal',
+            'remarks'      => 'nullable|string',
+            'alert_phone'  => 'nullable|string|max:255',
+            'alert_email'  => 'nullable|email|max:255',
+            'service_type' => 'nullable|string|max:255',
         ]);
 
         $projectAmc->update([
-            'amount'     => $request->amount,
-            'start_date' => $request->start_date,
-            'end_date'   => $request->end_date,
-            'frequency'  => $request->frequency,
-            'status'     => $request->status,
-            'remarks'    => $request->remarks,
+            'amount'       => $request->amount,
+            'start_date'   => $request->start_date,
+            'end_date'     => $request->end_date,
+            'frequency'    => $request->frequency,
+            'status'       => $request->status,
+            'remarks'      => $request->remarks,
+            'alert_phone'  => $request->alert_phone,
+            'alert_email'  => $request->alert_email,
+            'service_type' => $request->service_type ?? 'AMC',
         ]);
 
         return redirect()->route('project-amcs.index')->with('success', 'Project AMC updated successfully!');
@@ -465,5 +484,19 @@ class ProjectAmcController extends Controller
         File::delete($tempFilePath);
 
         return redirect()->route('project-amcs.index')->with('success', "Import completed! Successfully imported/updated {$successCount} project AMCs.");
+    }
+
+    public function sendWhatsappReminder(ProjectAmc $projectAmc)
+    {
+        $this->checkAccess();
+
+        $daysRemainingOverride = request()->query('days_remaining');
+        $result = $projectAmc->sendWhatsappReminderNotification($daysRemainingOverride);
+
+        if ($result['success']) {
+            return back()->with('success', 'WhatsApp reminder sent successfully!');
+        } else {
+            return back()->with('error', 'Failed to send WhatsApp reminder: ' . $result['error']);
+        }
     }
 }

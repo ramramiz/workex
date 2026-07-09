@@ -56,9 +56,16 @@
                         <select name="payment_mode" class="form-select @error('payment_mode') is-invalid @enderror" required>
                             <option value="">-- Select Mode --</option>
                             <option value="Cash" {{ old('payment_mode') === 'Cash' ? 'selected' : '' }}>Cash</option>
-                            @foreach($banks as $bank)
-                                <option value="{{ $bank->name }}" {{ old('payment_mode') === $bank->name ? 'selected' : '' }}>{{ $bank->name }} - {{ $bank->branch }} - ****{{ substr($bank->account_number, -4) }}</option>
-                            @endforeach
+                            <optgroup label="Bank Accounts">
+                                @foreach($banks as $bank)
+                                    <option value="{{ $bank->name }}" {{ old('payment_mode') === $bank->name ? 'selected' : '' }}>{{ $bank->name }} - {{ $bank->branch }} - ****{{ substr($bank->account_number, -4) }}</option>
+                                @endforeach
+                            </optgroup>
+                            <optgroup label="Investors">
+                                @foreach($investors as $investor)
+                                    <option value="Investor: {{ $investor->name }}" {{ old('payment_mode') === 'Investor: ' . $investor->name ? 'selected' : '' }}>Investor: {{ $investor->name }}</option>
+                                @endforeach
+                            </optgroup>
                         </select>
                         @error('payment_mode')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>

@@ -39,8 +39,8 @@
                     </div>
                     <div class="col-6">
                         <small class="text-muted d-block">Category</small>
-                        <span class="text-capitalize badge bg-secondary-subtle text-secondary border border-secondary-subtle">
-                            {{ str_replace('_', ' ', $expense->category) }}
+                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">
+                            {{ $expense->category_label }}
                         </span>
                     </div>
                 </div>

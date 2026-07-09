@@ -522,24 +522,37 @@
                         <tbody>
                             <tr>
                                 <td class="text-muted">
-                                    @if($slip->employee->salary_type !== 'hourly' && isset($leavesCount) && $leavesCount > 0)
-                                        Leave Deduction / LOP ({{ $leavesCount }} {{ $leavesCount == 1 ? 'day' : 'days' }})
+                                    @if($slip->employee->salary_type !== 'hourly' && isset($lopDays) && $lopDays > 0)
+                                        Leave Deduction / LOP ({{ $lopDays }} {{ $lopDays == 1 ? 'day' : 'days' }})
                                     @else
                                         Leave Deduction / LOP
                                     @endif
                                 </td>
                                 <td class="amount text-danger">
-                                    @if($slip->employee->salary_type !== 'hourly' && isset($leavesCount) && $leavesCount > 0)
+                                    @if($slip->employee->salary_type !== 'hourly' && isset($lopDays) && $lopDays > 0)
                                         @php
                                             $dailyRate = $slip->employee->salary / 26;
-                                            $lopAmt = $leavesCount * $dailyRate;
+                                            $lopAmt = $lopDays * $dailyRate;
                                         @endphp
                                         -₹{{ number_format($lopAmt, 2) }}
                                     @else
+                                        @php
+                                            $lopAmt = 0;
+                                        @endphp
                                         ₹0.00
                                     @endif
                                 </td>
                             </tr>
+                            @if(isset($clDays) && $clDays > 0)
+                            <tr>
+                                <td class="text-muted">
+                                    Casual Leave (CL) ({{ $clDays }} {{ $clDays == 1 ? 'day' : 'days' }})
+                                </td>
+                                <td class="amount text-success">
+                                    ₹0.00 <span class="text-muted small fw-normal">(No Deduction)</span>
+                                </td>
+                            </tr>
+                            @endif
                             @if(count($customDeductions) > 0)
                                 @foreach($customDeductions as $deduction)
                                     <tr>
@@ -551,9 +564,9 @@
                             @if(count($customDeductions) === 0)
                                 @php
                                     $lopAmt = 0;
-                                    if ($slip->employee->salary_type !== 'hourly' && isset($leavesCount) && $leavesCount > 0) {
+                                    if ($slip->employee->salary_type !== 'hourly' && isset($lopDays) && $lopDays > 0) {
                                         $dailyRate = $slip->employee->salary / 26;
-                                        $lopAmt = $leavesCount * $dailyRate;
+                                        $lopAmt = $lopDays * $dailyRate;
                                     }
                                     $otherDeduct = max(0, $slip->deductions - $lopAmt);
                                 @endphp
@@ -575,6 +588,61 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Monthly Leave Summary (2 Terms) -->
+        <div class="card border-0 bg-light p-4 mb-4" style="border-radius: 12px; border: 1px solid #e2e8f0 !important;">
+            <h6 class="fw-bold text-dark mb-3"><i class="bi bi-calendar-event me-2 text-primary"></i> Monthly Leave Summary (2 Terms)</h6>
+            <div class="row g-3">
+                <div class="col-12 col-md-6 border-end">
+                    <div class="p-2">
+                        <span class="d-block text-uppercase text-muted fw-bold mb-2" style="font-size: 0.72rem; letter-spacing: 0.05em;">1st Term (1st - 15th)</span>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="text-muted small">Total Leaves Taken:</span>
+                            <span class="fw-semibold text-dark">{{ $term1Leaves }} {{ $term1Leaves == 1 ? 'day' : 'days' }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="text-muted small">Casual Leave (CL):</span>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">{{ $term1CL }} CL</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted small">Deduction Leave (LOP):</span>
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle">{{ $term1LOP }} LOP</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="p-2">
+                        <span class="d-block text-uppercase text-muted fw-bold mb-2" style="font-size: 0.72rem; letter-spacing: 0.05em;">2nd Term (16th - End)</span>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="text-muted small">Total Leaves Taken:</span>
+                            <span class="fw-semibold text-dark">{{ $term2Leaves }} {{ $term2Leaves == 1 ? 'day' : 'days' }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="text-muted small">Casual Leave (CL):</span>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">{{ $term2CL }} CL</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted small">Deduction Leave (LOP):</span>
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle">{{ $term2LOP }} LOP</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-3 pt-3 border-top text-center g-2">
+                <div class="col-4">
+                    <div class="small text-muted mb-1" style="font-size: 0.75rem;">Total Leaves (Month)</div>
+                    <div class="fw-bold text-dark fs-5">{{ $term1Leaves + $term2Leaves }}</div>
+                </div>
+                <div class="col-4">
+                    <div class="small text-muted mb-1" style="font-size: 0.75rem;">Total Casual Leaves</div>
+                    <div class="fw-bold text-success fs-5">{{ $totalCL }}</div>
+                </div>
+                <div class="col-4">
+                    <div class="small text-muted mb-1" style="font-size: 0.75rem;">Total Deduction Leaves</div>
+                    <div class="fw-bold text-danger fs-5">{{ $totalLOP }}</div>
                 </div>
             </div>
         </div>

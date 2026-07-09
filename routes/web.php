@@ -356,6 +356,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('project-amcs/import/submit', [\App\Http\Controllers\ProjectAmcController::class, 'submit'])->name('project-amcs.import.submit');
     Route::resource('project-amcs', \App\Http\Controllers\ProjectAmcController::class);
     Route::post('project-amcs/{project_amc}/logs', [\App\Http\Controllers\ProjectAmcController::class, 'storeLog'])->name('project-amcs.logs.store');
+    Route::post('project-amcs/{project_amc}/send-whatsapp-reminder', [\App\Http\Controllers\ProjectAmcController::class, 'sendWhatsappReminder'])->name('project-amcs.send-whatsapp-reminder');
 
     // Support Tickets
     Route::resource('support', SupportTicketController::class);

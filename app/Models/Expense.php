@@ -21,4 +21,18 @@ class Expense extends Model
 
     public function project() { return $this->belongsTo(Project::class); }
     public function addedBy() { return $this->belongsTo(User::class, 'added_by'); }
+
+    public function getCategoryLabelAttribute(): string
+    {
+        $map = [
+            'hosting'         => 'Hosting & Servers',
+            'marketing'       => 'Marketing & Sales',
+            'office_supplies' => 'Office Supplies',
+            'travel'          => 'Travel',
+            'salary'          => 'Salaries',
+            'other'           => 'Other',
+        ];
+
+        return $map[$this->category] ?? ucwords(str_replace('_', ' ', $this->category));
+    }
 }

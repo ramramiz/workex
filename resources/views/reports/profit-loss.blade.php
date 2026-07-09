@@ -205,7 +205,7 @@
                                 <td>{{ $exp->date ? $exp->date->format('d M Y') : '—' }}</td>
                                 <td>
                                     <div class="fw-semibold text-dark">{{ $exp->title }}</div>
-                                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle fs-8 text-capitalize">{{ str_replace('_', ' ', $exp->category) }}</span>
+                                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle fs-8">{{ $exp->category_label }}</span>
                                 </td>
                                 <td class="text-end fw-bold text-danger">₹{{ number_format($exp->amount, 2) }}</td>
                             </tr>

@@ -243,11 +243,36 @@
                     }
                 }
 
-                $leavesCount = \App\Models\Leave::where('user_id', $slip->employee->user_id)
+                $term1Leaves = \App\Models\Leave::where('user_id', $slip->employee->user_id)
                     ->whereMonth('from_date', $month)->whereYear('from_date', $year)
-                    ->whereDay('from_date', '>=', $startDay)->whereDay('from_date', '<=', $endDay)
+                    ->whereDay('from_date', '<=', 15)
                     ->where('status', 'approved')
                     ->sum('total_days');
+
+                $term2Leaves = \App\Models\Leave::where('user_id', $slip->employee->user_id)
+                    ->whereMonth('from_date', $month)->whereYear('from_date', $year)
+                    ->whereDay('from_date', '>', 15)
+                    ->where('status', 'approved')
+                    ->sum('total_days');
+
+                $term1CL = min(1.0, $term1Leaves);
+                $term1LOP = $term1Leaves - $term1CL;
+
+                $term2CL = min(1.0 - $term1CL, $term2Leaves);
+                $term2LOP = $term2Leaves - $term2CL;
+
+                $totalCL = $term1CL + $term2CL;
+                $totalLOP = $term1LOP + $term2LOP;
+
+                if ($company && $company->salary_cycle === 'twice_monthly') {
+                    $lopDays = ($cycle === 1) ? $term1LOP : $term2LOP;
+                    $clDays = ($cycle === 1) ? $term1CL : $term2CL;
+                } else {
+                    $lopDays = $totalLOP;
+                    $clDays = $totalCL;
+                }
+
+                $leavesCount = $lopDays;
 
                 $customAllowances = [];
                 if ($slip->remarks && strpos($slip->remarks, '| Allowances: ') !== false) {
@@ -321,17 +346,17 @@
                 
                 <div class="ledger-row">
                     <span class="ledger-label">
-                        @if($slip->employee->salary_type !== 'hourly' && $leavesCount > 0)
-                            Leave Deduction / LOP ({{ $leavesCount }} {{ $leavesCount == 1 ? 'day' : 'days' }})
+                        @if($slip->employee->salary_type !== 'hourly' && $lopDays > 0)
+                            Leave Deduction / LOP ({{ $lopDays }} {{ $lopDays == 1 ? 'day' : 'days' }})
                         @else
                             Leave Deduction / LOP
                         @endif
                     </span>
                     <span class="ledger-val deductions">
-                        @if($slip->employee->salary_type !== 'hourly' && $leavesCount > 0)
+                        @if($slip->employee->salary_type !== 'hourly' && $lopDays > 0)
                             @php
                                 $dailyRate = $slip->employee->salary / 26;
-                                $lopAmt = $leavesCount * $dailyRate;
+                                $lopAmt = $lopDays * $dailyRate;
                             @endphp
                             -₹{{ number_format($lopAmt, 2) }}
                         @else
@@ -339,6 +364,13 @@
                         @endif
                     </span>
                 </div>
+
+                @if($clDays > 0)
+                    <div class="ledger-row">
+                        <span class="ledger-label">Casual Leave (CL) ({{ $clDays }} {{ $clDays == 1 ? 'day' : 'days' }})</span>
+                        <span class="ledger-val" style="color: #16a34a;">₹0.00 <span style="font-weight: normal; font-size: 11px; color: #64748b;">(No Deduction)</span></span>
+                    </div>
+                @endif
 
                 @if(count($customDeductions) > 0)
                     @foreach($customDeductions as $deduction)
@@ -352,9 +384,9 @@
                 @if(count($customDeductions) === 0)
                     @php
                         $lopAmt = 0;
-                        if ($slip->employee->salary_type !== 'hourly' && $leavesCount > 0) {
+                        if ($slip->employee->salary_type !== 'hourly' && $lopDays > 0) {
                             $dailyRate = $slip->employee->salary / 26;
-                            $lopAmt = $leavesCount * $dailyRate;
+                            $lopAmt = $lopDays * $dailyRate;
                         }
                         $otherDeduct = max(0, $slip->deductions - $lopAmt);
                     @endphp
@@ -371,6 +403,42 @@
                     <span class="summary-label">Net Disbursed Amount</span>
                     <span class="summary-val">₹{{ number_format($slip->net_salary, 2) }}</span>
                 </div>
+            </div>
+
+            <!-- Monthly Leave Summary (2 Terms) -->
+            <div style="border: 1px solid #e2e8f0; border-radius: 8px; background-color: #f8fafc; padding: 18px; margin-bottom: 28px;">
+                <h4 style="margin-top: 0; margin-bottom: 12px; font-size: 14px; font-weight: 700; color: #0f172a;">Monthly Leave Summary (2 Terms)</h4>
+                
+                <table style="width: 100%; font-size: 13px; line-height: 1.5; border-collapse: collapse;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid #e2e8f0; text-align: left;">
+                            <th style="padding: 6px 0; color: #475569;">Term</th>
+                            <th style="padding: 6px 0; text-align: center; color: #475569;">Total Leaves</th>
+                            <th style="padding: 6px 0; text-align: center; color: #475569;">Casual Leaves</th>
+                            <th style="padding: 6px 0; text-align: center; color: #475569;">Deduction Leaves (LOP)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 8px 0; font-weight: 600; color: #334155;">1st Term (1st - 15th)</td>
+                            <td style="padding: 8px 0; text-align: center; font-weight: 600; color: #334155;">{{ $term1Leaves }}</td>
+                            <td style="padding: 8px 0; text-align: center; color: #16a34a; font-weight: 600;">{{ $term1CL }}</td>
+                            <td style="padding: 8px 0; text-align: center; color: #dc2626; font-weight: 600;">{{ $term1LOP }}</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #e2e8f0;">
+                            <td style="padding: 8px 0; font-weight: 600; color: #334155;">2nd Term (16th - End)</td>
+                            <td style="padding: 8px 0; text-align: center; font-weight: 600; color: #334155;">{{ $term2Leaves }}</td>
+                            <td style="padding: 8px 0; text-align: center; color: #16a34a; font-weight: 600;">{{ $term2CL }}</td>
+                            <td style="padding: 8px 0; text-align: center; color: #dc2626; font-weight: 600;">{{ $term2LOP }}</td>
+                        </tr>
+                        <tr style="background-color: #f1f5f9; font-weight: bold;">
+                            <td style="padding: 8px; color: #0f172a;">Month Total</td>
+                            <td style="padding: 8px; text-align: center; color: #0f172a;">{{ $term1Leaves + $term2Leaves }}</td>
+                            <td style="padding: 8px; text-align: center; color: #16a34a;">{{ $totalCL }}</td>
+                            <td style="padding: 8px; text-align: center; color: #dc2626;">{{ $totalLOP }}</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
 
             <!-- View online CTA -->

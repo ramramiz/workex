@@ -255,8 +255,10 @@
                             @if($emp->salary_type !== 'hourly' && $item->daily_rate > 0)
                                 <small class="text-muted d-block" style="font-size:10px;line-height:1.2;margin-top:2px;">
                                     LOP Rate: ₹{{ number_format($item->daily_rate, 2) }}/d<br>
-                                    @if($item->leaves_count > 0)
-                                        Deduction: -₹{{ number_format($item->lop_deduction, 2) }} ({{ $item->leaves_count }} d)
+                                    @if($item->lop_count > 0)
+                                        Deduction: -₹{{ number_format($item->lop_deduction, 2) }} ({{ $item->lop_count }} d LOP)
+                                    @elseif($item->cl_count > 0)
+                                        Exempted CL: {{ $item->cl_count }} d
                                     @else
                                         No deductions
                                     @endif
@@ -293,6 +295,8 @@
                                     data-daily-rate="{{ $item->daily_rate }}"
                                     data-working-days="{{ $item->total_working_days }}"
                                     data-leaves-count="{{ $item->leaves_count }}"
+                                    data-cl-count="{{ $item->cl_count }}"
+                                    data-lop-count="{{ $item->lop_count }}"
                                     data-leaves-details="{{ json_encode($item->leaves_details) }}"
                                     data-days-present="{{ $item->days_present }}"
                                     data-half-days="{{ $item->half_days }}"
@@ -343,6 +347,15 @@
                 <div class="form-row py-1">
                     <label class="form-row-label">Basic Salary</label>
                     <span class="fw-bold text-dark fs-6">₹<span id="dm-basic-salary">0.00</span></span>
+                </div>
+
+                {{-- Casual Leave --}}
+                <div class="form-row py-1" id="dm-cl-row" style="display: none;">
+                    <label class="form-row-label">Casual Leave (CL)</label>
+                    <div>
+                        <span class="fw-bold text-success fs-6">₹0.00</span>
+                        <div class="text-muted fs-8" id="dm-cl-calc-text" style="margin-top:-2px;">(0 days - No Deduction)</div>
+                    </div>
                 </div>
 
                 {{-- Leave Deduction / LOP --}}
@@ -539,6 +552,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const dailyRate = parseFloat(btn.dataset.dailyRate) || 0;
             const workingDays = parseInt(btn.dataset.workingDays) || 0;
             const leavesCount = parseFloat(btn.dataset.leavesCount) || 0;
+            const clCount = parseFloat(btn.dataset.clCount) || 0;
+            const lopCount = parseFloat(btn.dataset.lopCount) || 0;
             const daysPresent = parseFloat(btn.dataset.daysPresent) || 0;
             const halfDays = parseFloat(btn.dataset.halfDays) || 0;
             const salaryType = btn.dataset.salaryType;
@@ -549,12 +564,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Failed to parse leaves details', e);
             }
 
-            openDisburseModal(id, name, gross, basic, lopDeduction, dailyRate, workingDays, leavesCount, salaryType, leavesDetails, daysPresent, halfDays);
+            openDisburseModal(id, name, gross, basic, lopDeduction, dailyRate, workingDays, leavesCount, salaryType, leavesDetails, daysPresent, halfDays, clCount, lopCount);
         });
     });
 });
 
-function openDisburseModal(empId, empName, gross, basic, lopDeduction, dailyRate, workingDays, leavesCount, salaryType, leavesDetails, daysPresent, halfDays) {
+function openDisburseModal(empId, empName, gross, basic, lopDeduction, dailyRate, workingDays, leavesCount, salaryType, leavesDetails, daysPresent, halfDays, clCount, lopCount) {
     _dmEmployeeId   = empId;
     _dmGross        = gross;
     _dmBasic        = basic;
@@ -582,13 +597,26 @@ function openDisburseModal(empId, empName, gross, basic, lopDeduction, dailyRate
     // Basic
     document.getElementById('dm-basic-salary').textContent = basic.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-    // Show/hide and populate LOP
+    // Show/hide and populate CL and LOP
+    const clRow = document.getElementById('dm-cl-row');
     const lopRow = document.getElementById('dm-lop-row');
     if (salaryType === 'monthly') {
-        lopRow.style.display = 'flex';
-        document.getElementById('dm-lop-deduction').textContent = lopDeduction.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        document.getElementById('dm-lop-calc-text').innerHTML = `(${leavesCount} ${leavesCount == 1 ? 'day' : 'days'} × ₹${dailyRate.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
+        if (clCount > 0) {
+            clRow.style.display = 'flex';
+            document.getElementById('dm-cl-calc-text').innerHTML = `(${clCount} ${clCount == 1 ? 'day' : 'days'} - No Deduction)`;
+        } else {
+            clRow.style.display = 'none';
+        }
+
+        if (lopCount > 0) {
+            lopRow.style.display = 'flex';
+            document.getElementById('dm-lop-deduction').textContent = lopDeduction.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('dm-lop-calc-text').innerHTML = `(${lopCount} ${lopCount == 1 ? 'day' : 'days'} × ₹${dailyRate.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
+        } else {
+            lopRow.style.display = 'none';
+        }
     } else {
+        clRow.style.display = 'none';
         lopRow.style.display = 'none';
     }
 
@@ -607,7 +635,7 @@ function openDisburseModal(empId, empName, gross, basic, lopDeduction, dailyRate
         leavesDetails.forEach(l => {
             detailsHtml += `
                 <div class="d-flex justify-content-between align-items-center py-1 border-bottom border-light">
-                    <div>
+                     <div>
                         <span class="fw-semibold text-dark">${l.type}</span>
                         <small class="text-muted d-block">${l.from} to ${l.to}</small>
                     </div>
@@ -627,11 +655,6 @@ function openDisburseModal(empId, empName, gross, basic, lopDeduction, dailyRate
     document.getElementById('dm-allowances-list').innerHTML = '';
     document.getElementById('dm-deductions-list').innerHTML = '';
 
-    // Payment method reset
-    document.getElementById('dm-payment-method').value = '';
-    document.getElementById('dm-bank-ref').value = '';
-    document.getElementById('dm-remarks').value = '';
-    
     // Payment method reset
     document.getElementById('dm-payment-method').value = '';
     document.getElementById('dm-bank-ref').value = '';

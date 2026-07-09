@@ -205,12 +205,12 @@
 
                     <h6 class="text-uppercase text-primary fs-7 mb-3 border-bottom pb-2 mt-4">Project AMC Contract (Optional)</h6>
                     <div class="row g-3 mb-4">
-                        <div class="col-12 col-md-4">
+                        <div class="col-12 @if(auth()->user()->isSuperAdmin() || auth()->user()->isAccounts()) col-md-3 @else col-md-4 @endif">
                             <label class="form-label">AMC Start Date</label>
                             <input type="date" name="amc_start_date" id="amc_start_date" class="form-control @error('amc_start_date') is-invalid @enderror" value="{{ old('amc_start_date', $amc ? $amc->start_date->format('Y-m-d') : '') }}">
                             @error('amc_start_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
-                        <div class="col-12 col-md-4">
+                        <div class="col-12 @if(auth()->user()->isSuperAdmin() || auth()->user()->isAccounts()) col-md-3 @else col-md-4 @endif">
                             <label class="form-label">Billing Frequency <span class="text-danger">*</span></label>
                             <select name="amc_frequency" id="amc_frequency" class="form-select @error('amc_frequency') is-invalid @enderror" required>
                                 <option value="annually" {{ old('amc_frequency', $amc?->frequency ?? 'annually') === 'annually' ? 'selected' : '' }}>Annually</option>
@@ -220,8 +220,24 @@
                             </select>
                             @error('amc_frequency')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
+                        <div class="col-12 @if(auth()->user()->isSuperAdmin() || auth()->user()->isAccounts()) col-md-3 @else col-md-4 @endif">
+                            <label class="form-label">Service Type <span class="text-danger">*</span></label>
+                            <select id="amc_service_type_select" name="amc_service_type" class="form-select @error('amc_service_type') is-invalid @enderror" required onchange="toggleCustomServiceType(this, 'edit_custom_service_type')">
+                                <option value="AMC" {{ old('amc_service_type', $amc?->service_type ?? 'AMC') === 'AMC' ? 'selected' : '' }}>AMC</option>
+                                <option value="Domain" {{ old('amc_service_type', $amc?->service_type) === 'Domain' ? 'selected' : '' }}>Domain</option>
+                                <option value="Server" {{ old('amc_service_type', $amc?->service_type) === 'Server' ? 'selected' : '' }}>Server</option>
+                                <option value="Email" {{ old('amc_service_type', $amc?->service_type) === 'Email' ? 'selected' : '' }}>Email</option>
+                                <option value="other" {{ (old('amc_service_type') && !in_array(old('amc_service_type'), ['AMC', 'Domain', 'Server', 'Email'])) || ($amc && !in_array($amc->service_type, ['AMC', 'Domain', 'Server', 'Email'])) ? 'selected' : '' }}>Other (Custom)</option>
+                            </select>
+                            @php
+                                $isCustom = (old('amc_service_type') && !in_array(old('amc_service_type'), ['AMC', 'Domain', 'Server', 'Email'])) || ($amc && !in_array($amc->service_type, ['AMC', 'Domain', 'Server', 'Email']));
+                                $customVal = old('amc_service_type', $amc?->service_type);
+                            @endphp
+                            <input type="text" id="edit_custom_service_type" class="form-control mt-2 @if($isCustom) @else d-none @endif" placeholder="Enter custom service type" value="{{ $isCustom ? $customVal : '' }}" style="border-radius:8px;">
+                            @error('amc_service_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
                         @if(auth()->user()->isSuperAdmin() || auth()->user()->isAccounts())
-                        <div class="col-12 col-md-4">
+                        <div class="col-12 col-md-3">
                             <label class="form-label">AMC Value (₹)</label>
                             <div class="input-group">
                                 <span class="input-group-text">₹</span>
@@ -704,6 +720,31 @@ document.addEventListener('DOMContentLoaded', function() {
         domainRegistrationSelect.addEventListener('change', () => updateDomainValidity(false));
         updateDomainValidity(true);
     }
+    const serviceSelect = document.getElementById('amc_service_type_select');
+    if (serviceSelect && serviceSelect.value === 'other') {
+        const customInput = document.getElementById('edit_custom_service_type');
+        customInput.setAttribute('required', 'required');
+        customInput.setAttribute('name', 'amc_service_type');
+        serviceSelect.removeAttribute('name');
+    }
 });
+
+function toggleCustomServiceType(selectEl, customInputId) {
+    const customInput = document.getElementById(customInputId);
+    if (selectEl.value === 'other') {
+        customInput.classList.remove('d-none');
+        customInput.setAttribute('required', 'required');
+        customInput.setAttribute('name', selectEl.getAttribute('name'));
+        selectEl.removeAttribute('name');
+    } else {
+        customInput.classList.add('d-none');
+        customInput.removeAttribute('required');
+        if (!selectEl.hasAttribute('name')) {
+            selectEl.setAttribute('name', customInput.getAttribute('name'));
+        }
+        customInput.removeAttribute('name');
+        customInput.value = '';
+    }
+}
 </script>
 @endpush

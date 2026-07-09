@@ -312,6 +312,9 @@
                         if (contentContainer) {
                             contentContainer.innerHTML = `<iframe src="${projectUrl}" class="browser-iframe" loading="lazy"></iframe>`;
                         }
+                        if (data.warning && addressBar) {
+                            addressBar.innerHTML += ` <i class="bi bi-exclamation-triangle-fill text-warning ms-1" title="Status check warning: ${data.warning}"></i>`;
+                        }
                     } else {
                         card.setAttribute('data-restricted', 'true');
                         restrictedCount++;
@@ -334,17 +337,11 @@
                 })
                 .catch(err => {
                     console.error('Failed to load status for project', projectId, err);
-                    card.setAttribute('data-restricted', 'true');
-                    restrictedCount++;
-                    updateRestrictedBadge();
                     if (contentContainer) {
-                        contentContainer.innerHTML = `
-                            <div class="preview-warning-state h-100 d-flex flex-column align-items-center justify-content-center p-3 text-center">
-                                <i class="bi bi-exclamation-triangle-fill text-warning mb-2" style="font-size: 28px;"></i>
-                                <h6 class="fw-bold text-dark mb-1" style="font-size: 13px;">Check Failed</h6>
-                                <p class="text-muted mb-0" style="font-size: 11px;">Unable to verify status</p>
-                            </div>
-                        `;
+                        contentContainer.innerHTML = `<iframe src="${projectUrl}" class="browser-iframe" loading="lazy"></iframe>`;
+                    }
+                    if (addressBar) {
+                        addressBar.innerHTML += ` <i class="bi bi-exclamation-triangle-fill text-warning ms-1" title="Status check warning: Check failed (Unable to verify status)"></i>`;
                     }
                 });
         });

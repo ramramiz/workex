@@ -1320,7 +1320,10 @@
                 <div class="dropdown-menu dropdown-menu-end notification-dropdown p-0" id="topnav-notifications-dropdown">
                     <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
                         <span style="font-weight:600;">Notifications</span>
-                        <a href="{{ route('notifications.mark-all-read') }}" id="topnav-mark-all-read" class="text-primary text-decoration-none {{ $unreadCount > 0 ? '' : 'd-none' }}" style="font-size:12px">Mark all read</a>
+                        <a href="#" onclick="event.preventDefault(); document.getElementById('topnav-mark-all-read-form').submit();" id="topnav-mark-all-read" class="text-primary text-decoration-none {{ $unreadCount > 0 ? '' : 'd-none' }}" style="font-size:12px">Mark all read</a>
+                        <form id="topnav-mark-all-read-form" action="{{ route('notifications.mark-all-read') }}" method="POST" class="d-none">
+                            @csrf
+                        </form>
                     </div>
                     <div id="topnav-notifications-list">
                         @forelse(auth()->user()->notifications()->latest()->take(10)->get() as $notif)

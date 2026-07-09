@@ -21,16 +21,19 @@
     <!-- Filters -->
     <div class="card-body bg-light border-bottom py-3">
         <form method="GET" action="{{ route('expenses.index') }}" class="row g-3">
-            <div class="col-12 col-md-5">
-                <select name="project" class="form-select form-select-sm">
+            <div class="col-12 col-md-4">
+                <input type="text" name="search" class="form-control form-control-sm" placeholder="Search title or description..." value="{{ request('search') }}" style="height: 36px; padding: 6px 12px; border-radius: 6px; font-size: 13.5px;">
+            </div>
+            <div class="col-12 col-md-3">
+                <select name="project" class="form-select form-select-sm" onchange="this.form.submit()" style="height: 36px; padding: 6px 12px; border-radius: 6px; font-size: 13.5px;">
                     <option value="">All Projects (Office Expense)</option>
                     @foreach($projects as $p)
                         <option value="{{ $p->id }}" {{ request('project') == $p->id ? 'selected' : '' }}>{{ $p->name }}</option>
                     @endforeach
                 </select>
             </div>
-            <div class="col-12 col-md-4">
-                <select name="category" class="form-select form-select-sm">
+            <div class="col-12 col-md-3">
+                <select name="category" class="form-select form-select-sm" onchange="this.form.submit()" style="height: 36px; padding: 6px 12px; border-radius: 6px; font-size: 13.5px;">
                     <option value="">All Categories</option>
                     <option value="hosting" {{ request('category') === 'hosting' ? 'selected' : '' }}>Hosting & Servers</option>
                     <option value="marketing" {{ request('category') === 'marketing' ? 'selected' : '' }}>Marketing & Sales</option>
@@ -40,8 +43,11 @@
                     <option value="other" {{ request('category') === 'other' ? 'selected' : '' }}>Other</option>
                 </select>
             </div>
-            <div class="col-12 col-md-3 d-grid">
-                <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+            <div class="col-12 col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm flex-grow-1" style="height: 36px; border-radius: 6px; font-size: 13.5px;">Filter</button>
+                @if(request('project') || request('category') || request('search'))
+                    <a href="{{ route('expenses.index') }}" class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center justify-content-center px-3" style="font-size: 13.5px; height: 36px; border-radius: 6px;">Reset</a>
+                @endif
             </div>
         </form>
     </div>
@@ -74,8 +80,8 @@
                             @endif
                         </td>
                         <td>
-                            <span class="text-capitalize badge bg-secondary-subtle text-secondary border border-secondary-subtle">
-                                {{ str_replace('_', ' ', $exp->category) }}
+                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">
+                                {{ $exp->category_label }}
                             </span>
                             @php
                                 $matchedBank = $banks->firstWhere('name', $exp->payment_mode);

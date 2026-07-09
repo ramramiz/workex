@@ -86,8 +86,41 @@ class InvestorController extends Controller
                 ];
             });
 
+        // 3. Fetch Expenses paid using this investor's fund (excluding auto-generated salary expenses to avoid double counting)
+        $expenses = \App\Models\Expense::where('payment_mode', 'Investor: ' . $investor->name)
+            ->where('category', '!=', 'salary')
+            ->where('status', 'approved')
+            ->get()
+            ->map(function($e) {
+                return (object) [
+                    'date'        => $e->date,
+                    'type'        => 'Debit',
+                    'category'    => 'Expense: ' . ucwords(str_replace('_', ' ', $e->category)),
+                    'reference'   => 'EXP-' . $e->id,
+                    'description' => $e->title . ($e->description ? ' - ' . $e->description : ''),
+                    'in'          => 0,
+                    'out'         => $e->amount,
+                ];
+            });
+
+        // 4. Fetch Client Payments received into this investor's fund
+        $payments = \App\Models\Payment::with('client')
+            ->where('payment_mode', 'Investor: ' . $investor->name)
+            ->get()
+            ->map(function($p) {
+                return (object) [
+                    'date'        => $p->payment_date,
+                    'type'        => 'Credit',
+                    'category'    => 'Client Payment',
+                    'reference'   => $p->payment_reference,
+                    'description' => 'Received from ' . ($p->client->company_name ?? 'Client') . ($p->transaction_id ? ' (Ref: ' . $p->transaction_id . ')' : ''),
+                    'in'          => $p->amount,
+                    'out'         => 0,
+                ];
+            });
+
         // Combine all statements
-        $transactions = $txns->concat($salaries);
+        $transactions = $txns->concat($salaries)->concat($expenses)->concat($payments);
 
         // Sort chronologically (date ascending) to calculate a running balance
         $sorted = $transactions->sortBy(function($txn) {

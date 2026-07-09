@@ -25,7 +25,8 @@ class PaymentController extends Controller
         $invoices = Invoice::with('client')->whereIn('status', ['sent','pending','partially_paid'])->get();
         $selectedInvoice = $request->invoice_id ? Invoice::with('client')->find($request->invoice_id) : null;
         $banks = Bank::where('status', 'active')->get();
-        return view('payments.create', compact('invoices', 'selectedInvoice', 'banks'));
+        $investors = \App\Models\Investor::where('status', 'active')->get();
+        return view('payments.create', compact('invoices', 'selectedInvoice', 'banks', 'investors'));
     }
     public function store(Request $request)
     {
