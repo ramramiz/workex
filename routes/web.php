@@ -34,6 +34,8 @@ use App\Http\Controllers\JobVacancyController;
 use App\Http\Controllers\JobApplicationController;
 use App\Http\Controllers\PublicJobVacancyController;
 use App\Http\Controllers\InternController;
+use App\Http\Controllers\InternOnboardingController;
+use App\Http\Controllers\EmployeeOnboardingController;
 
 Route::get('/', function () {
     return auth()->check() ? redirect()->route('dashboard') : redirect()->route('login');
@@ -171,6 +173,16 @@ Route::get('verify-certificate/{code}', [InternController::class, 'verifyPublic'
     ->name('interns.verify.public')
     ->where('code', '.*');
 
+// Public Intern Onboarding Form
+Route::get('interns/onboard/{token}', [InternOnboardingController::class, 'showForm'])->name('interns.onboard.show');
+Route::post('interns/onboard/{token}/submit', [InternOnboardingController::class, 'submitForm'])->name('interns.onboard.submit');
+Route::get('interns/onboard/{token}/success', [InternOnboardingController::class, 'successPage'])->name('interns.onboard.success');
+
+// Public Employee Onboarding Form
+Route::get('employees/onboard/{token}', [EmployeeOnboardingController::class, 'showForm'])->name('employees.onboard.show');
+Route::post('employees/onboard/{token}/submit', [EmployeeOnboardingController::class, 'submitForm'])->name('employees.onboard.submit');
+Route::get('employees/onboard/{token}/success', [EmployeeOnboardingController::class, 'successPage'])->name('employees.onboard.success');
+
 // Authenticated Routes
 Route::middleware(['auth'])->group(function () {
 
@@ -189,6 +201,31 @@ Route::middleware(['auth'])->group(function () {
         Route::post('job-applications/schedule-interview', [JobApplicationController::class, 'scheduleInterview'])->name('job-applications.schedule-interview');
         Route::delete('job-applications/{application}', [JobApplicationController::class, 'destroy'])->name('job-applications.destroy');
         
+        // Intern Onboarding Management
+        Route::get('interns/onboardings', [InternOnboardingController::class, 'index'])->name('interns.onboardings.index');
+        Route::post('interns/onboardings/generate', [InternOnboardingController::class, 'generate'])->name('interns.onboardings.generate');
+        Route::post('interns/onboardings/{onboarding}/email', [InternOnboardingController::class, 'sendEmail'])->name('interns.onboardings.send-email');
+        Route::get('interns/onboardings/{onboarding}/review', [InternOnboardingController::class, 'review'])->name('interns.onboardings.review');
+        Route::post('interns/onboardings/{onboarding}/approve', [InternOnboardingController::class, 'approve'])->name('interns.onboardings.approve');
+        Route::post('interns/onboardings/{onboarding}/generate-certificate', [InternOnboardingController::class, 'generateCertificate'])->name('interns.onboardings.generate-certificate');
+        Route::post('interns/onboardings/{onboarding}/reject', [InternOnboardingController::class, 'reject'])->name('interns.onboardings.reject');
+        Route::get('interns/onboardings/{onboarding}/view', [InternOnboardingController::class, 'viewCompletedForm'])->name('interns.onboardings.view');
+        Route::get('interns/onboardings/{onboarding}/edit', [InternOnboardingController::class, 'edit'])->name('interns.onboardings.edit');
+        Route::put('interns/onboardings/{onboarding}', [InternOnboardingController::class, 'update'])->name('interns.onboardings.update');
+        Route::delete('interns/onboardings/{onboarding}', [InternOnboardingController::class, 'destroy'])->name('interns.onboardings.destroy');
+
+        // Employee Onboarding Management
+        Route::get('employees/onboardings', [EmployeeOnboardingController::class, 'index'])->name('employees.onboardings.index');
+        Route::post('employees/onboardings/generate', [EmployeeOnboardingController::class, 'generate'])->name('employees.onboardings.generate');
+        Route::post('employees/onboardings/{onboarding}/email', [EmployeeOnboardingController::class, 'sendEmail'])->name('employees.onboardings.send-email');
+        Route::get('employees/onboardings/{onboarding}/review', [EmployeeOnboardingController::class, 'review'])->name('employees.onboardings.review');
+        Route::post('employees/onboardings/{onboarding}/approve', [EmployeeOnboardingController::class, 'approve'])->name('employees.onboardings.approve');
+        Route::post('employees/onboardings/{onboarding}/reject', [EmployeeOnboardingController::class, 'reject'])->name('employees.onboardings.reject');
+        Route::get('employees/onboardings/{onboarding}/view', [EmployeeOnboardingController::class, 'viewCompletedForm'])->name('employees.onboardings.view');
+        Route::get('employees/onboardings/{onboarding}/edit', [EmployeeOnboardingController::class, 'edit'])->name('employees.onboardings.edit');
+        Route::put('employees/onboardings/{onboarding}', [EmployeeOnboardingController::class, 'update'])->name('employees.onboardings.update');
+        Route::delete('employees/onboardings/{onboarding}', [EmployeeOnboardingController::class, 'destroy'])->name('employees.onboardings.destroy');
+
         // Interns
         Route::get('interns/{intern}/certificate', [InternController::class, 'generateCertificate'])->name('interns.certificate');
         Route::get('interns/{intern}/qr-code', [InternController::class, 'downloadQrCode'])->name('interns.qr-code');

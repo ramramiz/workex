@@ -598,7 +598,7 @@
         const chatBody = document.getElementById('chat-body');
         chatBody.innerHTML = '<div class="text-center py-5 text-muted"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Loading messages...</div>';
 
-        fetch(`/direct-chat/messages/${contactId}`)
+        fetch(`${window.APP_URL}/direct-chat/messages/${contactId}`)
             .then(res => res.json())
             .then(data => {
                 chatBody.innerHTML = '';
@@ -748,7 +748,7 @@
         messageInput.style.height = 'auto';
         clearAttachment();
 
-        fetch(`/direct-chat/messages/${contactId}`, {
+        fetch(`${window.APP_URL}/direct-chat/messages/${contactId}`, {
             method: 'POST',
             body: formData,
             headers: {
@@ -804,7 +804,7 @@
     function startDirectChatPolling() {
         // Poll for updates every 4 seconds
         setInterval(function() {
-            let url = `/direct-chat/updates?since=${encodeURIComponent(lastPolledAt)}`;
+            let url = `${window.APP_URL}/direct-chat/updates?since=${encodeURIComponent(lastPolledAt)}`;
             
             fetch(url)
                 .then(res => res.json())
@@ -839,7 +839,7 @@
                             if (appendedAny) {
                                 scrollToBottom();
                                 // Mark as read
-                                fetch(`/direct-chat/read/${activeContactId}`, {
+                                fetch(`${window.APP_URL}/direct-chat/read/${activeContactId}`, {
                                     method: 'POST',
                                     headers: {
                                         'X-CSRF-TOKEN': '{{ csrf_token() }}',

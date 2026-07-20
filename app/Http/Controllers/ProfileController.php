@@ -50,6 +50,10 @@ class ProfileController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        if (!$request->user()->isSuperAdmin()) {
+            abort(403, 'Unauthorized action. Only Super Admins can delete accounts.');
+        }
+
         $request->validateWithBag('userDeletion', [
             'password' => ['required', 'current_password'],
         ]);

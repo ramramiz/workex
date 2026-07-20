@@ -2154,7 +2154,7 @@
 </div>
 
 <!-- Edit Task Modal -->
-<div class="modal fade" id="editTaskModal" tabindex="-1" aria-labelledby="editTaskModalLabel" aria-hidden="true" style="z-index: 1060;">
+<div class="modal fade" id="editTaskModal" aria-labelledby="editTaskModalLabel" aria-hidden="true" style="z-index: 1060;">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg text-start" style="border-radius: 16px;">
             <div class="modal-header border-0 pb-0">
@@ -2203,16 +2203,11 @@
                     </div>
                     <div class="row g-2">
                         <div class="col-6">
-                            <label class="form-label fw-semibold text-dark">Status <span class="text-danger">*</span></label>
-                            <select name="status" id="edit-task-status-select" class="form-select form-select-sm" required>
-                                <option value="pending">Pending</option>
-                                <option value="in_progress">In Progress</option>
-                                <option value="review">Review</option>
-                                <option value="rework">Rework</option>
-                                <option value="rejected">Rejected</option>
-                                <option value="completed" class="completed-option d-none">Completed</option>
-                                <option value="cancelled">Cancelled</option>
-                            </select>
+                            <label class="form-label fw-semibold text-dark">Status</label>
+                            <div class="pt-1">
+                                <span class="badge" id="edit-task-status-badge" style="font-size: 13.5px; padding: 6px 12px; display: inline-block;">Pending</span>
+                                <input type="hidden" name="status" id="edit-task-status-input" value="pending">
+                            </div>
                         </div>
                         <div class="col-6">
                             <label class="form-label fw-semibold text-dark">Deadline</label>
@@ -2615,15 +2610,15 @@
 
         // Set form send active URLs
         const form = document.getElementById('chat-form');
-        form.action = `/direct-chat/messages/${userId}`;
-        activeStoreUrl = `/direct-chat/messages/${userId}`;
+        form.action = `${window.APP_URL}/direct-chat/messages/${userId}`;
+        activeStoreUrl = `${window.APP_URL}/direct-chat/messages/${userId}`;
 
         // Save selected direct userId to localStorage
         localStorage.setItem('active_chat_direct_user_id', userId);
         localStorage.removeItem('active_chat_task_id');
 
         // Load message history from Direct Message routes
-        fetch(`/direct-chat/messages/${userId}?_t=${new Date().getTime()}`)
+        fetch(`${window.APP_URL}/direct-chat/messages/${userId}?_t=${new Date().getTime()}`)
             .then(response => response.json())
             .then(data => {
                 messagesContainer.innerHTML = '';
@@ -3034,10 +3029,10 @@
                 let payload = {};
                 
                 if (action === 'approve') {
-                    url = (role === 'team-leader') ? `/leaves/${leaveId}/approve-tl` : `/leaves/${leaveId}/approve-hr`;
+                    url = (role === 'team-leader') ? `${window.APP_URL}/leaves/${leaveId}/approve-tl` : `${window.APP_URL}/leaves/${leaveId}/approve-hr`;
                     payload = { comment: commentVal };
                 } else {
-                    url = `/leaves/${leaveId}/reject`;
+                    url = `${window.APP_URL}/leaves/${leaveId}/reject`;
                     payload = { reason: commentVal };
                 }
 
@@ -3091,7 +3086,7 @@
 
     function startGlobalDirectChatPolling() {
         setInterval(function() {
-            let url = `/direct-chat/updates?since=${encodeURIComponent(lastDirectPolledAt)}`;
+            let url = `${window.APP_URL}/direct-chat/updates?since=${encodeURIComponent(lastDirectPolledAt)}`;
             
             fetch(url)
                 .then(res => res.json())
@@ -3153,7 +3148,7 @@
                                 chatBody.scrollTop = chatBody.scrollHeight;
                                 
                                 // Mark as read
-                                fetch(`/direct-chat/read/${activeDirectUserId}`, {
+                                fetch(`${window.APP_URL}/direct-chat/read/${activeDirectUserId}`, {
                                     method: 'POST',
                                     headers: {
                                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
@@ -3472,13 +3467,13 @@
     }
 
     function openEndTaskModalChat(logId, currentStatus) {
-        document.getElementById('endTaskModalForm').action = `/work-timer/end-task/${logId}`;
+        document.getElementById('endTaskModalForm').action = `${window.APP_URL}/work-timer/end-task/${logId}`;
         const modal = new bootstrap.Modal(document.getElementById('endTaskModal'));
         modal.show();
     }
 
     function openTaskCompletionModalChat(taskId) {
-        document.getElementById('taskCompletionModalForm').action = `/tasks/${taskId}/submit-completion`;
+        document.getElementById('taskCompletionModalForm').action = `${window.APP_URL}/tasks/${taskId}/submit-completion`;
         const modal = new bootstrap.Modal(document.getElementById('taskCompletionModal'));
         modal.show();
     }
@@ -3487,25 +3482,45 @@
         if (!currentTaskData) return;
         
         // Form action URL
-        document.getElementById('editTaskModalForm').action = `/tasks/${currentTaskData.task_id}`;
+        document.getElementById('editTaskModalForm').action = `${window.APP_URL}/tasks/${currentTaskData.task_id}`;
         
         // Populate inputs
         document.getElementById('edit-task-title-input').value = currentTaskData.task_title || '';
         document.getElementById('edit-task-desc-input').value = currentTaskData.description || '';
-        document.getElementById('edit-task-project-select').value = currentTaskData.project_id || '';
+        
+        const projectSelect = document.getElementById('edit-task-project-select');
+        if (projectSelect.tomselect) {
+            projectSelect.tomselect.setValue(currentTaskData.project_id || '');
+        } else {
+            projectSelect.value = currentTaskData.project_id || '';
+        }
+
         document.getElementById('edit-task-assignee-select').value = currentTaskData.assignee_id || '';
         document.getElementById('edit-task-priority-select').value = currentTaskData.priority_raw ? currentTaskData.priority_raw.toLowerCase() : 'medium';
         
-        const completedOption = document.querySelector('#edit-task-status-select .completed-option');
-        if (completedOption) {
-            if (currentTaskData.status === 'completed') {
-                completedOption.classList.remove('d-none');
-            } else {
-                completedOption.classList.add('d-none');
-            }
-        }
+        const statusVal = currentTaskData.status || 'pending';
+        document.getElementById('edit-task-status-input').value = statusVal;
+
+        const statusBadge = document.getElementById('edit-task-status-badge');
+        const displayLabel = statusVal.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
+        statusBadge.innerText = displayLabel;
         
-        document.getElementById('edit-task-status-select').value = currentTaskData.status || 'pending';
+        statusBadge.className = 'badge';
+        if (statusVal === 'pending') {
+            statusBadge.classList.add('bg-warning', 'text-dark');
+        } else if (statusVal === 'in_progress') {
+            statusBadge.classList.add('bg-primary');
+        } else if (statusVal === 'review') {
+            statusBadge.classList.add('bg-info', 'text-dark');
+        } else if (statusVal === 'rework') {
+            statusBadge.classList.add('bg-secondary');
+        } else if (statusVal === 'rejected') {
+            statusBadge.classList.add('bg-danger');
+        } else if (statusVal === 'completed') {
+            statusBadge.classList.add('bg-success');
+        } else {
+            statusBadge.classList.add('bg-dark');
+        }
         document.getElementById('edit-task-deadline-input').value = currentTaskData.deadline_raw || '';
         document.getElementById('edit-task-est-input').value = currentTaskData.estimated_hours || 0;
         
@@ -3515,7 +3530,7 @@
     }
 
     function updateTaskStatusChat(taskId, status) {
-        fetch(`/tasks/${taskId}/update-status`, {
+        fetch(`${window.APP_URL}/tasks/${taskId}/update-status`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -3790,7 +3805,7 @@
         `;
 
         // Load details via AJAX
-        fetch(`/chat/tasks/${taskId}?_t=${new Date().getTime()}`)
+        fetch(`${window.APP_URL}/chat/tasks/${taskId}?_t=${new Date().getTime()}`)
             .then(response => response.json())
             .then(data => {
                 currentTaskData = data;
@@ -3896,11 +3911,11 @@
                 activeAvatar.src = data.assignee_real_avatar;
                 
                 document.getElementById('chat-active-assignee').textContent = data.assignee_name;
-                document.getElementById('chat-active-title').href = data.task_url;
+                document.getElementById('chat-active-title').href = window.APP_URL + data.task_url;
                 
                 // Form action
-                document.getElementById('chat-form').action = data.store_url;
-                activeStoreUrl = data.store_url;
+                document.getElementById('chat-form').action = window.APP_URL + data.store_url;
+                activeStoreUrl = window.APP_URL + data.store_url;
 
                 // Save selected taskId to localStorage
                 localStorage.setItem('active_chat_task_id', taskId);
@@ -3969,7 +3984,7 @@
                 } else {
                     dropdownHtml += `
                         <li>
-                            <form method="POST" action="/work-timer/start-task/${taskId}" onsubmit="this.querySelector('button').disabled = true;">
+                            <form method="POST" action="${window.APP_URL}/work-timer/start-task/${taskId}" onsubmit="this.querySelector('button').disabled = true;">
                                 @csrf
                                 <button type="submit" class="dropdown-item py-2 d-flex align-items-center gap-2 text-success fw-semibold" ${data.is_buttons_disabled ? 'disabled' : ''}>
                                     <i class="bi bi-play-fill fs-5"></i> Start Work
@@ -3978,7 +3993,7 @@
                         </li>
                     `;
                     desktopHtml += `
-                        <form method="POST" action="/work-timer/start-task/${taskId}" class="d-inline" onsubmit="this.querySelector('button').disabled = true;">
+                        <form method="POST" action="${window.APP_URL}/work-timer/start-task/${taskId}" class="d-inline" onsubmit="this.querySelector('button').disabled = true;">
                             @csrf
                             <button type="submit" class="btn btn-success btn-sm" ${data.is_buttons_disabled ? 'disabled' : ''}>
                                 <i class="bi bi-play-fill me-1"></i> Start Work
@@ -4049,7 +4064,7 @@
     let previousUnreadCounts = {};
 
     const pollChatListUnreadCounts = () => {
-        fetch("/chat/unread-counts")
+        fetch(`${window.APP_URL}/chat/unread-counts`)
             .then(response => response.json())
             .then(data => {
                 const unreadCounts = data.unread_counts || {};
@@ -4111,7 +4126,7 @@
     const pollChatUpdates = () => {
         if (!activeTaskId || !latestFeedTime) return;
 
-        let url = `/tasks/${activeTaskId}/feed-updates?since=${encodeURIComponent(latestFeedTime)}`;
+        let url = `${window.APP_URL}/tasks/${activeTaskId}/feed-updates?since=${encodeURIComponent(latestFeedTime)}`;
         if (lastCommentId) {
             url += `&last_comment_id=${lastCommentId}`;
         }
@@ -4196,8 +4211,8 @@
 
         if (editId) {
             let url = editType === 'direct' 
-                ? `/direct-chat/messages/${editId}/edit` 
-                : `/tasks/comments/${editId}/edit`;
+                ? `${window.APP_URL}/direct-chat/messages/${editId}/edit` 
+                : `${window.APP_URL}/tasks/comments/${editId}/edit`;
 
             fetch(url, {
                 method: 'POST',
@@ -4742,7 +4757,7 @@
         const modal = new bootstrap.Modal(modalEl);
         modal.show();
         
-        fetch(`/chat/employees/${userId}/tasks`)
+        fetch(`${window.APP_URL}/chat/employees/${userId}/tasks`)
             .then(res => res.json())
             .then(data => {
                 if (data.success) {

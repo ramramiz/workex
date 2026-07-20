@@ -36,9 +36,8 @@
 
     $supplierCompany = $invoice->company ?? (auth()->check() ? auth()->user()->company : null);
     
-    // Smarter state detection for supplier
-    $supplierAddress = $supplierCompany?->address ?? '123 Tech Park, Sector 62, Noida, Uttar Pradesh - 201301';
-    $supplierState = 'Kerala'; // Standard default for Techsoul
+    $supplierAddress = $supplierCompany?->address ?? 'OPP. TRUST HOSPITAL ROOM NO: 20/792, RM-VENTURES, RANDATHANI.PO, MALAPPURAM-KERALA Pin : 676510';
+    $supplierState = 'Kerala';
     $foundSupplier = false;
     foreach ($cityStateMapping as $state => $keywords) {
         foreach ($keywords as $kw) {
@@ -58,11 +57,10 @@
         }
     }
     $supplierStateLower = strtolower($supplierState);
-    $supplierStateCode = $stateCodes[$supplierStateLower] ?? '32'; // Default to Kerala (32)
+    $supplierStateCode = $stateCodes[$supplierStateLower] ?? '32';
 
-    // Smarter state detection for buyer
     $buyerAddress = ($invoice->client?->address ?? '') . ' ' . ($invoice->client?->city ?? '') . ' ' . ($invoice->client?->state ?? '');
-    $buyerState = $supplierState; // Default to supplier state
+    $buyerState = $supplierState;
     $foundBuyer = false;
     if ($invoice->client?->state) {
         foreach (array_keys($stateCodes) as $sName) {
@@ -87,7 +85,6 @@
     $buyerStateLower = strtolower(trim($buyerState));
     $buyerStateCode = $stateCodes[$buyerStateLower] ?? $supplierStateCode;
 
-    // Determine Tax Type
     $isInterState = ($supplierStateCode !== $buyerStateCode);
     
     $taxPercent = floatval($invoice->tax_percentage ?? 18);
@@ -97,23 +94,96 @@
     $total = floatval($invoice->total ?? 0);
 
     if ($isInterState) {
-        $igstPercent = $taxPercent;
         $igstAmount = $taxAmount;
-        $cgstPercent = 0;
         $cgstAmount = 0;
-        $sgstPercent = 0;
         $sgstAmount = 0;
     } else {
-        $igstPercent = 0;
         $igstAmount = 0;
-        $cgstPercent = $taxPercent / 2;
         $cgstAmount = $taxAmount / 2;
-        $sgstPercent = $taxPercent / 2;
         $sgstAmount = $taxAmount / 2;
     }
 
-    // Proportionate discount factor
     $discountRatio = $subtotal > 0 ? ($discount / $subtotal) : 0;
+
+    if (!function_exists('numberToWords')) {
+        function numberToWords($num) {
+            $ones = array(
+                0 => "ZERO", 1 => "ONE", 2 => "TWO", 3 => "THREE", 4 => "FOUR", 
+                5 => "FIVE", 6 => "SIX", 7 => "SEVEN", 8 => "EIGHT", 9 => "NINE", 
+                10 => "TEN", 11 => "ELEVEN", 12 => "TWELVE", 13 => "THIRTEEN", 
+                14 => "FOURTEEN", 15 => "FIFTEEN", 16 => "SIXTEEN", 17 => "SEVENTEEN", 
+                18 => "EIGHTEEN", 19 => "NINETEEN"
+            );
+            $tens = array(
+                0 => "ZERO", 1 => "TEN", 2 => "TWENTY", 3 => "THIRTY", 4 => "FORTY", 
+                5 => "FIFTY", 6 => "SIXTY", 7 => "SEVENTY", 8 => "EIGHTY", 9 => "NINETY"
+            );
+            
+            $num = str_replace([',', ' '], '', $num);
+            $num = (float)$num;
+            $num = round($num, 2);
+            
+            $num_arr = explode(".", sprintf("%.2f", $num));
+            $wholenum = (int)$num_arr[0];
+            $decnum = (int)$num_arr[1];
+            
+            $result = "";
+            
+            if ($wholenum == 0) {
+                $result = "ZERO RUPEES";
+            } else {
+                $words = array();
+                
+                if ($wholenum >= 10000000) {
+                    $crore = (int)($wholenum / 10000000);
+                    $wholenum = $wholenum % 10000000;
+                    $words[] = convertGroup($crore, $ones, $tens) . " CRORE";
+                }
+                
+                if ($wholenum >= 100000) {
+                    $lakh = (int)($wholenum / 100000);
+                    $wholenum = $wholenum % 100000;
+                    $words[] = convertGroup($lakh, $ones, $tens) . " LAKH";
+                }
+                
+                if ($wholenum >= 1000) {
+                    $thousand = (int)($wholenum / 1000);
+                    $wholenum = $wholenum % 1000;
+                    $words[] = convertGroup($thousand, $ones, $tens) . " THOUSAND";
+                }
+                
+                if ($wholenum >= 100) {
+                    $hundred = (int)($wholenum / 100);
+                    $wholenum = $wholenum % 100;
+                    $words[] = convertGroup($hundred, $ones, $tens) . " HUNDRED";
+                }
+                
+                if ($wholenum > 0) {
+                    $words[] = convertGroup($wholenum, $ones, $tens);
+                }
+                
+                $result = implode(" ", $words) . " RUPEES";
+            }
+            
+            if ($decnum > 0) {
+                $result .= " AND " . convertGroup($decnum, $ones, $tens) . " PAISE";
+            }
+            
+            return $result . " ONLY";
+        }
+
+        function convertGroup($n, $ones, $tens) {
+            $n = (int)$n;
+            if ($n < 20) {
+                return $ones[$n];
+            }
+            $res = $tens[(int)($n / 10)];
+            if ($n % 10 > 0) {
+                $res .= " " . $ones[$n % 10];
+            }
+            return $res;
+        }
+    }
 @endphp
 
 <div class="row g-4">
@@ -140,7 +210,7 @@
         </div>
 
         <div class="card shadow-sm border border-light" style="border-radius:12px;">
-            <div class="card-body p-4 p-md-5">
+            <div class="card-body p-4 p-md-5 text-dark" style="font-size: 13px;">
                 <!-- Status Banner -->
                 @if($invoice->status === 'paid')
                     <div class="alert alert-success d-flex align-items-center gap-2 mb-4 py-2 border-0" style="background-color: #f0fdf4; color: #15803d; border-radius: 8px;">
@@ -152,109 +222,90 @@
                     </div>
                 @endif
 
-                <!-- Document Header -->
-                <div class="row align-items-start mb-4">
-                    <div class="col-12 col-md-6 mb-3 mb-md-0">
-                        <div class="d-flex align-items-center gap-2 mb-2">
-                            <div class="bg-primary text-white rounded p-2 d-inline-flex align-items-center justify-content-center" style="width:40px; height:40px;">
-                                <i class="bi bi-lightning-charge-fill fs-5"></i>
-                            </div>
-                            <span class="fs-4 fw-bold text-dark">{{ $supplierCompany?->name ?? 'WorkeX' }}</span>
-                        </div>
-                        <div class="text-muted fs-7">
-                            <div class="mb-1"><i class="bi bi-geo-alt-fill text-secondary me-1"></i> {{ $supplierAddress }}</div>
-                            <div class="mb-1"><i class="bi bi-envelope-fill text-secondary me-1"></i> {{ $supplierCompany?->email ?? 'billing@company.com' }}</div>
-                            <div class="mb-1"><i class="bi bi-telephone-fill text-secondary me-1"></i> {{ $supplierCompany?->phone ?? '+91-9999999999' }}</div>
-                            <div class="mt-2 text-dark font-monospace fw-semibold">
-                                GSTIN: {{ $supplierCompany?->gst ?? '27AAAAA1111A1Z1' }} (Supplier)<br>
-                                State: {{ $supplierState }} (Code: {{ $supplierStateCode }})
-                            </div>
+                <!-- Redesigned Document Header -->
+                <div class="row border-bottom border-2 pb-3 mb-4" style="border-color: #0E4B8B !important;">
+                    <div class="col-12 col-md-7 mb-3 mb-md-0">
+                        <div class="fs-2 fw-extrabold text-uppercase mb-0" style="color: #0E4B8B; font-family: sans-serif; letter-spacing: 0.5px; line-height: 1;">{{ $supplierCompany?->name ?? 'TECHSOUL' }}</div>
+                        <div class="fw-bold mb-3" style="color: #0E4B8B; font-size: 9px; letter-spacing: 0.2px;">COMPUTERS | LAPTOPS | PRINTERS | SECURITY SYSTEMS</div>
+                        
+                        <div class="text-dark" style="font-size: 12px; line-height: 1.45;">
+                            <strong>GSTIN : {{ $supplierCompany?->gst ?? '32ADNPO8730B1ZO' }}</strong><br>
+                            {{ strtoupper($supplierAddress) }}<br>
+                            MALAPPURAM-KERALA Pin : 676510 Tel: {{ $supplierCompany?->phone ?? '+918891989842' }}<br>
+                            Email: {{ $supplierCompany?->email ?? 'service@teamtechsoul.com' }}<br>
+                            Web: www.teamtechsoul.com
                         </div>
                     </div>
-                    <div class="col-12 col-md-6 text-md-end">
-                        <h2 class="text-uppercase text-primary fw-extrabold mb-1" style="letter-spacing:1px;">Tax Invoice</h2>
-                        <div class="fw-bold fs-5 text-dark">Invoice No: {{ $invoice->invoice_number }}</div>
-                        <div class="text-muted fs-7 mt-2">Date of Issue: <strong>{{ $invoice->invoice_date ? $invoice->invoice_date->format('d M Y') : '—' }}</strong></div>
-                        <div class="text-danger fs-7">Due Date: <strong>{{ $invoice->due_date ? $invoice->due_date->format('d M Y') : '—' }}</strong></div>
-                        <div class="mt-2">
-                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-20 px-3 py-1.5 fs-8 fw-semibold rounded-pill text-uppercase">
-                                GST Registered
-                            </span>
+                    <div class="col-12 col-md-5 text-md-start ps-md-4">
+                        <h3 class="text-uppercase fw-bold mb-3 text-md-end" style="color: #0E4B8B; letter-spacing: 0.5px;">Retail Invoice</h3>
+                        
+                        <div class="row justify-content-md-end mb-3">
+                            <div class="col-auto">
+                                <span class="d-block text-muted" style="font-size: 11px;">Invoice No</span>
+                                <strong class="fs-6 text-danger">{{ $invoice->invoice_number }}</strong>
+                            </div>
+                            <div class="col-auto ms-4 text-md-end">
+                                <span class="d-block text-muted" style="font-size: 11px;">Date</span>
+                                <strong class="fs-6 text-danger">{{ $invoice->invoice_date ? $invoice->invoice_date->format('d-m-Y') : '—' }}</strong>
+                            </div>
                         </div>
-                    </div>
-                </div>
 
-                <hr class="my-4" style="border-color: #cbd5e1;">
-
-                <!-- Client Billing Address -->
-                <div class="row mb-4">
-                    <div class="col-12 col-md-6">
-                        <h6 class="text-uppercase text-muted fs-8 fw-bold mb-2">Billed To (Recipient):</h6>
-                        @if($invoice->client)
-                            <div class="fw-bold fs-6 text-dark">{{ $invoice->client->company_name }}</div>
-                            <div class="text-muted fs-7 mt-1">
-                                Attn: {{ $invoice->client->contact_person ?? '—' }}<br>
-                                {{ $invoice->client->address }}<br>
-                                {{ $invoice->client->city }}, {{ $invoice->client->state }} - {{ $invoice->client->pincode }}<br>
-                                Email: {{ $invoice->client->email }}
-                            </div>
-                            <div class="mt-2 font-monospace fs-7 text-dark fw-semibold">
-                                GSTIN: {{ $invoice->client->gst_number ?? 'URP (Unregistered Person)' }}<br>
-                                State: {{ $buyerState }} (Code: {{ $buyerStateCode }})
-                            </div>
-                        @else
-                            <div class="text-muted">No Client Attached</div>
-                        @endif
-                    </div>
-                    <div class="col-12 col-md-6 text-md-end mt-3 mt-md-0">
-                        <h6 class="text-uppercase text-muted fs-8 fw-bold mb-2">Place of Supply:</h6>
-                        <div class="fw-bold text-dark font-monospace fs-6">
-                            {{ $buyerState }} (Code: {{ $buyerStateCode }})
+                        <div class="border-top pt-3 border-secondary-subtle">
+                            <span style="font-size: 11px; color: #666; font-weight: bold; display: block; text-transform: uppercase;">Customer Details</span>
+                            <strong class="fs-6 text-dark display-block mt-1">{{ strtoupper($invoice->client?->company_name ?? '—') }}</strong>
+                            <span class="fs-7 text-dark display-block">GSTIN : {{ $invoice->client?->gst_number ?? '—' }}</span>
                         </div>
-                        <div class="text-muted fs-7 mt-1">
-                            Supply Type: {{ $isInterState ? 'Inter-State (IGST)' : 'Intra-State (CGST + SGST)' }}
+
+                        <div class="border-top mt-3 pt-3 border-secondary-subtle">
+                            <span style="font-size: 11px; color: #666; font-weight: bold; display: block; text-transform: uppercase;">Payment Method</span>
+                            <strong class="fs-6 text-dark display-block mt-1">{{ strtoupper($invoice->payment_method ?? 'CREDIT') }}</strong>
                         </div>
                     </div>
                 </div>
 
                 <!-- Items Breakdown Table -->
-                <div class="table-responsive mb-4">
-                    <table class="table table-bordered align-middle fs-7 mb-0">
-                        <thead class="table-light">
-                            <tr class="align-middle text-center">
-                                <th rowspan="2" style="min-width: 200px;" class="text-start">Description of Service/Goods</th>
-                                <th rowspan="2" style="width: 90px;">HSN/SAC</th>
-                                <th rowspan="2" style="width: 60px;">Qty</th>
-                                <th rowspan="2" style="width: 100px;" class="text-end">Unit Rate</th>
-                                <th rowspan="2" style="width: 110px;" class="text-end">Taxable Val</th>
+                <div class="table-responsive mb-0">
+                    <table class="table table-bordered border-dark align-middle text-center fs-7 mb-0">
+                        <thead class="bg-light">
+                            <tr class="align-middle">
+                                <th rowspan="2" style="width: 4%;" class="border-dark">SL. NO</th>
+                                <th rowspan="2" style="width: 28%;" class="border-dark text-start">Description of Goods</th>
+                                <th rowspan="2" style="width: 9%;" class="border-dark">HSN CODE (GST)</th>
+                                <th rowspan="2" style="width: 4%;" class="border-dark">Qty</th>
+                                <th rowspan="2" style="width: 8%;" class="border-dark text-end">Unit Price</th>
+                                <th rowspan="2" style="width: 9%;" class="border-dark text-end">Amount</th>
+                                <th rowspan="2" style="width: 9%;" class="border-dark text-end">Taxable Value</th>
                                 @if($isInterState)
-                                    <th colspan="2" style="width: 130px;">IGST</th>
+                                    <th colspan="2" class="border-dark">IGST</th>
                                 @else
-                                    <th colspan="2" style="width: 130px;">CGST</th>
-                                    <th colspan="2" style="width: 130px;">SGST</th>
+                                    <th colspan="2" class="border-dark">SGST</th>
+                                    <th colspan="2" class="border-dark">CGST</th>
                                 @endif
-                                <th rowspan="2" style="width: 120px;" class="text-end">Total (INR)</th>
+                                <th rowspan="2" style="width: 9%;" class="border-dark text-end">Grand Total</th>
                             </tr>
-                            <tr class="text-center">
+                            <tr>
                                 @if($isInterState)
-                                    <th style="width: 50px;">Rate</th>
-                                    <th style="width: 80px;" class="text-end">Amount</th>
+                                    <th class="border-dark" style="width: 4%;">Rate</th>
+                                    <th class="border-dark text-end" style="width: 7%;">Amount</th>
                                 @else
-                                    <th style="width: 50px;">Rate</th>
-                                    <th style="width: 80px;" class="text-end">Amount</th>
-                                    <th style="width: 50px;">Rate</th>
-                                    <th style="width: 80px;" class="text-end">Amount</th>
+                                    <th class="border-dark" style="width: 3%;">Rate</th>
+                                    <th class="border-dark text-end" style="width: 6%;">Amount</th>
+                                    <th class="border-dark" style="width: 3%;">Rate</th>
+                                    <th class="border-dark text-end" style="width: 6%;">Amount</th>
                                 @endif
                             </tr>
                         </thead>
                         <tbody>
+                            @php 
+                                $slNo = 1; 
+                                $totalQty = 0;
+                            @endphp
                             @forelse($invoice->items ?? [] as $item)
                                 @php
                                     $qty = floatval($item['qty'] ?? 1);
                                     $price = floatval($item['price'] ?? 0);
                                     $rowSubtotal = $qty * $price;
                                     
-                                    // Proportionate discount deduction
                                     $rowDiscount = $rowSubtotal * $discountRatio;
                                     $rowTaxable = $rowSubtotal - $rowDiscount;
 
@@ -269,138 +320,143 @@
                                         $rowSgstAmount = $rowTaxable * (($taxPercent / 2) / 100);
                                         $rowTotal = $rowTaxable + $rowCgstAmount + $rowSgstAmount;
                                     }
+                                    $totalQty += $qty;
                                 @endphp
                                 <tr>
-                                    <td>
-                                        <div class="fw-semibold text-dark">{{ $item['name'] ?? '' }}</div>
-                                    </td>
-                                    <td class="text-center font-monospace">{{ $item['hsn_sac'] ?? '998313' }}</td>
-                                    <td class="text-center">{{ $qty }}</td>
-                                    <td class="text-end">₹{{ number_format($price, 2) }}</td>
-                                    <td class="text-end fw-medium">₹{{ number_format($rowTaxable, 2) }}</td>
+                                    <td class="border-dark">{{ $slNo++ }}</td>
+                                    <td class="border-dark text-start fw-semibold text-uppercase" style="font-size: 12px;">{{ $item['name'] ?? '' }}</td>
+                                    <td class="border-dark">{{ $item['hsn_sac'] ?? '998313' }}</td>
+                                    <td class="border-dark">{{ $qty }}</td>
+                                    <td class="border-dark text-end">₹{{ number_format($price, 2) }}</td>
+                                    <td class="border-dark text-end">₹{{ number_format($rowSubtotal, 2) }}</td>
+                                    <td class="border-dark text-end">₹{{ number_format($rowTaxable, 2) }}</td>
                                     @if($isInterState)
-                                        <td class="text-center font-monospace">{{ $taxPercent }}%</td>
-                                        <td class="text-end">₹{{ number_format($rowIgstAmount, 2) }}</td>
+                                        <td class="border-dark">{{ $taxPercent }}%</td>
+                                        <td class="border-dark text-end">₹{{ number_format($rowIgstAmount, 2) }}</td>
                                     @else
-                                        <td class="text-center font-monospace">{{ $taxPercent / 2 }}%</td>
-                                        <td class="text-end">₹{{ number_format($rowCgstAmount, 2) }}</td>
-                                        <td class="text-center font-monospace">{{ $taxPercent / 2 }}%</td>
-                                        <td class="text-end">₹{{ number_format($rowSgstAmount, 2) }}</td>
+                                        <td class="border-dark">{{ $taxPercent / 2 }}%</td>
+                                        <td class="border-dark text-end">₹{{ number_format($rowSgstAmount, 2) }}</td>
+                                        <td class="border-dark">{{ $taxPercent / 2 }}%</td>
+                                        <td class="border-dark text-end">₹{{ number_format($rowCgstAmount, 2) }}</td>
                                     @endif
-                                    <td class="text-end fw-semibold text-dark">₹{{ number_format($rowTotal, 2) }}</td>
+                                    <td class="border-dark text-end fw-bold">₹{{ number_format($rowTotal, 2) }}</td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="{{ $isInterState ? 8 : 10 }}" class="text-center py-3 text-muted fs-7">No items added.</td>
+                                    <td colspan="{{ $isInterState ? 10 : 12 }}" class="text-center py-3 text-muted border-dark">No items added.</td>
                                 </tr>
                             @endforelse
+
+                            <!-- Filler spacer rows to match image styling of extending vertical lines -->
+                            @php
+                                $itemsCount = count($invoice->items ?? []);
+                                $minRows = 8; // On-screen can be slightly fewer than PDF to save space
+                            @endphp
+                            @for($i = $itemsCount; $i < $minRows; $i++)
+                                <tr>
+                                    <td class="border-dark" style="height: 25px;">&nbsp;</td>
+                                    <td class="border-dark">&nbsp;</td>
+                                    <td class="border-dark">&nbsp;</td>
+                                    <td class="border-dark">&nbsp;</td>
+                                    <td class="border-dark">&nbsp;</td>
+                                    <td class="border-dark">&nbsp;</td>
+                                    <td class="border-dark">&nbsp;</td>
+                                    @if($isInterState)
+                                        <td class="border-dark">&nbsp;</td>
+                                        <td class="border-dark">&nbsp;</td>
+                                    @else
+                                        <td class="border-dark">&nbsp;</td>
+                                        <td class="border-dark">&nbsp;</td>
+                                        <td class="border-dark">&nbsp;</td>
+                                        <td class="border-dark">&nbsp;</td>
+                                    @endif
+                                    <td class="border-dark">&nbsp;</td>
+                                </tr>
+                            @endfor
+
+                            <!-- TOTAL ROW -->
+                            <tr class="fw-bold bg-light">
+                                <td class="border-dark text-end" colspan="3">TOTAL</td>
+                                <td class="border-dark text-center">{{ $totalQty }}</td>
+                                <td class="border-dark">&nbsp;</td>
+                                <td class="border-dark">&nbsp;</td>
+                                <td class="border-dark text-end">₹{{ number_format($subtotal - $discount, 2) }}</td>
+                                @if($isInterState)
+                                    <td class="border-dark">&nbsp;</td>
+                                    <td class="border-dark text-end">₹{{ number_format($igstAmount, 2) }}</td>
+                                @else
+                                    <td class="border-dark">&nbsp;</td>
+                                    <td class="border-dark text-end">₹{{ number_format($sgstAmount, 2) }}</td>
+                                    <td class="border-dark">&nbsp;</td>
+                                    <td class="border-dark text-end">₹{{ number_format($cgstAmount, 2) }}</td>
+                                @endif
+                                <td class="border-dark text-end">₹{{ number_format($total, 2) }}</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
 
-                <!-- Calculations -->
-                <div class="row justify-content-end mb-4 mt-3">
-                    <div class="col-12 col-md-6">
-                        <table class="table table-sm table-borderless fs-7 mb-0">
+                <!-- Bottom Calculations Grid -->
+                <div class="table-responsive mb-4">
+                    <table class="table table-bordered border-dark fs-7 mb-0" style="margin-top: -1px;">
+                        <tbody>
                             <tr>
-                                <td class="text-muted">Total Taxable Value (Subtotal):</td>
-                                <td class="text-end fw-semibold text-dark">₹{{ number_format($subtotal, 2) }}</td>
+                                <td style="width: 22%; font-weight: bold;" class="border-dark bg-light">SALES PERSON</td>
+                                <td style="width: 43%;" class="border-dark fw-semibold">{{ strtoupper($invoice->sales_person ?? 'AKILESH KP') }}</td>
+                                <td style="width: 20%; font-weight: bold;" class="border-dark text-center bg-light" rowspan="2">ROUND OFF</td>
+                                <td style="width: 15%; font-weight: bold; text-align: right;" class="border-dark" rowspan="2">
+                                    @php
+                                        $grandTotal = floatval($invoice->total);
+                                        $roundedTotal = round($grandTotal);
+                                        $roundOff = $roundedTotal - $grandTotal;
+                                    @endphp
+                                    ₹{{ number_format($roundOff, 2) }}
+                                </td>
                             </tr>
-                            @if($discount > 0)
-                                <tr>
-                                    <td class="text-muted">Less: Total Discount:</td>
-                                    <td class="text-end fw-semibold text-danger">- ₹{{ number_format($discount, 2) }}</td>
-                                </tr>
-                                <tr class="border-bottom">
-                                    <td class="text-muted">Net Taxable Value:</td>
-                                    <td class="text-end fw-semibold text-dark">₹{{ number_format($subtotal - $discount, 2) }}</td>
-                                </tr>
-                            @endif
-                            @if($isInterState)
-                                <tr>
-                                    <td class="text-muted">Integrated Tax (IGST) ({{ $taxPercent }}%):</td>
-                                    <td class="text-end fw-semibold text-dark">₹{{ number_format($igstAmount, 2) }}</td>
-                                </tr>
-                            @else
-                                <tr>
-                                    <td class="text-muted">Central Tax (CGST) ({{ $taxPercent / 2 }}%):</td>
-                                    <td class="text-end fw-semibold text-dark">₹{{ number_format($cgstAmount, 2) }}</td>
-                                </tr>
-                                <tr>
-                                    <td class="text-muted">State Tax (SGST) ({{ $taxPercent / 2 }}%):</td>
-                                    <td class="text-end fw-semibold text-dark">₹{{ number_format($sgstAmount, 2) }}</td>
-                                </tr>
-                            @endif
-                            <tr class="border-top border-secondary-subtle">
-                                <td class="fw-bold fs-6 pt-2">Grand Total (Post Tax):</td>
-                                <td class="text-end fw-bold text-dark fs-6 pt-2">₹{{ number_format($total, 2) }}</td>
+                            <tr>
+                                <td style="font-weight: bold;" class="border-dark bg-light">BILL GENERATED/ACCOUNTANT</td>
+                                <td class="border-dark fw-semibold">{{ strtoupper($invoice->createdBy?->name ?? 'RAMIZ') }}</td>
                             </tr>
-                            <tr class="text-success border-bottom">
-                                <td class="fw-bold pt-1">Amount Paid:</td>
-                                <td class="text-end fw-bold pt-1">₹{{ number_format($invoice->paid_amount ?? 0, 2) }}</td>
+                            <tr>
+                                <td style="font-weight: bold;" class="border-dark bg-light">BANK DETAILS</td>
+                                <td class="border-dark font-monospace text-uppercase" style="font-size: 11px;">{{ $invoice->bank_details ?? 'BANK : FEDERAL BANK BRANCH : PUTHANATHANI ACCOUNT NUMBER : 15430200007260 IFSC : FDRL0001543' }}</td>
+                                <td style="font-weight: bold;" class="border-dark text-center bg-light fs-6">GRAND TOTAL</td>
+                                <td style="font-weight: bold; text-align: right;" class="border-dark fs-5 text-danger">₹{{ number_format($roundedTotal, 2) }}</td>
                             </tr>
-                            <tr class="text-danger">
-                                <td class="fw-bold fs-6 pt-2">Balance Due:</td>
-                                <td class="text-end fw-bold fs-5 pt-2">₹{{ number_format($invoice->balance_amount ?? $total, 2) }}</td>
+                            <tr>
+                                <td style="font-weight: bold;" class="border-dark bg-light">GRAND TOTAL IN WORDS</td>
+                                <td class="border-dark fw-bold text-uppercase fs-7 italic" colspan="3">
+                                    {{ numberToWords($roundedTotal) }}
+                                </td>
                             </tr>
-                        </table>
-                    </div>
+                        </tbody>
+                    </table>
                 </div>
 
-                <!-- Detailed GST Breakdown Summary -->
-                <div class="card bg-light border-0 mb-4" style="border-radius: 8px;">
-                    <div class="card-body p-3">
-                        <h6 class="text-uppercase text-muted fs-8 fw-bold mb-2">GST Tax Summary Breakdown:</h6>
-                        <table class="table table-sm table-bordered fs-8 mb-0 bg-white">
-                            <thead class="table-secondary">
-                                <tr class="text-center font-monospace">
-                                    <th>HSN/SAC</th>
-                                    <th>Taxable Value</th>
-                                    @if($isInterState)
-                                        <th>IGST Rate</th>
-                                        <th>IGST Amount</th>
-                                    @else
-                                        <th>CGST Rate</th>
-                                        <th>CGST Amount</th>
-                                        <th>SGST Rate</th>
-                                        <th>SGST Amount</th>
-                                    @endif
-                                    <th>Total Tax</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr class="text-center font-monospace">
-                                    <td>998313</td>
-                                    <td class="text-end">₹{{ number_format($subtotal - $discount, 2) }}</td>
-                                    @if($isInterState)
-                                        <td>{{ $taxPercent }}%</td>
-                                        <td class="text-end">₹{{ number_format($igstAmount, 2) }}</td>
-                                    @else
-                                        <td>{{ $taxPercent / 2 }}%</td>
-                                        <td class="text-end">₹{{ number_format($cgstAmount, 2) }}</td>
-                                        <td>{{ $taxPercent / 2 }}%</td>
-                                        <td class="text-end">₹{{ number_format($sgstAmount, 2) }}</td>
-                                    @endif
-                                    <td class="text-end fw-semibold">₹{{ number_format($taxAmount, 2) }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+                <!-- Terms and conditions -->
+                <div class="mt-4 border p-3 rounded bg-light border-secondary-subtle" style="font-size: 11px; line-height: 1.55;">
+                    <strong class="text-uppercase text-secondary">Terms and Conditions :</strong>
+                    <ol class="ps-3 mb-0 mt-1">
+                        <li>There will be no warranty or replacement for physical or external damages like:- lightning, mishandling, electric short circuit, warranty seal broken, cover broken or damages caused by courier service, or Without proper Invoice.</li>
+                        <li>After the payment due date, fine at 24% per month will be charged on the amount overdue.</li>
+                        <li>RS 500 will be charged per cheque, if it bounced.</li>
+                        <li>The cheque has to be given within 5 days of purchase. If the cheque is not given, the account will be blocked by the account section.</li>
+                        <li>Items sold will not be taken back or exchanged.</li>
+                        <li>It is the responsibility of the customer to check whether the items are damaged or not.</li>
+                        <li>Only the warranty as per manufactures warranty policy will be applicable for the items sold.</li>
+                        <li>There is no guarantee for Data.</li>
+                    </ol>
                 </div>
 
-                <!-- Terms and Signatory -->
-                <div class="row align-items-end mt-5">
-                    <div class="col-12 col-md-7 mb-4 mb-md-0">
-                        @if($invoice->notes)
-                            <h6 class="text-uppercase text-muted fs-8 fw-bold mb-2">Declaration / Bank Details:</h6>
-                            <div class="text-muted fs-8 font-monospace" style="white-space: pre-wrap; line-height: 1.5;">{{ $invoice->notes }}</div>
-                        @endif
+                <!-- Footer signatures -->
+                <div class="row align-items-end mt-5 pt-3">
+                    <div class="col-12 col-md-7 text-muted" style="font-size: 12px;">
+                        Certified that all the particulars shown in the above invoice are true and<br>
+                        correct and Recived the item(s) in Good condition
                     </div>
-                    <div class="col-12 col-md-5 text-md-end">
-                        <div class="fs-7 text-muted mb-4">For <strong>{{ $supplierCompany?->name ?? 'WorkeX' }}</strong></div>
-                        <div class="border-top d-inline-block pt-2 px-4 text-center" style="border-top-style: dashed !important; border-top-color: #64748b !important;">
-                            <span class="fs-8 text-secondary font-monospace">Authorized Signatory</span>
-                        </div>
+                    <div class="col-12 col-md-5 text-md-end text-muted" style="font-size: 12px;">
+                        This is a system generated invoice<br>
+                        Hence, no signature is required.
                     </div>
                 </div>
             </div>

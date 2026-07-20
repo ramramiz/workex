@@ -499,4 +499,60 @@ class ProjectAmcManagementTest extends TestCase
             return str_contains($request->url(), 'bhashsms.com/api/sendmsgutil.php');
         });
     }
+
+    public function test_admin_sends_whatsapp_amc_deletion_notice_when_amc_renewal_date_completed(): void
+    {
+        \Illuminate\Support\Facades\Http::fake([
+            'https://bhashsms.com/api/sendmsgutil.php*' => \Illuminate\Support\Facades\Http::response('Success', 200)
+        ]);
+
+        // Create an AMC contract that is already expired (end date in the past)
+        $amc = ProjectAmc::create([
+            'project_id'   => $this->project->id,
+            'amount'       => 15000.00,
+            'start_date'   => now()->subYear(),
+            'end_date'     => now()->subDays(2), // expired 2 days ago
+            'frequency'    => 'annually',
+            'status'       => 'active',
+            'service_type' => 'Domain',
+            'company_id'   => $this->admin->company_id,
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->post(route('project-amcs.send-whatsapp-reminder', $amc));
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success', 'WhatsApp reminder sent successfully!');
+
+        \Illuminate\Support\Facades\Http::assertSent(function ($request) {
+            return str_contains($request->url(), 'bhashsms.com/api/sendmsgutil.php') &&
+                $request['user'] === 'Techsoul_BW' &&
+                $request['phone'] === '1234567890' &&
+                $request['text'] === 'amcdeletion_notice' &&
+                str_contains($request['Params'], 'Acme Company') &&
+                str_contains($request['Params'], 'domain') &&
+                str_contains($request['Params'], 'Acme Web Application');
+        });
+    }
+
+    public function test_amc_show_page_displays_critical_warning_when_expired(): void
+    {
+        $amc = ProjectAmc::create([
+            'project_id'   => $this->project->id,
+            'amount'       => 15000.00,
+            'start_date'   => now()->subYear(),
+            'end_date'     => now()->subDays(2), // expired 2 days ago
+            'frequency'    => 'annually',
+            'status'       => 'active',
+            'service_type' => 'Domain',
+            'company_id'   => $this->admin->company_id,
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->get(route('project-amcs.show', $amc));
+
+        $response->assertStatus(200);
+        $response->assertSee('Critical Warning: AMC Renewal Completed!');
+        $response->assertSee('Service deletion notice messages are currently active for this client.');
+    }
 }

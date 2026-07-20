@@ -6,6 +6,7 @@
             const storedTheme = localStorage.getItem('theme') || 'light';
             document.documentElement.setAttribute('data-bs-theme', storedTheme);
         })();
+        window.APP_URL = "{{ url('/') }}";
     </script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -54,6 +55,10 @@
     <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
 
     <style>
+        .ts-dropdown {
+            z-index: 2000 !important;
+        }
+
         :root {
             --sidebar-width: 260px;
             --sidebar-collapsed-width: 70px;
@@ -1027,6 +1032,9 @@
                     <i class="bi bi-stopwatch-fill nav-icon"></i><span class="nav-text">Work Timer</span>
                 </a>
                 @endif
+                <a href="{{ route('tasks.index') }}" class="sidebar-item {{ (request()->routeIs('tasks*') && !request()->routeIs('tasks.approved*') && !request()->routeIs('tasks.completed-approvals*')) ? 'active' : '' }}" data-title="All Tasks">
+                    <i class="bi bi-list-task nav-icon"></i><span class="nav-text">All Tasks</span>
+                </a>
                 <a href="{{ route('tasks.approved') }}" class="sidebar-item {{ request()->routeIs('tasks.approved*') ? 'active' : '' }}" data-title="Approved Tasks">
                     <i class="bi bi-check-circle nav-icon"></i><span class="nav-text">Approved Tasks</span>
                 </a>
@@ -1165,7 +1173,7 @@
             @endif
 
             @if(auth()->user()->isAdminOrAbove() || auth()->user()->isAccounts() || (auth()->user()->isHR() && !auth()->user()->isTelecaller()))
-            @if((auth()->user()->isAdminOrAbove() || auth()->user()->isAccounts()) && (!$hasPermissionsTable || auth()->user()->hasPermission('invoices.view')))
+            @if(auth()->user()->isSuperAdmin())
             <a href="{{ route('invoices.index') }}" class="sidebar-item {{ request()->routeIs('invoices*') ? 'active' : '' }}" data-title="Invoices">
                 <i class="bi bi-receipt nav-icon"></i><span class="nav-text">Invoices</span>
             </a>
@@ -2986,7 +2994,7 @@
             document.getElementById('floating-chat-header-subtitle').style.display = 'block';
             document.getElementById('floating-chat-task-actions').style.display = 'none';
 
-            fetch(`/direct-chat/messages/${id}?_t=${new Date().getTime()}`)
+            fetch(`${window.APP_URL}/direct-chat/messages/${id}?_t=${new Date().getTime()}`)
                 .then(res => res.json())
                 .then(data => {
                     msgContainer.innerHTML = '';
@@ -3240,7 +3248,7 @@
                 })
                 .catch(err => console.error('Error polling floating task updates:', err));
         } else {
-            let url = `/direct-chat/updates?since=${encodeURIComponent(FloatingChatState.lastPolledAt)}`;
+            let url = `${window.APP_URL}/direct-chat/updates?since=${encodeURIComponent(FloatingChatState.lastPolledAt)}`;
             
             fetch(url)
                 .then(res => res.json())
@@ -3271,7 +3279,7 @@
                                 chatBody.scrollTop = chatBody.scrollHeight;
                                 
                                 // Mark as read
-                                fetch(`/direct-chat/read/${FloatingChatState.activeId}`, {
+                                fetch(`${window.APP_URL}/direct-chat/read/${FloatingChatState.activeId}`, {
                                     method: 'POST',
                                     headers: {
                                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
@@ -3306,8 +3314,8 @@
 
         if (editId) {
             let url = editType === 'direct' 
-                ? `/direct-chat/messages/${editId}/edit` 
-                : `/tasks/comments/${editId}/edit`;
+                ? `${window.APP_URL}/direct-chat/messages/${editId}/edit` 
+                : `${window.APP_URL}/tasks/comments/${editId}/edit`;
 
             fetch(url, {
                 method: 'POST',
@@ -3372,13 +3380,13 @@
         
         let url = '';
         if (FloatingChatState.activeType === 'task') {
-            url = `/tasks/${FloatingChatState.activeId}/comments`;
+            url = `${window.APP_URL}/tasks/${FloatingChatState.activeId}/comments`;
             formData.append('comment', comment);
             if (base64Img) {
                 formData.append('image_data', base64Img);
             }
         } else {
-            url = `/direct-chat/messages/${FloatingChatState.activeId}`;
+            url = `${window.APP_URL}/direct-chat/messages/${FloatingChatState.activeId}`;
             formData.append('message', comment);
             if (base64Img) {
                 formData.append('image_data', base64Img);
@@ -3700,8 +3708,8 @@
 
     window.toggleMessagePin = function(id, type) {
         let url = type === 'direct' 
-            ? `/direct-chat/messages/${id}/toggle-pin` 
-            : `/tasks/comments/${id}/toggle-pin`;
+            ? `${window.APP_URL}/direct-chat/messages/${id}/toggle-pin` 
+            : `${window.APP_URL}/tasks/comments/${id}/toggle-pin`;
         
         fetch(url, {
             method: 'POST',
@@ -3762,8 +3770,8 @@
 
     window.toggleMessageImportant = function(id, type) {
         let url = type === 'direct' 
-            ? `/direct-chat/messages/${id}/toggle-important` 
-            : `/tasks/comments/${id}/toggle-important`;
+            ? `${window.APP_URL}/direct-chat/messages/${id}/toggle-important` 
+            : `${window.APP_URL}/tasks/comments/${id}/toggle-important`;
         
         fetch(url, {
             method: 'POST',

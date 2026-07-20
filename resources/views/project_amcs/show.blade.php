@@ -58,6 +58,16 @@
         </div>
     </div>
 
+    @if($projectAmc->status === 'expired' || today()->greaterThanOrEqualTo($projectAmc->end_date))
+    <div class="alert alert-danger d-flex align-items-center p-3 mb-4" role="alert" style="border-radius: 12px; border: 1px solid rgba(239, 68, 68, 0.25); background-color: rgba(239, 68, 68, 0.08); color: #ef4444; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.05);">
+        <i class="bi bi-exclamation-octagon-fill me-3 fs-3 text-danger"></i>
+        <div>
+            <h6 class="alert-heading mb-1 fw-bold text-danger">Critical Warning: AMC Renewal Completed!</h6>
+            <p class="mb-0 fs-7" style="color: rgba(239, 68, 68, 0.95);">The contract expired on <strong>{{ $projectAmc->end_date->format('d M Y') }}</strong>. Service deletion notice messages are currently active for this client.</p>
+        </div>
+    </div>
+    @endif
+
     <!-- Summary Cards -->
     <div class="row g-4 mb-4">
         <!-- Contract Information -->

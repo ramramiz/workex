@@ -99,7 +99,19 @@ class UserController extends Controller
             'team_leader' => $user
         ]);
     }
-    public function destroy(User $user) { if ($user->id === auth()->id()) return back()->with('error', 'Cannot delete yourself.'); $user->delete(); return redirect()->route('users.index')->with('success', 'User deleted.'); }
+    public function destroy(User $user)
+    {
+        if (!auth()->user()->isSuperAdmin()) {
+            abort(403, 'Unauthorized action. Only Super Admins can delete users.');
+        }
+
+        if ($user->id === auth()->id()) {
+            return back()->with('error', 'Cannot delete yourself.');
+        }
+
+        $user->delete();
+        return redirect()->route('users.index')->with('success', 'User deleted.');
+    }
 
     public function emails(User $user)
     {

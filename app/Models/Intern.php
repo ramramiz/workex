@@ -17,6 +17,7 @@ class Intern extends Model
         'phone',
         'department_id',
         'designation_id',
+        'sector',
         'joining_date',
         'end_date',
         'certificate_code',
@@ -61,5 +62,10 @@ class Intern extends Model
     public function uploadedDocuments()
     {
         return $this->morphMany(Document::class, 'documentable');
+    }
+
+    public function onboarding()
+    {
+        return $this->hasOne(InternOnboarding::class);
     }
 }

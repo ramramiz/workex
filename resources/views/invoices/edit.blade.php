@@ -66,6 +66,24 @@
                             </select>
                             @error('status')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
+                        
+                        <div class="col-12 col-md-4 mt-3">
+                            <label class="form-label">Sales Person</label>
+                            <input type="text" name="sales_person" class="form-control" value="{{ old('sales_person', $invoice->sales_person) }}" placeholder="e.g. AKILESH KP">
+                        </div>
+                        <div class="col-12 col-md-4 mt-3">
+                            <label class="form-label">Payment Method</label>
+                            <select name="payment_method" class="form-select">
+                                <option value="CREDIT" {{ old('payment_method', $invoice->payment_method) === 'CREDIT' ? 'selected' : '' }}>CREDIT</option>
+                                <option value="CASH" {{ old('payment_method', $invoice->payment_method) === 'CASH' ? 'selected' : '' }}>CASH</option>
+                                <option value="UPI" {{ old('payment_method', $invoice->payment_method) === 'UPI' ? 'selected' : '' }}>UPI</option>
+                                <option value="BANK TRANSFER" {{ old('payment_method', $invoice->payment_method) === 'BANK TRANSFER' ? 'selected' : '' }}>BANK TRANSFER</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-4 mt-3">
+                            <label class="form-label">Bank Details</label>
+                            <textarea name="bank_details" class="form-control" rows="1" placeholder="Bank Details">{{ old('bank_details', $invoice->bank_details ?? 'BANK : FEDERAL BANK BRANCH : PUTHANATHANI ACCOUNT NUMBER : 15430200007260 IFSC : FDRL0001543') }}</textarea>
+                        </div>
                     </div>
 
                     <h6 class="text-uppercase text-primary fs-7 mb-3 border-bottom pb-2">Line Items Table</h6>
@@ -74,9 +92,10 @@
                             <thead class="bg-light">
                                 <tr>
                                     <th>Item Description</th>
-                                    <th style="width: 100px;">Qty</th>
-                                    <th style="width: 160px;">Rate (₹)</th>
-                                    <th style="width: 180px;" class="text-end">Amount (₹)</th>
+                                    <th style="width: 130px;">HSN/SAC</th>
+                                    <th style="width: 90px;">Qty</th>
+                                    <th style="width: 150px;">Rate (₹)</th>
+                                    <th style="width: 160px;" class="text-end">Amount (₹)</th>
                                     <th style="width: 60px;" class="text-center">Action</th>
                                 </tr>
                             </thead>
@@ -91,6 +110,9 @@
                                     <tr>
                                         <td>
                                             <input type="text" name="items[{{ $index }}][name]" class="form-control form-control-sm" required value="{{ $item['name'] ?? '' }}">
+                                        </td>
+                                        <td>
+                                            <input type="text" name="items[{{ $index }}][hsn_sac]" class="form-control form-control-sm" required value="{{ $item['hsn_sac'] ?? '998313' }}">
                                         </td>
                                         <td>
                                             <input type="number" name="items[{{ $index }}][qty]" class="form-control form-control-sm item-qty" required value="{{ $qty }}" min="1" oninput="calculateRowTotal(this)">
@@ -111,6 +133,9 @@
                                     <tr>
                                         <td>
                                             <input type="text" name="items[0][name]" class="form-control form-control-sm" required placeholder="Item Description">
+                                        </td>
+                                        <td>
+                                            <input type="text" name="items[0][hsn_sac]" class="form-control form-control-sm" required placeholder="e.g. 998313" value="998313">
                                         </td>
                                         <td>
                                             <input type="number" name="items[0][qty]" class="form-control form-control-sm item-qty" required value="1" min="1" oninput="calculateRowTotal(this)">
@@ -210,6 +235,9 @@
         row.innerHTML = `
             <td>
                 <input type="text" name="items[${rowIndex}][name]" class="form-control form-control-sm" required placeholder="Item Description">
+            </td>
+            <td>
+                <input type="text" name="items[${rowIndex}][hsn_sac]" class="form-control form-control-sm" required placeholder="e.g. 998313" value="998313">
             </td>
             <td>
                 <input type="number" name="items[${rowIndex}][qty]" class="form-control form-control-sm item-qty" required value="1" min="1" oninput="calculateRowTotal(this)">

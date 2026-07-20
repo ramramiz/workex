@@ -8,6 +8,21 @@
 @endsection
 
 @section('content')
+<div class="row g-4 mb-4 no-print">
+    <div class="col-12">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div class="btn-group shadow-sm">
+                <a href="{{ route('employees.index') }}" class="btn btn-primary btn-sm active">
+                    <i class="bi bi-people-fill"></i> Active Employees Directory
+                </a>
+                <a href="{{ route('employees.onboardings.index') }}" class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-link-45deg"></i> Onboarding Links
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="card">
     <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-3">
         <h5 class="mb-0">Employee List</h5>

@@ -108,7 +108,7 @@
                     <div class="mb-3">
                         <small class="text-muted d-block">Salary Details</small>
                         @if($employee->salary)
-                            <span class="fw-semibold text-success">â‚¹{{ number_format($employee->salary, 2) }}</span>
+                            <span class="fw-semibold text-success">&#8377;{{ number_format($employee->salary, 2) }}</span>
                             <span class="text-muted fs-7">/ {{ $employee->salary_type }}</span>
                         @else
                             <span class="text-muted">Not Configured</span>
@@ -379,7 +379,7 @@
                                             <span class="fw-semibold">{{ date('F', mktime(0, 0, 0, $slip->month, 1)) }}</span>
                                             <small class="text-muted d-block" style="font-size: 10px;">{{ $slip->year }}</small>
                                         </td>
-                                        <td class="fw-bold text-dark">â‚¹{{ number_format($slip->net_salary, 2) }}</td>
+                                        <td class="fw-bold text-dark">&#8377;{{ number_format($slip->net_salary, 2) }}</td>
                                         <td class="text-center">
                                             <span class="badge bg-success-subtle text-success" style="font-size: 10px; padding: 4px 8px; border-radius: 6px;">{{ ucfirst($slip->status) }}</span>
                                         </td>

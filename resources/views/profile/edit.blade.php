@@ -170,6 +170,7 @@
             </div>
         </div>
 
+        @if(auth()->user()->isSuperAdmin())
         <!-- Danger Zone -->
         <div class="card shadow-sm border-0 border-top border-danger border-3">
             <div class="card-header bg-white border-bottom py-3">
@@ -182,9 +183,11 @@
                 </button>
             </div>
         </div>
+        @endif
     </div>
 </div>
 
+@if(auth()->user()->isSuperAdmin())
 <!-- Delete Account Modal -->
 <div class="modal fade" id="confirmUserDeletionModal" tabindex="-1" aria-labelledby="confirmUserDeletionModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -214,12 +217,13 @@
         </form>
     </div>
 </div>
+@endif
 @endsection
 
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        @if ($errors->userDeletion->isNotEmpty())
+        @if(auth()->user()->isSuperAdmin() && $errors->userDeletion->isNotEmpty())
             var deleteModal = new bootstrap.Modal(document.getElementById('confirmUserDeletionModal'));
             deleteModal.show();
         @endif

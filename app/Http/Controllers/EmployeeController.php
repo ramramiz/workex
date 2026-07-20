@@ -73,6 +73,11 @@ class EmployeeController extends Controller
             \Illuminate\Support\Facades\Mail::to($user->email)->send(
                 new \App\Mail\WelcomeEmployeeMail($user, $plainPassword)
             );
+            if ($request->personal_email) {
+                \Illuminate\Support\Facades\Mail::to($request->personal_email)->send(
+                    new \App\Mail\WelcomeEmployeeMail($user, $plainPassword)
+                );
+            }
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning("Failed to send welcome email to employee: " . $e->getMessage());
         }

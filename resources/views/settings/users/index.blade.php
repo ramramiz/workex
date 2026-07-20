@@ -93,7 +93,7 @@
                                         <a href="{{ route('users.edit', $user) }}" class="btn btn-outline-primary btn-sm">
                                             <i class="bi bi-pencil"></i>
                                         </a>
-                                        @if($user->id !== auth()->id())
+                                        @if($user->id !== auth()->id() && auth()->user()->isSuperAdmin())
                                             <form method="POST" action="{{ route('users.destroy', $user) }}" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this user?');">
                                                 @csrf
                                                 @method('DELETE')

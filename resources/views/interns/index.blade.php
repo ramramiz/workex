@@ -8,6 +8,21 @@
 @endsection
 
 @section('content')
+<div class="row g-4 mb-4 no-print">
+    <div class="col-12">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div class="btn-group shadow-sm">
+                <a href="{{ route('interns.index') }}" class="btn btn-primary btn-sm active">
+                    <i class="bi bi-people-fill"></i> Active Interns Directory
+                </a>
+                <a href="{{ route('interns.onboardings.index') }}" class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-link-45deg"></i> Onboarding Links
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="card shadow-sm border-0">
     <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between flex-wrap gap-3">
         <h5 class="mb-0 fw-bold text-dark">Interns List</h5>
@@ -85,6 +100,8 @@
                                 <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1 rounded-pill">Active</span>
                             @elseif($intern->status === 'completed')
                                 <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2.5 py-1 rounded-pill">Completed</span>
+                            @elseif($intern->status === 'pending_onboarding')
+                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2.5 py-1 rounded-pill">Pending Onboarding</span>
                             @else
                                 <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2.5 py-1 rounded-pill">Cancelled</span>
                             @endif

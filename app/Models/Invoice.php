@@ -15,6 +15,7 @@ class Invoice extends Model
         'project_id', 'client_id', 'invoice_number', 'invoice_date', 'due_date',
         'items', 'subtotal', 'tax_percentage', 'tax_amount', 'discount', 'total',
         'paid_amount', 'balance_amount', 'status', 'notes', 'pdf_path', 'created_by', 'company_id',
+        'sales_person', 'payment_method', 'bank_details',
     ];
 
     protected $casts = [

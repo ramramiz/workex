@@ -56,6 +56,7 @@
                         </div>
                         <div class="col-12 col-md-6">
                             <label class="form-label">Priority Level <span class="text-danger">*</span></label>
+                            <select name="priority" class="form-select @error('priority') is-invalid @enderror" required>
                                 <option value="low" {{ old('priority', $task->priority) === 'low' ? 'selected' : '' }}>Low</option>
                                 <option value="medium" {{ old('priority', $task->priority) === 'medium' ? 'selected' : '' }}>Medium</option>
                                 <option value="high" {{ old('priority', $task->priority) === 'high' ? 'selected' : '' }}>High</option>

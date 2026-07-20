@@ -85,11 +85,10 @@ class ProjectAmc extends Model
         }
 
         // Days remaining
-        if ($daysRemainingOverride !== null) {
-            $daysRemaining = (int) $daysRemainingOverride;
-        } else {
-            $daysRemaining = (int) max(0, today()->diffInDays($this->end_date, false));
-        }
+        $realDaysRemaining = $daysRemainingOverride !== null ? (int) $daysRemainingOverride : (int) today()->diffInDays($this->end_date, false);
+        $isCompleted = $realDaysRemaining <= 0;
+        $daysRemaining = max(0, $realDaysRemaining);
+        $textTemplate = $isCompleted ? 'amcdeletion_notice' : 'pending_renewal';
 
         // Get Bank Details
         $bank = \App\Models\Bank::where('status', 'active')->first() ?? \App\Models\Bank::first();
@@ -124,18 +123,24 @@ class ProjectAmc extends Model
                 'pass'     => '123456',
                 'sender'   => 'BUZWAP',
                 'phone'    => $phone,
-                'text'     => 'pending_renewal',
+                'text'     => $textTemplate,
                 'priority' => 'wa',
                 'stype'    => 'normal',
                 'Params'   => $paramsString
             ]);
 
             if ($response->successful()) {
-                $msgBody = "Hello {$customerParam},\n\nThis is to inform you that your {$serviceParam} for the {$domainParam} expires in {$daysParam} days. To avoid service disconnection, please clear the pending renewal amount of ₹{$amountParam} at the earliest.\n\nPayment Details:\nAccount Name: {$accHolder}\nA/C No: {$accNo}\nIFSC: {$ifsc}\n\nPlease share the screenshot once paid. For queries, call Support: {$supportPhone}.\nThank you,\nTeam Techsoul";
+                if ($isCompleted) {
+                    $msgBody = "Hello {$customerParam},\n\nThis is to inform you that your {$serviceParam} for the {$domainParam} has expired. To avoid service deletion, please clear the pending renewal amount of ₹{$amountParam} at the earliest.\n\nPayment Details:\nAccount Name: {$accHolder}\nA/C No: {$accNo}\nIFSC: {$ifsc}\n\nPlease share the screenshot once paid. For queries, call Support: {$supportPhone}.\nThank you,\nTeam Techsoul";
+                } else {
+                    $msgBody = "Hello {$customerParam},\n\nThis is to inform you that your {$serviceParam} for the {$domainParam} expires in {$daysParam} days. To avoid service disconnection, please clear the pending renewal amount of ₹{$amountParam} at the earliest.\n\nPayment Details:\nAccount Name: {$accHolder}\nA/C No: {$accNo}\nIFSC: {$ifsc}\n\nPlease share the screenshot once paid. For queries, call Support: {$supportPhone}.\nThank you,\nTeam Techsoul";
+                }
                 
                 \App\Models\ActivityLog::log(
                     'amc_whatsapp_reminder_sent', 
-                    "Sent WhatsApp AMC renewal reminder to {$phone} (Client: {$client->company_name}) for project {$this->project->name}",
+                    $isCompleted 
+                        ? "Sent WhatsApp AMC deletion notice to {$phone} (Client: {$client->company_name}) for project {$this->project->name}"
+                        : "Sent WhatsApp AMC renewal reminder to {$phone} (Client: {$client->company_name}) for project {$this->project->name}",
                     $this,
                     [],
                     [
